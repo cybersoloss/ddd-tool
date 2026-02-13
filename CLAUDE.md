@@ -15,18 +15,23 @@
 ## Implementation Status
 
 ### Built
-_(nothing yet — Session 1 starts the scaffold)_
+- **Session 1:** Project scaffold + App Shell (Tauri 2.0, React, Zustand, Tailwind, Radix UI, git2)
+- **Session 2:** System Map (L1) — domain blocks on canvas, flow count badges, event arrows, breadcrumb navigation, sheet/project stores
+- **Session 3:** Domain Map (L2) + Navigation — flow blocks, portals, event arrows, breadcrumb drill-down
+- **Session 4:** Flow Canvas (L3) + Basic Nodes — React Flow canvas, 5 node types (trigger/input/process/decision/terminal), drag-drop toolbar, Add Flow dialog, YAML persistence
+- **Session 5:** Connections + Spec Panel — edge wiring (onConnect/onEdgesDelete), right-side spec panel with per-type editors, inline label editing, edge styling
+- **Session 6:** YAML Save/Load + Git — Git panel (status, staging, unstaging, commit, history), breadcrumb git toggle with change badge, 10s polling
 
 ### Session Plan
 
 | # | Session | What You'll See When Done | Status |
 |---|---------|--------------------------|--------|
-| 1 | **Project scaffold + App Shell** | App opens, shows Project Launcher with "New Project" wizard, settings dialog | Pending |
-| 2 | **System Map (L1)** | Create a project, see domain blocks on canvas with flow count badges, event arrows | Pending |
-| 3 | **Domain Map (L2) + Navigation** | Double-click domain, drill into flow blocks, portals, breadcrumb navigation works | Pending |
-| 4 | **Flow Canvas (L3) + Basic Nodes** | Double-click flow, drag-drop 5 node types (trigger, input, process, decision, terminal) | Pending |
-| 5 | **Connections + Spec Panel** | Wire nodes together, click a node, right panel shows editable spec fields | Pending |
-| 6 | **YAML Save/Load + Git** | Save flow writes YAML to specs/, load project reads specs, Git panel shows status | Pending |
+| 1 | **Project scaffold + App Shell** | App opens, shows Project Launcher with "New Project" wizard, settings dialog | Done |
+| 2 | **System Map (L1)** | Create a project, see domain blocks on canvas with flow count badges, event arrows | Done |
+| 3 | **Domain Map (L2) + Navigation** | Double-click domain, drill into flow blocks, portals, breadcrumb navigation works | Done |
+| 4 | **Flow Canvas (L3) + Basic Nodes** | Double-click flow, drag-drop 5 node types (trigger, input, process, decision, terminal) | Done |
+| 5 | **Connections + Spec Panel** | Wire nodes together, click a node, right panel shows editable spec fields | Done |
+| 6 | **YAML Save/Load + Git** | Save flow writes YAML to specs/, load project reads specs, Git panel shows status | Done |
 | 7 | **Agent Nodes + Agent Canvas** | Create agent flow, agent loop layout with tools, guardrails, human gate, memory blocks | Pending |
 | 8 | **Orchestration Nodes** | Orchestrator, smart router, handoff, agent group nodes with L2 orchestration visuals | Pending |
 | 9 | **LLM Design Assistant** | Chat panel, inline assist (right-click), ghost preview with Apply/Discard | Pending |
@@ -37,11 +42,13 @@ _(nothing yet — Session 1 starts the scaffold)_
 | 14 | **Reconciliation + Drift Detection** | Stale banners, sync scores, reconciliation report with accept/remove/ignore | Pending |
 | 15 | **Production Generators** | Generate OpenAPI, CI/CD pipeline, Dockerfile, docker-compose, K8s manifests from specs | Pending |
 | 16 | **First-Run, Settings, Polish** | First-run wizard, settings persistence, error toasts, undo/redo, final bug fixes | Pending |
+| 17 | **Extended Nodes + Enhancements** | 6 new node types (data_store, service_call, event, loop, parallel, sub_flow), validation presets, Mermaid export, minimap, templates, live agent testing, observability | Pending |
 
 **Milestone A (Sessions 1-6):** Working flow editor that saves real YAML
 **Milestone B (Sessions 7-8):** Agent and orchestration support
 **Milestone C (Sessions 9-11):** AI brain and quality gates
 **Milestone D (Sessions 12-16):** Implementation, testing, production readiness
+**Milestone E (Session 17):** Extended nodes and post-MVP enhancements
 
 ## Stores
 | Store | File | Owns |
