@@ -18,22 +18,30 @@
 _(nothing yet — Session 1 starts the scaffold)_
 
 ### Session Plan
-1. Project scaffold + App Shell (launcher, routing)
-2. System Map (L1) with domain blocks
-3. Domain Map (L2) + navigation
-4. Flow Canvas (L3) + basic nodes
-5. Connections + spec panel
-6. YAML save/load + Git
-7. Agent nodes + agent canvas
-8. Orchestration nodes
-9. LLM Design Assistant (chat + ghost preview)
-10. Project Memory
-11. Validation system
-12. Claude Code integration (PTY + prompt builder)
-13. Test runner + test generation
-14. Reconciliation + drift detection
-15. Production generators (OpenAPI, CI/CD, Docker)
-16. Settings, first-run, polish
+
+| # | Session | What You'll See When Done | Status |
+|---|---------|--------------------------|--------|
+| 1 | **Project scaffold + App Shell** | App opens, shows Project Launcher with "New Project" wizard, settings dialog | Pending |
+| 2 | **System Map (L1)** | Create a project, see domain blocks on canvas with flow count badges, event arrows | Pending |
+| 3 | **Domain Map (L2) + Navigation** | Double-click domain, drill into flow blocks, portals, breadcrumb navigation works | Pending |
+| 4 | **Flow Canvas (L3) + Basic Nodes** | Double-click flow, drag-drop 5 node types (trigger, input, process, decision, terminal) | Pending |
+| 5 | **Connections + Spec Panel** | Wire nodes together, click a node, right panel shows editable spec fields | Pending |
+| 6 | **YAML Save/Load + Git** | Save flow writes YAML to specs/, load project reads specs, Git panel shows status | Pending |
+| 7 | **Agent Nodes + Agent Canvas** | Create agent flow, agent loop layout with tools, guardrails, human gate, memory blocks | Pending |
+| 8 | **Orchestration Nodes** | Orchestrator, smart router, handoff, agent group nodes with L2 orchestration visuals | Pending |
+| 9 | **LLM Design Assistant** | Chat panel, inline assist (right-click), ghost preview with Apply/Discard | Pending |
+| 10 | **Project Memory** | Memory panel shows project summary, implementation status, design decisions, flow map | Pending |
+| 11 | **Design Validation** | Real-time node indicators (green/amber/red), validation panel, cross-domain wiring checks | Pending |
+| 12 | **Claude Code Integration** | Implementation panel with embedded terminal, prompt builder, Implement button with validation gate | Pending |
+| 13 | **Test Runner + Test Generation** | Auto-run tests after implementation, derive test cases from flow graph, spec compliance check | Pending |
+| 14 | **Reconciliation + Drift Detection** | Stale banners, sync scores, reconciliation report with accept/remove/ignore | Pending |
+| 15 | **Production Generators** | Generate OpenAPI, CI/CD pipeline, Dockerfile, docker-compose, K8s manifests from specs | Pending |
+| 16 | **First-Run, Settings, Polish** | First-run wizard, settings persistence, error toasts, undo/redo, final bug fixes | Pending |
+
+**Milestone A (Sessions 1-6):** Working flow editor that saves real YAML
+**Milestone B (Sessions 7-8):** Agent and orchestration support
+**Milestone C (Sessions 9-11):** AI brain and quality gates
+**Milestone D (Sessions 12-16):** Implementation, testing, production readiness
 
 ## Stores
 | Store | File | Owns |
