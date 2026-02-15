@@ -92,10 +92,30 @@ function AgentLoopNodeComponent({ data, selected }: NodeProps<AgentLoopNodeType>
         </div>
       )}
 
+      {/* Output handles: unnamed default + done/error aliases */}
+      <div className="flex justify-between text-[10px] text-text-muted mt-2 px-1">
+        <span>Done</span>
+        <span>Error</span>
+      </div>
       <Handle
         type="source"
         position={Position.Bottom}
-        className="!w-3 !h-3 !bg-blue-500 !border-2 !border-bg-secondary"
+        id="done"
+        className="!w-3 !h-3 !bg-green-500 !border-2 !border-bg-secondary"
+        style={{ left: '33%' }}
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        className="!w-0 !h-0 !bg-transparent !border-0"
+        style={{ left: '33%' }}
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="error"
+        className="!w-3 !h-3 !bg-red-500 !border-2 !border-bg-secondary"
+        style={{ left: '66%' }}
       />
     </div>
   );

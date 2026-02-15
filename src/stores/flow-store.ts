@@ -424,13 +424,20 @@ function normalizeFlowDocument(raw: Record<string, unknown>, domainId: string, f
       if (Object.keys(inlined).length > 0) spec = { ...spec, ...inlined };
     }
 
+    // Normalize smart_router: routes[].id → rules[].route
+    if (n.type === 'smart_router' && spec.routes && !spec.rules) {
+      spec.rules = (spec.routes as Array<Record<string, unknown>>).map(
+        (r: Record<string, unknown>) => ({ ...r, route: r.route ?? r.id })
+      );
+    }
+
     return {
       id: n.id,
       type: n.type,
       position: n.position ?? { x: 0, y: 0 },
       connections,
       spec,
-      label: n.label ?? n.id,
+      label: n.label ?? n.name ?? n.id,
       parentId: n.parentId,
       observability: n.observability,
       security: n.security,

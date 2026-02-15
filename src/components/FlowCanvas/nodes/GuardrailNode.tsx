@@ -44,7 +44,7 @@ function GuardrailNodeComponent({ data, selected }: NodeProps<GuardrailNodeType>
         </div>
       )}
 
-      {/* Two output handles: pass and block */}
+      {/* Two output handles: pass/valid and block/invalid */}
       <div className="flex justify-between text-[10px] text-text-muted mt-2 px-1">
         <span>Pass</span>
         <span>Block</span>
@@ -54,14 +54,28 @@ function GuardrailNodeComponent({ data, selected }: NodeProps<GuardrailNodeType>
         position={Position.Bottom}
         id="pass"
         className="!w-3 !h-3 !bg-green-500 !border-2 !border-bg-secondary"
-        style={{ left: '33%' }}
+        style={{ left: '25%' }}
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="valid"
+        className="!w-0 !h-0 !bg-transparent !border-0"
+        style={{ left: '25%' }}
       />
       <Handle
         type="source"
         position={Position.Bottom}
         id="block"
         className="!w-3 !h-3 !bg-red-500 !border-2 !border-bg-secondary"
-        style={{ left: '66%' }}
+        style={{ left: '75%' }}
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="invalid"
+        className="!w-0 !h-0 !bg-transparent !border-0"
+        style={{ left: '75%' }}
       />
     </div>
   );

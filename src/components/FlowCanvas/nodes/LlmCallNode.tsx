@@ -32,10 +32,25 @@ function LlmCallNodeComponent({ data, selected }: NodeProps<LlmCallNodeType>) {
           {model}
         </span>
       )}
+      {/* Output handles: unnamed default + success/error */}
       <Handle
         type="source"
         position={Position.Bottom}
         className="!w-3 !h-3 !bg-text-muted !border-2 !border-bg-secondary"
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="success"
+        className="!w-0 !h-0 !bg-transparent !border-0"
+        style={{ left: '50%' }}
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="error"
+        className="!w-0 !h-0 !bg-transparent !border-0"
+        style={{ left: '50%' }}
       />
     </div>
   );
