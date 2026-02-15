@@ -9,7 +9,12 @@ type ParallelNodeType = Node<DddNodeData, 'parallel'>;
 function ParallelNodeComponent({ data, selected }: NodeProps<ParallelNodeType>) {
   const spec = (data.spec ?? {}) as ParallelSpec;
   const joinStrategy = spec?.join;
-  const branches = spec?.branches ?? [];
+  const rawBranches = spec?.branches;
+  const branches = Array.isArray(rawBranches)
+    ? rawBranches
+    : typeof rawBranches === 'number'
+      ? Array.from({ length: rawBranches }, (_, i) => `Branch ${i}`)
+      : [];
   const badgeValue =
     joinStrategy && branches.length
       ? `${joinStrategy} (${branches.length} branches)`
