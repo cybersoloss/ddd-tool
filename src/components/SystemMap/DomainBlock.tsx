@@ -119,6 +119,7 @@ export function DomainBlock({ domain, selected, isLocked, scale = 1, animating, 
         left: domain.position.x,
         top: domain.position.y,
         minWidth: 200,
+        maxWidth: 320,
         transition: animating ? 'left 300ms ease, top 300ms ease' : 'none',
       }}
       onMouseDown={handleMouseDown}

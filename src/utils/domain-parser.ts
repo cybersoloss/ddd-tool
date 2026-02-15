@@ -13,8 +13,8 @@ import type {
 import type { Position } from '../types/sheet';
 
 const GRID_COLS = 3;
-const GRID_H_SPACING = 300;
-const GRID_V_SPACING = 200;
+const GRID_H_SPACING = 380;
+const GRID_V_SPACING = 220;
 const GRID_OFFSET_X = 60;
 const GRID_OFFSET_Y = 40;
 
