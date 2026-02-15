@@ -13,6 +13,7 @@ export interface EventWiring {
   from_flow?: string;
   handled_by_flow?: string;
   description?: string;
+  payload?: Record<string, unknown>;
 }
 
 export interface DomainLayout {
