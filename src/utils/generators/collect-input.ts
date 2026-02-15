@@ -78,7 +78,7 @@ export async function collectGeneratorInput(): Promise<GeneratorInput> {
           domainId,
           domainName: domain.name,
           type: flowDoc.flow.type ?? 'traditional',
-          triggerEvent: triggerSpec?.event,
+          triggerEvent: Array.isArray(triggerSpec?.event) ? triggerSpec.event.join(', ') : triggerSpec?.event,
           triggerSource: triggerSpec?.source,
           inputs,
           processes,

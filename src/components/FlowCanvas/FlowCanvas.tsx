@@ -138,6 +138,7 @@ function FlowCanvasInner() {
   const getCurrentFlowResult = useValidationStore((s) => s.getCurrentFlowResult);
   const driftItems = useImplementationStore((s) => s.driftItems);
   const minimapVisible = useUiStore((s) => s.minimapVisible);
+  const isLocked = useUiStore((s) => s.isLocked);
 
   const { screenToFlowPosition } = useReactFlow();
   const loadedRef = useRef<string | null>(null);
@@ -322,11 +323,13 @@ function FlowCanvasInner() {
         {isCurrentFlowStale && currentFlowKey && (
           <StaleBanner flowKey={currentFlowKey} />
         )}
-        <NodeToolbar
-          pendingType={pendingNodeType}
-          onSelectType={setPendingNodeType}
-          flowType={currentFlow.flow.type ?? flowType}
-        />
+        {!isLocked && (
+          <NodeToolbar
+            pendingType={pendingNodeType}
+            onSelectType={setPendingNodeType}
+            flowType={currentFlow.flow.type ?? flowType}
+          />
+        )}
         <ReactFlow
           nodes={rfNodes}
           edges={rfEdges}
@@ -341,11 +344,13 @@ function FlowCanvasInner() {
           onPaneClick={onPaneClick}
           onNodeContextMenu={onNodeContextMenu}
           onPaneContextMenu={onPaneContextMenu}
+          nodesDraggable={!isLocked}
+          nodesConnectable={!isLocked}
           colorMode="dark"
           snapToGrid
           snapGrid={[20, 20]}
           fitView
-          deleteKeyCode={['Backspace', 'Delete']}
+          deleteKeyCode={isLocked ? [] : ['Backspace', 'Delete']}
           proOptions={{ hideAttribution: true }}
           className={pendingNodeType ? 'cursor-crosshair' : ''}
           style={{ width: '100%', height: '100%' }}

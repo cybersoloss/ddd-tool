@@ -4,11 +4,11 @@ import type { NodeSpec, DddNodeType } from '../../../types/flow';
 
 // Known (typed) keys per node type — anything else is an "extra field"
 const KNOWN_KEYS: Record<DddNodeType, Set<string>> = {
-  trigger: new Set(['event', 'source', 'description']),
+  trigger: new Set(['event', 'source', 'filter', 'description']),
   input: new Set(['fields', 'validation', 'description']),
-  process: new Set(['action', 'service', 'description']),
+  process: new Set(['action', 'service', 'category', 'inputs', 'outputs', 'description']),
   decision: new Set(['condition', 'trueLabel', 'falseLabel', 'description']),
-  terminal: new Set(['outcome', 'description', 'status', 'body']),
+  terminal: new Set(['outcome', 'description', 'status', 'body', 'response_type', 'headers']),
   agent_loop: new Set(['model', 'system_prompt', 'max_iterations', 'temperature', 'stop_conditions', 'tools', 'memory', 'on_max_iterations']),
   guardrail: new Set(['position', 'checks', 'on_block']),
   human_gate: new Set(['notification_channels', 'approval_options', 'timeout', 'context_for_human']),
@@ -16,19 +16,28 @@ const KNOWN_KEYS: Record<DddNodeType, Set<string>> = {
   smart_router: new Set(['rules', 'llm_routing', 'fallback_chain', 'policies']),
   handoff: new Set(['mode', 'target', 'context_transfer', 'on_complete', 'on_failure', 'notify_customer']),
   agent_group: new Set(['name', 'description', 'members', 'shared_memory', 'coordination']),
-  data_store: new Set(['operation', 'model', 'data', 'query', 'description', 'pagination', 'sort']),
-  service_call: new Set(['method', 'url', 'headers', 'body', 'timeout_ms', 'retry', 'error_mapping', 'description']),
-  event: new Set(['direction', 'event_name', 'payload', 'async', 'description']),
-  loop: new Set(['collection', 'iterator', 'break_condition', 'description']),
+  data_store: new Set(['operation', 'model', 'data', 'query', 'description', 'pagination', 'sort', 'batch', 'upsert_key', 'include', 'returning']),
+  service_call: new Set(['method', 'url', 'headers', 'body', 'timeout_ms', 'retry', 'error_mapping', 'request_config', 'integration', 'description']),
+  event: new Set(['direction', 'event_name', 'payload', 'payload_source', 'async', 'target_queue', 'priority', 'delay_ms', 'dedup_key', 'description']),
+  loop: new Set(['collection', 'iterator', 'break_condition', 'on_error', 'accumulate', 'description']),
   parallel: new Set(['branches', 'join', 'join_count', 'timeout_ms', 'description']),
   sub_flow: new Set(['flow_ref', 'input_mapping', 'output_mapping', 'description']),
-  llm_call: new Set(['model', 'system_prompt', 'prompt_template', 'temperature', 'max_tokens', 'structured_output', 'retry', 'description']),
+  llm_call: new Set(['model', 'system_prompt', 'prompt_template', 'temperature', 'max_tokens', 'structured_output', 'context_sources', 'retry', 'description']),
+  delay: new Set(['min_ms', 'max_ms', 'strategy', 'description']),
+  cache: new Set(['key', 'ttl_ms', 'store', 'description']),
+  transform: new Set(['input_schema', 'output_schema', 'field_mappings', 'description']),
+  collection: new Set(['operation', 'input', 'predicate', 'key', 'direction', 'accumulator', 'output', 'description']),
+  parse: new Set(['format', 'input', 'strategy', 'library', 'output', 'description']),
+  crypto: new Set(['operation', 'algorithm', 'key_source', 'input_fields', 'output_field', 'encoding', 'description']),
+  batch: new Set(['input', 'operation_template', 'concurrency', 'on_error', 'output', 'description']),
+  transaction: new Set(['isolation', 'steps', 'rollback_on_error', 'description']),
 };
 
 interface Props {
   spec: NodeSpec;
   nodeType: DddNodeType;
-  onChange: (spec: NodeSpec) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onChange: (spec: any) => void;
 }
 
 export function ExtraFieldsEditor({ spec, nodeType, onChange }: Props) {

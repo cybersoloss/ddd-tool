@@ -8,6 +8,7 @@ import type {
   DomainMapFlow,
   DomainMapPortal,
   DomainMapArrow,
+  SystemZone,
 } from '../types/domain';
 import type { Position } from '../types/sheet';
 
@@ -40,12 +41,18 @@ export function buildSystemMapData(
   const domains: SystemMapDomain[] = domainIds.map((id) => {
     const config = domainConfigs[id];
     const position = systemLayout.domains[id] ?? { x: 0, y: 0 };
+    // Detect human touchpoints: domain has flows with HTTP triggers (not cron/event)
+    const hasHumanTouchpoint = config.role === 'interface' ||
+      config.flows.some((f) => f.tags?.includes('http') || f.tags?.includes('api'));
     return {
       id,
       name: config.name,
       description: config.description,
       flowCount: config.flows.length,
       position,
+      role: config.role,
+      hasHumanTouchpoint: hasHumanTouchpoint || undefined,
+      owns_schemas: config.owns_schemas,
     };
   });
 
@@ -84,7 +91,9 @@ export function buildSystemMapData(
 
   const eventArrows: SystemMapArrow[] = Array.from(arrowMap.values());
 
-  return { domains, eventArrows };
+  const zones: SystemZone[] = systemLayout.zones ?? [];
+
+  return { domains, eventArrows, zones };
 }
 
 // --- L2 Domain Map ---
@@ -135,6 +144,8 @@ export function buildDomainMapData(
       description: f.description,
       type: (f.type ?? 'traditional') as 'traditional' | 'agent',
       position,
+      tags: f.tags,
+      group: f.group,
     };
   });
 

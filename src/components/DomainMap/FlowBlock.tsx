@@ -1,5 +1,5 @@
-import { useRef, useCallback, useState } from 'react';
-import { GitBranch, GripVertical, Bot, Trash2, AlertTriangle } from 'lucide-react';
+import { useRef, useCallback, useState, useEffect } from 'react';
+import { GitBranch, GripVertical, Bot, Trash2, AlertTriangle, Clock, Globe, Zap } from 'lucide-react';
 import type { DomainMapFlow } from '../../types/domain';
 import type { Position } from '../../types/sheet';
 
@@ -7,14 +7,18 @@ interface Props {
   flow: DomainMapFlow;
   selected: boolean;
   isStale?: boolean;
+  isLocked?: boolean;
   onSelect: (flowId: string) => void;
   onPositionChange: (flowId: string, position: Position) => void;
   onDoubleClick: (flowId: string) => void;
   onDelete: (flowId: string) => void;
   onRename: (flowId: string, newName: string) => void;
+  onContextMenu?: (flowId: string, x: number, y: number) => void;
+  onStartConnect?: (flowId: string, clientX: number, clientY: number) => void;
+  editingExternal?: boolean;
 }
 
-export function FlowBlock({ flow, selected, isStale, onSelect, onPositionChange, onDoubleClick, onDelete, onRename }: Props) {
+export function FlowBlock({ flow, selected, isStale, isLocked, onSelect, onPositionChange, onDoubleClick, onDelete, onRename, onContextMenu, onStartConnect, editingExternal }: Props) {
   const dragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const posStart = useRef({ x: 0, y: 0 });
@@ -23,6 +27,13 @@ export function FlowBlock({ flow, selected, isStale, onSelect, onPositionChange,
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
 
+  useEffect(() => {
+    if (editingExternal && !isLocked) {
+      setDraft(flow.name);
+      setEditing(true);
+    }
+  }, [editingExternal, flow.name, isLocked]);
+
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       if (e.button !== 0) return;
@@ -30,6 +41,7 @@ export function FlowBlock({ flow, selected, isStale, onSelect, onPositionChange,
       e.preventDefault();
       e.stopPropagation();
       onSelect(flow.id);
+      if (isLocked) return;
       dragging.current = true;
       didDrag.current = false;
       dragStart.current = { x: e.clientX, y: e.clientY };
@@ -55,7 +67,7 @@ export function FlowBlock({ flow, selected, isStale, onSelect, onPositionChange,
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
     },
-    [flow.id, flow.position.x, flow.position.y, onPositionChange, onSelect, editing]
+    [flow.id, flow.position.x, flow.position.y, onPositionChange, onSelect, editing, isLocked]
   );
 
   const handleBlockDoubleClick = useCallback(() => {
@@ -71,10 +83,11 @@ export function FlowBlock({ flow, selected, isStale, onSelect, onPositionChange,
   );
 
   const startEditing = useCallback((e: React.MouseEvent) => {
+    if (isLocked) return;
     e.stopPropagation();
     setDraft(flow.name);
     setEditing(true);
-  }, [flow.name]);
+  }, [flow.name, isLocked]);
 
   const commitRename = useCallback(() => {
     const trimmed = draft.trim();
@@ -96,9 +109,18 @@ export function FlowBlock({ flow, selected, isStale, onSelect, onPositionChange,
     [commitRename]
   );
 
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (onContextMenu) onContextMenu(flow.id, e.clientX, e.clientY);
+    },
+    [flow.id, onContextMenu]
+  );
+
   return (
     <div
-      className="absolute group cursor-grab active:cursor-grabbing"
+      className={`absolute group ${isLocked ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'}`}
       style={{
         left: flow.position.x,
         top: flow.position.y,
@@ -107,18 +129,21 @@ export function FlowBlock({ flow, selected, isStale, onSelect, onPositionChange,
       onMouseDown={handleMouseDown}
       onClick={(e) => e.stopPropagation()}
       onDoubleClick={handleBlockDoubleClick}
+      onContextMenu={handleContextMenu}
     >
       <div className={`bg-bg-secondary border rounded-xl p-4 transition-colors shadow-lg relative ${
         selected ? 'border-accent ring-2 ring-accent/30' : 'border-border group-hover:border-accent'
       }`}>
         {/* Delete button */}
-        <button
-          className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-bg-tertiary border border-border flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-danger hover:border-danger hover:text-white text-text-muted z-10"
-          onClick={handleDeleteClick}
-          title="Delete flow"
-        >
-          <Trash2 className="w-3 h-3" />
-        </button>
+        {!isLocked && (
+          <button
+            className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-bg-tertiary border border-border flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-danger hover:border-danger hover:text-white text-text-muted z-10"
+            onClick={handleDeleteClick}
+            title="Delete flow"
+          >
+            <Trash2 className="w-3 h-3" />
+          </button>
+        )}
 
         {/* Header */}
         <div className="flex items-center gap-2 mb-1">
@@ -156,14 +181,48 @@ export function FlowBlock({ flow, selected, isStale, onSelect, onPositionChange,
           </p>
         )}
 
-        {/* Agent badge */}
-        {flow.type === 'agent' && (
-          <div className="flex items-center gap-1 ml-6">
-            <Bot className="w-3 h-3 text-text-muted" />
-            <span className="text-xs bg-bg-tertiary text-text-secondary px-2 py-0.5 rounded-full">
-              Agent
+        {/* Type & tag badges */}
+        <div className="flex items-center gap-1 ml-6 flex-wrap">
+          {flow.type === 'agent' && (
+            <>
+              <Bot className="w-3 h-3 text-text-muted" />
+              <span className="text-xs bg-bg-tertiary text-text-secondary px-2 py-0.5 rounded-full">
+                Agent
+              </span>
+            </>
+          )}
+          {flow.tags?.map((tag) => {
+            const isSchedule = tag.startsWith('cron:') || tag.startsWith('schedule:');
+            const isHttp = tag === 'http' || tag === 'api';
+            const isEvent = tag === 'event_handler';
+            const TagIcon = isSchedule ? Clock : isHttp ? Globe : isEvent ? Zap : null;
+            return (
+              <span key={tag} className="text-[10px] bg-bg-tertiary text-text-muted px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                {TagIcon && <TagIcon className="w-2.5 h-2.5" />}
+                {tag}
+              </span>
+            );
+          })}
+          {flow.schedule && (
+            <span className="text-[10px] bg-bg-tertiary text-text-muted px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+              <Clock className="w-2.5 h-2.5" />
+              {flow.schedule}
             </span>
-          </div>
+          )}
+        </div>
+
+        {/* Connection handles */}
+        {!isLocked && onStartConnect && (
+          <>
+            <div
+              className="absolute -right-2 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-accent border-2 border-bg-secondary opacity-0 group-hover:opacity-100 cursor-crosshair z-20"
+              onMouseDown={(e) => { e.stopPropagation(); onStartConnect(flow.id, e.clientX, e.clientY); }}
+            />
+            <div
+              className="absolute -left-2 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-accent border-2 border-bg-secondary opacity-0 group-hover:opacity-100 cursor-crosshair z-20"
+              onMouseDown={(e) => { e.stopPropagation(); onStartConnect(flow.id, e.clientX, e.clientY); }}
+            />
+          </>
         )}
       </div>
     </div>

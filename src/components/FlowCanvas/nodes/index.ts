@@ -18,6 +18,14 @@ import { OrchestratorNode } from './OrchestratorNode';
 import { SmartRouterNode } from './SmartRouterNode';
 import { HandoffNode } from './HandoffNode';
 import { AgentGroupNode } from './AgentGroupNode';
+import { DelayNode } from './DelayNode';
+import { CacheNode } from './CacheNode';
+import { TransformNode } from './TransformNode';
+import { CollectionNode } from './CollectionNode';
+import { ParseNode } from './ParseNode';
+import { CryptoNode } from './CryptoNode';
+import { BatchNode } from './BatchNode';
+import { TransactionNode } from './TransactionNode';
 
 export const nodeTypes: NodeTypes = {
   trigger: TriggerNode,
@@ -39,4 +47,12 @@ export const nodeTypes: NodeTypes = {
   smart_router: SmartRouterNode,
   handoff: HandoffNode,
   agent_group: AgentGroupNode,
+  delay: DelayNode,
+  cache: CacheNode,
+  transform: TransformNode,
+  collection: CollectionNode,
+  parse: ParseNode,
+  crypto: CryptoNode,
+  batch: BatchNode,
+  transaction: TransactionNode,
 };

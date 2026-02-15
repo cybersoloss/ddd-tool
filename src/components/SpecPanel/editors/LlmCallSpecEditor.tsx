@@ -75,6 +75,21 @@ export function LlmCallSpecEditor({ spec, onChange }: Props) {
           placeholder='{"field": "type"}'
         />
       </div>
+      <div>
+        <label className="label">Context Sources</label>
+        <textarea
+          className="input min-h-[60px] resize-y font-mono text-xs"
+          value={JSON.stringify(spec.context_sources ?? {}, null, 2)}
+          onChange={(e) => {
+            try {
+              onChange({ ...spec, context_sources: JSON.parse(e.target.value) });
+            } catch {
+              // Keep raw while editing
+            }
+          }}
+          placeholder='{"history": {"from": "memory.conversation", "transform": "last_10"}}'
+        />
+      </div>
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="label">Retry Attempts</label>

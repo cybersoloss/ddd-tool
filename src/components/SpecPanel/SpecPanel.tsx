@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { X, Zap, FormInput, Cog, GitFork, Square, RotateCw, Shield, Hand, Network, GitBranch, ArrowLeftRight, Box, Sparkles, Check, XCircle, Database, ExternalLink, Repeat, Columns, GitMerge, BrainCircuit } from 'lucide-react';
+import { X, Zap, FormInput, Cog, GitFork, Square, RotateCw, Shield, Hand, Network, GitBranch, ArrowLeftRight, Box, Sparkles, Check, XCircle, Database, ExternalLink, Repeat, Columns, GitMerge, BrainCircuit, Clock, HardDrive, Shuffle, Filter, FileText, Lock, Layers, ShieldCheck } from 'lucide-react';
 import { useFlowStore } from '../../stores/flow-store';
 import { useLlmStore } from '../../stores/llm-store';
 import { specEditors } from './editors';
@@ -28,6 +28,14 @@ const nodeIcons: Record<DddNodeType, { icon: React.ElementType; color: string }>
   smart_router: { icon: GitBranch, color: 'text-cyan-400' },
   handoff: { icon: ArrowLeftRight, color: 'text-amber-400' },
   agent_group: { icon: Box, color: 'text-gray-400' },
+  delay: { icon: Clock, color: 'text-blue-500' },
+  cache: { icon: HardDrive, color: 'text-amber-400' },
+  transform: { icon: Shuffle, color: 'text-indigo-400' },
+  collection: { icon: Filter, color: 'text-cyan-400' },
+  parse: { icon: FileText, color: 'text-lime-400' },
+  crypto: { icon: Lock, color: 'text-fuchsia-400' },
+  batch: { icon: Layers, color: 'text-rose-400' },
+  transaction: { icon: ShieldCheck, color: 'text-amber-500' },
 };
 
 function findNode(flow: ReturnType<typeof useFlowStore.getState>['currentFlow'], nodeId: string): DddFlowNode | null {

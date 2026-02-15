@@ -19,6 +19,14 @@ import { OrchestratorSpecEditor } from './OrchestratorSpecEditor';
 import { SmartRouterSpecEditor } from './SmartRouterSpecEditor';
 import { HandoffSpecEditor } from './HandoffSpecEditor';
 import { AgentGroupSpecEditor } from './AgentGroupSpecEditor';
+import { DelaySpecEditor } from './DelaySpecEditor';
+import { CacheSpecEditor } from './CacheSpecEditor';
+import { TransformSpecEditor } from './TransformSpecEditor';
+import { CollectionSpecEditor } from './CollectionSpecEditor';
+import { ParseSpecEditor } from './ParseSpecEditor';
+import { CryptoSpecEditor } from './CryptoSpecEditor';
+import { BatchSpecEditor } from './BatchSpecEditor';
+import { TransactionSpecEditor } from './TransactionSpecEditor';
 
 // Each editor receives spec + onChange typed to its own spec shape.
 // We use a generic props interface so the registry can hold them uniformly.
@@ -47,4 +55,12 @@ export const specEditors: Record<DddNodeType, ComponentType<EditorProps>> = {
   smart_router: SmartRouterSpecEditor as ComponentType<EditorProps>,
   handoff: HandoffSpecEditor as ComponentType<EditorProps>,
   agent_group: AgentGroupSpecEditor as ComponentType<EditorProps>,
+  delay: DelaySpecEditor as ComponentType<EditorProps>,
+  cache: CacheSpecEditor as ComponentType<EditorProps>,
+  transform: TransformSpecEditor as ComponentType<EditorProps>,
+  collection: CollectionSpecEditor as ComponentType<EditorProps>,
+  parse: ParseSpecEditor as ComponentType<EditorProps>,
+  crypto: CryptoSpecEditor as ComponentType<EditorProps>,
+  batch: BatchSpecEditor as ComponentType<EditorProps>,
+  transaction: TransactionSpecEditor as ComponentType<EditorProps>,
 };

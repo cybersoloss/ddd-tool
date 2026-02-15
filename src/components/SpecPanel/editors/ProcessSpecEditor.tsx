@@ -28,6 +28,39 @@ export function ProcessSpecEditor({ spec, onChange }: Props) {
         />
       </div>
       <div>
+        <label className="label">Category</label>
+        <select
+          className="input"
+          value={spec.category ?? ''}
+          onChange={(e) => onChange({ ...spec, category: (e.target.value || undefined) as ProcessSpec['category'] })}
+        >
+          <option value="">— None —</option>
+          <option value="security">Security</option>
+          <option value="transform">Transform</option>
+          <option value="integration">Integration</option>
+          <option value="business_logic">Business Logic</option>
+          <option value="infrastructure">Infrastructure</option>
+        </select>
+      </div>
+      <div>
+        <label className="label">Inputs (comma-separated)</label>
+        <input
+          className="input"
+          value={(spec.inputs ?? []).join(', ')}
+          onChange={(e) => onChange({ ...spec, inputs: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
+          placeholder="e.g. order, user"
+        />
+      </div>
+      <div>
+        <label className="label">Outputs (comma-separated)</label>
+        <input
+          className="input"
+          value={(spec.outputs ?? []).join(', ')}
+          onChange={(e) => onChange({ ...spec, outputs: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
+          placeholder="e.g. validated_order"
+        />
+      </div>
+      <div>
         <label className="label">Description</label>
         <textarea
           className="input min-h-[80px] resize-y"

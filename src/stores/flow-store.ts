@@ -14,6 +14,14 @@ import type {
   ParallelSpec,
   SubFlowSpec,
   LlmCallSpec,
+  DelaySpec,
+  CacheSpec,
+  TransformSpec,
+  CollectionSpec,
+  ParseSpec,
+  CryptoSpec,
+  BatchSpec,
+  TransactionSpec,
   AgentLoopSpec,
   GuardrailSpec,
   HumanGateSpec,
@@ -210,6 +218,66 @@ function defaultSpec(type: DddNodeType): NodeSpec {
         retry: { max_attempts: 3, backoff_ms: 1000 },
         description: '',
       } satisfies LlmCallSpec;
+    case 'delay':
+      return {
+        min_ms: 1000,
+        max_ms: 5000,
+        strategy: 'random',
+        description: '',
+      } satisfies DelaySpec;
+    case 'cache':
+      return {
+        key: '',
+        ttl_ms: 3600000,
+        store: 'redis',
+        description: '',
+      } satisfies CacheSpec;
+    case 'transform':
+      return {
+        input_schema: '',
+        output_schema: '',
+        field_mappings: {},
+        description: '',
+      } satisfies TransformSpec;
+    case 'collection':
+      return {
+        operation: 'filter',
+        input: '',
+        output: '',
+        description: '',
+      } satisfies CollectionSpec;
+    case 'parse':
+      return {
+        format: 'json',
+        input: '',
+        output: '',
+        description: '',
+      } satisfies ParseSpec;
+    case 'crypto':
+      return {
+        operation: 'encrypt',
+        algorithm: 'aes-256-gcm',
+        key_source: { env: '' },
+        input_fields: [],
+        output_field: '',
+        description: '',
+      } satisfies CryptoSpec;
+    case 'batch':
+      return {
+        input: '',
+        operation_template: { type: 'service_call', dispatch_field: '', configs: {} },
+        concurrency: 3,
+        on_error: 'continue',
+        output: '',
+        description: '',
+      } satisfies BatchSpec;
+    case 'transaction':
+      return {
+        isolation: 'read_committed',
+        steps: [],
+        rollback_on_error: true,
+        description: '',
+      } satisfies TransactionSpec;
   }
 }
 
@@ -253,6 +321,22 @@ function defaultLabel(type: DddNodeType): string {
       return 'Sub-Flow';
     case 'llm_call':
       return 'LLM Call';
+    case 'delay':
+      return 'Delay';
+    case 'cache':
+      return 'Cache';
+    case 'transform':
+      return 'Transform';
+    case 'collection':
+      return 'Collection';
+    case 'parse':
+      return 'Parse';
+    case 'crypto':
+      return 'Crypto';
+    case 'batch':
+      return 'Batch';
+    case 'transaction':
+      return 'Transaction';
   }
 }
 

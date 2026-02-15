@@ -28,6 +28,21 @@ export function TriggerSpecEditor({ spec, onChange }: Props) {
         />
       </div>
       <div>
+        <label className="label">Filter</label>
+        <textarea
+          className="input min-h-[60px] resize-y font-mono text-xs"
+          value={JSON.stringify(spec.filter ?? {}, null, 2)}
+          onChange={(e) => {
+            try {
+              onChange({ ...spec, filter: JSON.parse(e.target.value) });
+            } catch {
+              // Keep raw while editing
+            }
+          }}
+          placeholder='{"status": "active"}'
+        />
+      </div>
+      <div>
         <label className="label">Description</label>
         <textarea
           className="input min-h-[80px] resize-y"

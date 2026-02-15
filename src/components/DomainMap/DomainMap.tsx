@@ -1,15 +1,21 @@
-import { useMemo, useCallback, useState, useEffect } from 'react';
-import { Plus, RotateCcw, Copy, Check } from 'lucide-react';
+import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
+import { Plus, RotateCcw, Copy, Check, Database } from 'lucide-react';
 import { useSheetStore } from '../../stores/sheet-store';
 import { useProjectStore } from '../../stores/project-store';
 import { useImplementationStore } from '../../stores/implementation-store';
+import { useUiStore } from '../../stores/ui-store';
 import { useMemoryStore } from '../../stores/memory-store';
 import { buildDomainMapData } from '../../utils/domain-parser';
 import { FlowBlock } from './FlowBlock';
 import { PortalNode } from './PortalNode';
 import { DomainEventArrow } from './DomainEventArrow';
 import { AddFlowDialog } from './AddFlowDialog';
+import { FlowContextMenu } from './FlowContextMenu';
+import { NewFlowEventDialog } from './NewFlowEventDialog';
 import type { Position } from '../../types/sheet';
+
+const FLOW_WIDTH = 180;
+const FLOW_HEIGHT = 80;
 
 export function DomainMap() {
   const domainId = useSheetStore((s) => s.current.domainId);
@@ -28,7 +34,13 @@ export function DomainMap() {
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [reloading, setReloading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ flowId: string; x: number; y: number } | null>(null);
+  const [renamingFlowId, setRenamingFlowId] = useState<string | null>(null);
+  const [connecting, setConnecting] = useState<{ sourceFlowId: string; currentX: number; currentY: number } | null>(null);
+  const [newEventDialog, setNewEventDialog] = useState<{ sourceFlowId: string; targetFlowId: string } | null>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
 
+  const isLocked = useUiStore((s) => s.isLocked);
   const implementationStatus = useMemoryStore((s) => s.implementationStatus);
   const driftItems = useImplementationStore((s) => s.driftItems);
 
@@ -53,7 +65,7 @@ export function DomainMap() {
 
   const handleCreateFlow = useCallback(
     async (name: string, description: string, flowType: 'traditional' | 'agent', templateId?: string) => {
-      if (!domainId) return;
+      if (!domainId || isLocked) return;
       try {
         const flowId = await addFlow(domainId, name, description || undefined, flowType, templateId);
         setShowAddDialog(false);
@@ -62,7 +74,7 @@ export function DomainMap() {
         // TODO: error toast
       }
     },
-    [domainId, addFlow, navigateToFlow]
+    [domainId, addFlow, navigateToFlow, isLocked]
   );
 
   const handleDeleteFlow = useCallback(
@@ -73,7 +85,7 @@ export function DomainMap() {
   );
 
   const confirmDelete = useCallback(async () => {
-    if (!domainId || !pendingDelete) return;
+    if (!domainId || !pendingDelete || isLocked) return;
     try {
       await deleteFlow(domainId, pendingDelete);
     } catch {
@@ -81,12 +93,12 @@ export function DomainMap() {
     }
     setPendingDelete(null);
     setSelectedFlowId(null);
-  }, [domainId, pendingDelete, deleteFlow]);
+  }, [domainId, pendingDelete, deleteFlow, isLocked]);
 
   // Backspace/Delete to prompt delete confirmation for selected flow
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!selectedFlowId) return;
+      if (!selectedFlowId || isLocked) return;
       if (showAddDialog || pendingDelete) return;
       if (e.key === 'Backspace' || e.key === 'Delete') {
         e.preventDefault();
@@ -95,7 +107,7 @@ export function DomainMap() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedFlowId, showAddDialog, pendingDelete]);
+  }, [selectedFlowId, showAddDialog, pendingDelete, isLocked]);
 
   const mapData = useMemo(() => {
     if (!domainId || !domainConfig) return null;
@@ -132,14 +144,15 @@ export function DomainMap() {
 
   const handleRenameFlow = useCallback(
     async (flowId: string, newName: string) => {
-      if (!domainId) return;
+      if (!domainId || isLocked) return;
+      setRenamingFlowId(null);
       try {
         await renameFlow(domainId, flowId, newName);
       } catch {
         // Silent
       }
     },
-    [domainId, renameFlow]
+    [domainId, renameFlow, isLocked]
   );
 
   const handleReload = useCallback(async () => {
@@ -157,6 +170,60 @@ export function DomainMap() {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }, [domainId]);
+
+  const handleFlowContextMenu = useCallback(
+    (flowId: string, x: number, y: number) => {
+      setContextMenu({ flowId, x, y });
+    },
+    []
+  );
+
+  const handleStartConnect = useCallback(
+    (flowId: string, clientX: number, clientY: number) => {
+      if (isLocked || !domainId) return;
+      setConnecting({ sourceFlowId: flowId, currentX: clientX, currentY: clientY });
+
+      const handleMouseMove = (e: MouseEvent) => {
+        setConnecting((prev) => prev ? { ...prev, currentX: e.clientX, currentY: e.clientY } : null);
+      };
+
+      const handleMouseUp = (e: MouseEvent) => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+
+        const canvasEl = canvasRef.current;
+        if (!canvasEl) { setConnecting(null); return; }
+        const rect = canvasEl.getBoundingClientRect();
+        const cx = e.clientX - rect.left;
+        const cy = e.clientY - rect.top;
+
+        const configs = useProjectStore.getState().domainConfigs;
+        const domain = configs[domainId!];
+        if (!domain) { setConnecting(null); return; }
+        const flowLayout = domain.layout.flows;
+
+        let targetId: string | null = null;
+        for (const f of domain.flows) {
+          if (f.id === flowId) continue;
+          const pos = flowLayout[f.id];
+          if (!pos) continue;
+          if (cx >= pos.x && cx <= pos.x + FLOW_WIDTH && cy >= pos.y && cy <= pos.y + FLOW_HEIGHT) {
+            targetId = f.id;
+            break;
+          }
+        }
+
+        setConnecting(null);
+        if (targetId) {
+          setNewEventDialog({ sourceFlowId: flowId, targetFlowId: targetId });
+        }
+      };
+
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    },
+    [isLocked, domainId]
+  );
 
   if (!mapData || (mapData.flows.length === 0 && mapData.portals.length === 0)) {
     return (
@@ -185,7 +252,7 @@ export function DomainMap() {
   }
 
   return (
-    <div className="relative flex-1 overflow-hidden bg-bg-primary" onClick={() => setSelectedFlowId(null)}>
+    <div ref={canvasRef} className="relative flex-1 overflow-hidden bg-bg-primary" onClick={() => { setSelectedFlowId(null); setContextMenu(null); }}>
       {/* SVG arrow overlay */}
       <svg className="absolute inset-0 w-full h-full pointer-events-none">
         <defs>
@@ -211,6 +278,24 @@ export function DomainMap() {
             portals={mapData.portals}
           />
         ))}
+        {connecting && (() => {
+          const sourceFlow = mapData.flows.find((f) => f.id === connecting.sourceFlowId);
+          if (!sourceFlow) return null;
+          const rect = canvasRef.current?.getBoundingClientRect();
+          const offsetX = rect?.left ?? 0;
+          const offsetY = rect?.top ?? 0;
+          return (
+            <line
+              x1={sourceFlow.position.x + FLOW_WIDTH / 2}
+              y1={sourceFlow.position.y + FLOW_HEIGHT / 2}
+              x2={connecting.currentX - offsetX}
+              y2={connecting.currentY - offsetY}
+              stroke="var(--color-accent)"
+              strokeWidth={2}
+              strokeDasharray="6 3"
+            />
+          );
+        })()}
       </svg>
 
       {/* Flow blocks */}
@@ -220,11 +305,15 @@ export function DomainMap() {
           flow={flow}
           selected={selectedFlowId === flow.id}
           isStale={domainId ? staleFlowKeys.has(`${domainId}/${flow.id}`) : false}
+          isLocked={isLocked}
           onSelect={setSelectedFlowId}
           onPositionChange={handleFlowPositionChange}
           onDoubleClick={handleFlowDoubleClick}
           onDelete={handleDeleteFlow}
           onRename={handleRenameFlow}
+          onContextMenu={handleFlowContextMenu}
+          onStartConnect={handleStartConnect}
+          editingExternal={renamingFlowId === flow.id}
         />
       ))}
 
@@ -237,6 +326,38 @@ export function DomainMap() {
           onDoubleClick={handlePortalDoubleClick}
         />
       ))}
+
+      {/* Schema ownership badge */}
+      {domainConfig?.owns_schemas && domainConfig.owns_schemas.length > 0 && (
+        <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5 bg-bg-secondary/90 backdrop-blur border border-border rounded-lg px-3 py-2">
+          <Database className="w-3.5 h-3.5 text-emerald-400" />
+          <span className="text-[10px] text-text-muted uppercase tracking-wider mr-1">Schemas:</span>
+          {domainConfig.owns_schemas.map((s) => (
+            <span key={s} className="text-xs text-text-secondary bg-bg-tertiary px-2 py-0.5 rounded-full">{s}</span>
+          ))}
+        </div>
+      )}
+
+      {/* Flow groups / swimlanes */}
+      {domainConfig?.groups?.map((group) => {
+        const groupFlows = mapData.flows.filter((f) => group.flow_ids.includes(f.id));
+        if (groupFlows.length === 0) return null;
+        const minX = Math.min(...groupFlows.map((f) => f.position.x)) - 20;
+        const minY = Math.min(...groupFlows.map((f) => f.position.y)) - 30;
+        const maxX = Math.max(...groupFlows.map((f) => f.position.x)) + FLOW_WIDTH + 20;
+        const maxY = Math.max(...groupFlows.map((f) => f.position.y)) + FLOW_HEIGHT + 20;
+        return (
+          <div
+            key={group.id}
+            className="absolute border border-dashed border-text-muted/20 rounded-xl pointer-events-none"
+            style={{ left: minX, top: minY, width: maxX - minX, height: maxY - minY }}
+          >
+            <span className="absolute -top-3 left-3 px-2 bg-bg-primary text-[10px] text-text-muted uppercase tracking-wider">
+              {group.name}
+            </span>
+          </div>
+        );
+      })}
 
       {/* Reload + Copy Implement buttons */}
       <div className="absolute bottom-4 left-4 z-10 flex gap-2">
@@ -264,6 +385,8 @@ export function DomainMap() {
         className="absolute bottom-4 right-4 z-10 btn-primary rounded-full w-12 h-12 p-0 shadow-lg"
         onClick={() => setShowAddDialog(true)}
         title="Add Flow"
+        disabled={isLocked}
+        style={isLocked ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
       >
         <Plus className="w-5 h-5" />
       </button>
@@ -292,6 +415,29 @@ export function DomainMap() {
             </div>
           </div>
         </div>
+      )}
+
+      {contextMenu && (
+        <FlowContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          flowId={contextMenu.flowId}
+          isLocked={isLocked}
+          onClose={() => setContextMenu(null)}
+          onNavigate={() => { if (domainId) navigateToFlow(domainId, contextMenu.flowId); }}
+          onRename={() => setRenamingFlowId(contextMenu.flowId)}
+          onDelete={() => setPendingDelete(contextMenu.flowId)}
+          onStartConnect={() => handleStartConnect(contextMenu.flowId, contextMenu.x, contextMenu.y)}
+        />
+      )}
+
+      {newEventDialog && domainId && (
+        <NewFlowEventDialog
+          domainId={domainId}
+          sourceFlowId={newEventDialog.sourceFlowId}
+          targetFlowId={newEventDialog.targetFlowId}
+          onClose={() => setNewEventDialog(null)}
+        />
       )}
     </div>
   );

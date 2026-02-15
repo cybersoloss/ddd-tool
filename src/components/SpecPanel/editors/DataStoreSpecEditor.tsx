@@ -38,6 +38,10 @@ export function DataStoreSpecEditor({ spec, onChange }: Props) {
           <option value="read">Read</option>
           <option value="update">Update</option>
           <option value="delete">Delete</option>
+          <option value="upsert">Upsert</option>
+          <option value="create_many">Create Many</option>
+          <option value="update_many">Update Many</option>
+          <option value="delete_many">Delete Many</option>
         </select>
       </div>
       <div>
@@ -120,6 +124,38 @@ export function DataStoreSpecEditor({ spec, onChange }: Props) {
             />
           </div>
         </>
+      )}
+      <div>
+        <label className="label">Include (relations)</label>
+        <textarea
+          className="input min-h-[60px] resize-y font-mono text-xs"
+          value={JSON.stringify(spec.include ?? {}, null, 2)}
+          onChange={(e) => {
+            try {
+              onChange({ ...spec, include: JSON.parse(e.target.value) });
+            } catch {
+              // Keep raw while editing
+            }
+          }}
+          placeholder='{"posts": true, "profile": true}'
+        />
+      </div>
+      {(spec.operation === 'create_many' || spec.operation === 'update_many' || spec.operation === 'delete_many') && (
+        <div className="flex items-center gap-2">
+          <label className="label flex-1">Returning</label>
+          <button
+            className={`relative w-9 h-5 rounded-full transition-colors ${
+              spec.returning ? 'bg-accent' : 'bg-surface-2'
+            }`}
+            onClick={() => onChange({ ...spec, returning: !spec.returning })}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                spec.returning ? 'translate-x-4' : ''
+              }`}
+            />
+          </button>
+        </div>
       )}
       <div>
         <label className="label">Description</label>

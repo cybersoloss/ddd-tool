@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { ChevronRight, ArrowLeft, GitBranch, Sparkles, Brain, Play, RefreshCw, Package, Map, BookOpen, FlaskConical, BarChart3 } from 'lucide-react';
+import { ChevronRight, ArrowLeft, GitBranch, Sparkles, Brain, Play, RefreshCw, Package, Map, BookOpen, FlaskConical, BarChart3, Lock, Unlock } from 'lucide-react';
 import { useSheetStore } from '../../stores/sheet-store';
 import { useProjectStore } from '../../stores/project-store';
 import { useAppStore } from '../../stores/app-store';
@@ -44,6 +44,8 @@ export function Breadcrumb() {
   const toggleApiDocsPanel = useGeneratorStore((s) => s.toggleApiDocsPanel);
   const minimapVisible = useUiStore((s) => s.minimapVisible);
   const toggleMinimap = useUiStore((s) => s.toggleMinimap);
+  const isLocked = useUiStore((s) => s.isLocked);
+  const toggleLock = useUiStore((s) => s.toggleLock);
   const agentTestPanelOpen = useAgentTestStore((s) => s.panelOpen);
   const toggleAgentTestPanel = useAgentTestStore((s) => s.togglePanel);
   const dashboardPanelOpen = useDashboardStore((s) => s.panelOpen);
@@ -181,6 +183,13 @@ export function Breadcrumb() {
         return;
       }
 
+      // Cmd+Shift+L toggles project lock
+      if (e.key === 'l' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
+        e.preventDefault();
+        toggleLock();
+        return;
+      }
+
       if (e.key === 'Escape') {
         // If LLM, Memory, Validation, Implementation, or Reconciliation panel is open, let their handler (capture phase) handle Escape first
         if (useLlmStore.getState().panelOpen) return;
@@ -203,7 +212,7 @@ export function Breadcrumb() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [current.level, navigateUp, setView, toggleLlmPanel, toggleMemoryPanel, toggleImplPanel, toggleReconPanel, toggleGeneratorPanel, toggleApiDocsPanel, toggleAgentTestPanel, toggleDashboardPanel, toggleMinimap]);
+  }, [current.level, navigateUp, setView, toggleLlmPanel, toggleMemoryPanel, toggleImplPanel, toggleReconPanel, toggleGeneratorPanel, toggleApiDocsPanel, toggleAgentTestPanel, toggleDashboardPanel, toggleMinimap, toggleLock]);
 
   return (
     <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-bg-secondary min-h-[44px]">
@@ -353,6 +362,19 @@ export function Breadcrumb() {
           <FlaskConical className="w-3.5 h-3.5" />
         </button>
       )}
+
+      <button
+        className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors ${
+          isLocked
+            ? 'bg-amber-500/20 text-amber-400'
+            : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+        }`}
+        onClick={toggleLock}
+        title="Toggle project lock (Cmd+Shift+L)"
+      >
+        {isLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+        <span>{isLocked ? 'Locked' : 'Lock'}</span>
+      </button>
 
       <button
         className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors ${

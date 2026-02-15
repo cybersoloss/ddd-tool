@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 import { stringify, parse } from 'yaml';
 import { nanoid } from 'nanoid';
-import type { DomainConfig, DomainFlowEntry, SystemLayout } from '../types/domain';
+import type { DomainConfig, DomainFlowEntry, EventWiring, SystemLayout } from '../types/domain';
 import type { Position } from '../types/sheet';
 import type { FlowDocument } from '../types/flow';
 import { generateAutoLayout } from '../utils/domain-parser';
@@ -25,6 +25,10 @@ interface ProjectState {
   updateDomainPosition: (domainId: string, position: Position) => void;
   updateFlowPosition: (domainId: string, flowId: string, position: Position) => void;
   updatePortalPosition: (domainId: string, portalId: string, position: Position) => void;
+  addEventWiring: (domainId: string, type: 'publish' | 'consume', wiring: EventWiring) => Promise<void>;
+  updateEventWiring: (domainId: string, type: 'publish' | 'consume', index: number, wiring: EventWiring) => Promise<void>;
+  removeEventWiring: (domainId: string, type: 'publish' | 'consume', index: number) => Promise<void>;
+  addEventArrow: (sourceDomainId: string, targetDomainId: string, eventName: string, fromFlow?: string, handledByFlow?: string, description?: string) => Promise<void>;
   reloadProject: () => Promise<void>;
   reset: () => void;
 }
@@ -550,6 +554,76 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         // Silent — layout save is best-effort
       }
     }, 500);
+  },
+
+  addEventWiring: async (domainId, type, wiring) => {
+    const { projectPath, domainConfigs } = get();
+    if (!projectPath) throw new Error('No project loaded');
+    const domain = domainConfigs[domainId];
+    if (!domain) throw new Error(`Domain ${domainId} not found`);
+
+    const key = type === 'publish' ? 'publishes_events' : 'consumes_events';
+    const updatedDomain: DomainConfig = {
+      ...domain,
+      [key]: [...domain[key], wiring],
+    };
+    set({ domainConfigs: { ...domainConfigs, [domainId]: updatedDomain } });
+
+    await invoke('write_file', {
+      path: `${projectPath}/specs/domains/${domainId}/domain.yaml`,
+      contents: stringify(updatedDomain),
+    });
+  },
+
+  updateEventWiring: async (domainId, type, index, wiring) => {
+    const { projectPath, domainConfigs } = get();
+    if (!projectPath) throw new Error('No project loaded');
+    const domain = domainConfigs[domainId];
+    if (!domain) throw new Error(`Domain ${domainId} not found`);
+
+    const key = type === 'publish' ? 'publishes_events' : 'consumes_events';
+    const updatedList = [...domain[key]];
+    updatedList[index] = wiring;
+    const updatedDomain: DomainConfig = { ...domain, [key]: updatedList };
+    set({ domainConfigs: { ...domainConfigs, [domainId]: updatedDomain } });
+
+    await invoke('write_file', {
+      path: `${projectPath}/specs/domains/${domainId}/domain.yaml`,
+      contents: stringify(updatedDomain),
+    });
+  },
+
+  removeEventWiring: async (domainId, type, index) => {
+    const { projectPath, domainConfigs } = get();
+    if (!projectPath) throw new Error('No project loaded');
+    const domain = domainConfigs[domainId];
+    if (!domain) throw new Error(`Domain ${domainId} not found`);
+
+    const key = type === 'publish' ? 'publishes_events' : 'consumes_events';
+    const updatedDomain: DomainConfig = {
+      ...domain,
+      [key]: domain[key].filter((_, i) => i !== index),
+    };
+    set({ domainConfigs: { ...domainConfigs, [domainId]: updatedDomain } });
+
+    await invoke('write_file', {
+      path: `${projectPath}/specs/domains/${domainId}/domain.yaml`,
+      contents: stringify(updatedDomain),
+    });
+  },
+
+  addEventArrow: async (sourceDomainId, targetDomainId, eventName, fromFlow?, handledByFlow?, description?) => {
+    const { addEventWiring } = get();
+    await addEventWiring(sourceDomainId, 'publish', {
+      event: eventName,
+      from_flow: fromFlow,
+      description,
+    });
+    await addEventWiring(targetDomainId, 'consume', {
+      event: eventName,
+      handled_by_flow: handledByFlow,
+      description,
+    });
   },
 
   reloadProject: async () => {

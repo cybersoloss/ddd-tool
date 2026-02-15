@@ -23,7 +23,7 @@ function ParallelNodeComponent({ data, selected }: NodeProps<ParallelNodeType>) 
   const handles = useMemo(() => {
     if (branches.length === 0) return null;
     return [
-      ...branches.map((name, i) => ({ id: `branch-${i}`, label: name })),
+      ...branches.map((b, i) => ({ id: `branch-${i}`, label: typeof b === 'string' ? b : b.label })),
       { id: 'done', label: 'Done' },
     ];
   }, [branches]);

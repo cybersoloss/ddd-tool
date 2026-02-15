@@ -5,6 +5,8 @@ export interface DomainFlowEntry {
   name: string;
   description?: string;
   type?: 'traditional' | 'agent';
+  tags?: string[];
+  group?: string;
 }
 
 export interface EventWiring {
@@ -21,17 +23,34 @@ export interface DomainLayout {
   portals: Record<string, Position>;
 }
 
+export interface FlowGroup {
+  id: string;
+  name: string;
+  flow_ids: string[];
+}
+
 export interface DomainConfig {
   name: string;
   description?: string;
+  role?: 'entity' | 'process' | 'interface' | 'orchestration';
+  owns_schemas?: string[];
+  groups?: FlowGroup[];
   flows: DomainFlowEntry[];
   publishes_events: EventWiring[];
   consumes_events: EventWiring[];
   layout: DomainLayout;
 }
 
+export interface SystemZone {
+  id: string;
+  name: string;
+  domain_ids: string[];
+  color?: string;
+}
+
 export interface SystemLayout {
   domains: Record<string, Position>;
+  zones?: SystemZone[];
 }
 
 // View models for rendering
@@ -42,6 +61,9 @@ export interface SystemMapDomain {
   description?: string;
   flowCount: number;
   position: Position;
+  role?: 'entity' | 'process' | 'interface' | 'orchestration';
+  hasHumanTouchpoint?: boolean;
+  owns_schemas?: string[];
 }
 
 export interface SystemMapArrow {
@@ -54,6 +76,7 @@ export interface SystemMapArrow {
 export interface SystemMapData {
   domains: SystemMapDomain[];
   eventArrows: SystemMapArrow[];
+  zones?: SystemZone[];
 }
 
 // L2 Domain Map view models
@@ -64,6 +87,9 @@ export interface DomainMapFlow {
   description?: string;
   type: 'traditional' | 'agent';
   position: Position;
+  tags?: string[];
+  group?: string;
+  schedule?: string;
 }
 
 export interface DomainMapPortal {

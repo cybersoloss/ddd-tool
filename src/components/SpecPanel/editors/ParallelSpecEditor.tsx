@@ -34,7 +34,7 @@ export function ParallelSpecEditor({ spec, onChange }: Props) {
             <div key={i} className="flex items-center gap-1.5 group">
               <input
                 className="input flex-1 text-xs"
-                value={branch}
+                value={typeof branch === 'string' ? branch : branch.label}
                 onChange={(e) => updateBranch(i, e.target.value)}
                 placeholder={`Branch ${i + 1}`}
               />

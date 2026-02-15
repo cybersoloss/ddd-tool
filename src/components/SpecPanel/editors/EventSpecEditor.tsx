@@ -85,6 +85,15 @@ export function EventSpecEditor({ spec, onChange }: Props) {
           placeholder="{}"
         />
       </div>
+      <div>
+        <label className="label">Payload Source</label>
+        <input
+          className="input"
+          value={spec.payload_source ?? ''}
+          onChange={(e) => onChange({ ...spec, payload_source: e.target.value })}
+          placeholder="e.g. step.validate_order.output"
+        />
+      </div>
       <div className="flex items-center gap-2">
         <label className="label flex-1">Async</label>
         <button

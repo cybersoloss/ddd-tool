@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { FormInput, Cog, GitFork, Square, RotateCw, Shield, Hand, Network, GitBranch, ArrowLeftRight, Box, Play, Undo2, Redo2, Database, ExternalLink, Zap, Repeat, Columns, GitMerge, BrainCircuit, Copy, Check, RotateCcw } from 'lucide-react';
+import { FormInput, Cog, GitFork, Square, RotateCw, Shield, Hand, Network, GitBranch, ArrowLeftRight, Box, Play, Undo2, Redo2, Database, ExternalLink, Zap, Repeat, Columns, GitMerge, BrainCircuit, Copy, Check, RotateCcw, Clock, HardDrive, Shuffle, Filter, FileText, Lock, Layers, ShieldCheck } from 'lucide-react';
 import type { DddNodeType } from '../../types/flow';
 import { useSheetStore } from '../../stores/sheet-store';
 import { useImplementationStore } from '../../stores/implementation-store';
@@ -27,6 +27,14 @@ const TRADITIONAL_ITEMS: ToolbarItem[] = [
   { type: 'parallel', label: 'Parallel', icon: Columns, borderColor: 'border-l-pink-500', iconColor: 'text-pink-400' },
   { type: 'sub_flow', label: 'Sub-Flow', icon: GitMerge, borderColor: 'border-l-violet-500', iconColor: 'text-violet-400' },
   { type: 'llm_call', label: 'LLM Call', icon: BrainCircuit, borderColor: 'border-l-sky-500', iconColor: 'text-sky-400' },
+  { type: 'delay', label: 'Delay', icon: Clock, borderColor: 'border-l-blue-600', iconColor: 'text-blue-500' },
+  { type: 'cache', label: 'Cache', icon: HardDrive, borderColor: 'border-l-amber-500', iconColor: 'text-amber-400' },
+  { type: 'transform', label: 'Transform', icon: Shuffle, borderColor: 'border-l-indigo-500', iconColor: 'text-indigo-400' },
+  { type: 'collection', label: 'Collection', icon: Filter, borderColor: 'border-l-cyan-500', iconColor: 'text-cyan-400' },
+  { type: 'parse', label: 'Parse', icon: FileText, borderColor: 'border-l-lime-500', iconColor: 'text-lime-400' },
+  { type: 'crypto', label: 'Crypto', icon: Lock, borderColor: 'border-l-fuchsia-500', iconColor: 'text-fuchsia-400' },
+  { type: 'batch', label: 'Batch', icon: Layers, borderColor: 'border-l-rose-500', iconColor: 'text-rose-400' },
+  { type: 'transaction', label: 'Transaction', icon: ShieldCheck, borderColor: 'border-l-amber-600', iconColor: 'text-amber-500' },
   { type: 'terminal', label: 'Terminal', icon: Square, borderColor: 'border-l-red-500', iconColor: 'text-red-400' },
 ];
 

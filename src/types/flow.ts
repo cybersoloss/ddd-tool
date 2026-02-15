@@ -7,14 +7,17 @@ import type { ObservabilityConfig, SecurityConfig } from './crosscutting';
 export type DddNodeType =
   | 'trigger' | 'input' | 'process' | 'decision' | 'terminal'
   | 'data_store' | 'service_call' | 'event' | 'loop' | 'parallel' | 'sub_flow' | 'llm_call'
+  | 'delay' | 'cache' | 'transform'
+  | 'collection' | 'parse' | 'crypto' | 'batch' | 'transaction'
   | 'agent_loop' | 'guardrail' | 'human_gate'
   | 'orchestrator' | 'smart_router' | 'handoff' | 'agent_group';
 
 // --- Per-node spec shapes ---
 
 export interface TriggerSpec {
-  event?: string;
+  event?: string | string[];
   source?: string;
+  filter?: Record<string, unknown>;
   description?: string;
   [key: string]: unknown;
 }
@@ -29,6 +32,9 @@ export interface InputSpec {
 export interface ProcessSpec {
   action?: string;
   service?: string;
+  category?: 'security' | 'transform' | 'integration' | 'business_logic' | 'infrastructure';
+  inputs?: string[];
+  outputs?: string[];
   description?: string;
   [key: string]: unknown;
 }
@@ -46,6 +52,8 @@ export interface TerminalSpec {
   description?: string;
   status?: number;
   body?: Record<string, unknown>;
+  response_type?: 'json' | 'stream' | 'sse' | 'empty';
+  headers?: Record<string, string>;
   [key: string]: unknown;
 }
 
@@ -203,12 +211,16 @@ export interface AgentGroupSpec {
 // --- Extended traditional node spec shapes ---
 
 export interface DataStoreSpec {
-  operation?: 'create' | 'read' | 'update' | 'delete';
+  operation?: 'create' | 'read' | 'update' | 'delete' | 'upsert' | 'create_many' | 'update_many' | 'delete_many';
   model?: string;
   data?: Record<string, string>;
   query?: Record<string, string>;
   pagination?: Record<string, unknown>;
   sort?: Record<string, unknown>;
+  batch?: boolean;
+  upsert_key?: string[];
+  include?: Record<string, unknown>;
+  returning?: boolean;
   description?: string;
   [key: string]: unknown;
 }
@@ -219,8 +231,17 @@ export interface ServiceCallSpec {
   headers?: Record<string, string>;
   body?: Record<string, unknown>;
   timeout_ms?: number;
-  retry?: { max_attempts?: number; backoff_ms?: number };
+  retry?: { max_attempts?: number; backoff_ms?: number; strategy?: 'fixed' | 'linear' | 'exponential'; jitter?: boolean };
   error_mapping?: Record<string, string>;
+  request_config?: {
+    user_agent?: 'rotate' | 'browser' | 'custom';
+    delay?: { min_ms?: number; max_ms?: number; strategy?: 'random' | 'fixed' };
+    cookie_jar?: 'per_domain' | 'shared' | 'none';
+    proxy?: 'pool' | 'direct' | 'tor';
+    tls_fingerprint?: 'randomize' | 'chrome' | 'firefox' | 'default';
+    fallback?: 'headless_browser' | 'none';
+  };
+  integration?: string;
   description?: string;
   [key: string]: unknown;
 }
@@ -229,7 +250,12 @@ export interface EventNodeSpec {
   direction?: 'emit' | 'consume';
   event_name?: string;
   payload?: Record<string, unknown>;
+  payload_source?: string;
   async?: boolean;
+  target_queue?: string;
+  priority?: number;
+  delay_ms?: number;
+  dedup_key?: string;
   description?: string;
   [key: string]: unknown;
 }
@@ -238,12 +264,14 @@ export interface LoopSpec {
   collection?: string;
   iterator?: string;
   break_condition?: string;
+  on_error?: 'continue' | 'break' | 'fail';
+  accumulate?: { field?: string; strategy?: 'append' | 'merge' | 'sum' | 'last'; output?: string };
   description?: string;
   [key: string]: unknown;
 }
 
 export interface ParallelSpec {
-  branches?: string[];
+  branches?: (string | { label: string; condition?: string })[];
   join?: 'all' | 'any' | 'n_of';
   join_count?: number;
   timeout_ms?: number;
@@ -266,7 +294,83 @@ export interface LlmCallSpec {
   temperature?: number;
   max_tokens?: number;
   structured_output?: Record<string, unknown>;
+  context_sources?: Record<string, { from: string; transform?: string }>;
   retry?: { max_attempts?: number; backoff_ms?: number };
+  description?: string;
+  [key: string]: unknown;
+}
+
+export interface DelaySpec {
+  min_ms?: number;
+  max_ms?: number;
+  strategy?: 'random' | 'fixed';
+  description?: string;
+  [key: string]: unknown;
+}
+
+export interface CacheSpec {
+  key?: string;
+  ttl_ms?: number;
+  store?: 'redis' | 'memory';
+  description?: string;
+  [key: string]: unknown;
+}
+
+export interface TransformSpec {
+  input_schema?: string;
+  output_schema?: string;
+  field_mappings?: Record<string, string>;
+  description?: string;
+  [key: string]: unknown;
+}
+
+export interface CollectionSpec {
+  operation?: 'filter' | 'sort' | 'deduplicate' | 'merge' | 'group_by' | 'aggregate' | 'reduce' | 'flatten';
+  input?: string;
+  predicate?: string;
+  key?: string;
+  direction?: 'asc' | 'desc';
+  accumulator?: string;
+  output?: string;
+  description?: string;
+  [key: string]: unknown;
+}
+
+export interface ParseSpec {
+  format?: 'rss' | 'atom' | 'html' | 'xml' | 'json' | 'csv' | 'markdown';
+  input?: string;
+  strategy?: 'strict' | 'lenient' | 'streaming';
+  library?: string;
+  output?: string;
+  description?: string;
+  [key: string]: unknown;
+}
+
+export interface CryptoSpec {
+  operation?: 'encrypt' | 'decrypt' | 'hash' | 'sign' | 'verify' | 'generate_key';
+  algorithm?: string;
+  key_source?: { env?: string; vault?: string };
+  input_fields?: string[];
+  output_field?: string;
+  encoding?: 'base64' | 'hex';
+  description?: string;
+  [key: string]: unknown;
+}
+
+export interface BatchSpec {
+  input?: string;
+  operation_template?: { type?: string; dispatch_field?: string; configs?: Record<string, unknown> };
+  concurrency?: number;
+  on_error?: 'continue' | 'stop';
+  output?: string;
+  description?: string;
+  [key: string]: unknown;
+}
+
+export interface TransactionSpec {
+  isolation?: 'read_committed' | 'repeatable_read' | 'serializable';
+  steps?: Array<{ action: string; rollback?: string }>;
+  rollback_on_error?: boolean;
   description?: string;
   [key: string]: unknown;
 }
@@ -284,6 +388,14 @@ export type NodeSpec =
   | ParallelSpec
   | SubFlowSpec
   | LlmCallSpec
+  | DelaySpec
+  | CacheSpec
+  | TransformSpec
+  | CollectionSpec
+  | ParseSpec
+  | CryptoSpec
+  | BatchSpec
+  | TransactionSpec
   | AgentLoopSpec
   | GuardrailSpec
   | HumanGateSpec

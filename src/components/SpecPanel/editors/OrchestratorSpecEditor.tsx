@@ -1,6 +1,6 @@
 import { nanoid } from 'nanoid';
 import { Plus, Trash2 } from 'lucide-react';
-import type { OrchestratorSpec, OrchestratorAgent, SharedMemoryEntry } from '../../../types/flow';
+import type { OrchestratorSpec, OrchestratorAgent, SharedMemoryEntry, NodeSpec } from '../../../types/flow';
 import { ExtraFieldsEditor } from './ExtraFieldsEditor';
 
 interface Props {
@@ -204,7 +204,7 @@ export function OrchestratorSpecEditor({ spec, onChange }: Props) {
         </select>
       </div>
 
-      <ExtraFieldsEditor spec={spec} nodeType="orchestrator" onChange={onChange} />
+      <ExtraFieldsEditor spec={spec} nodeType="orchestrator" onChange={onChange as (spec: NodeSpec) => void} />
     </div>
   );
 }

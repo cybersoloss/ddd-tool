@@ -18,6 +18,14 @@ import type {
   ParallelSpec,
   SubFlowSpec,
   LlmCallSpec,
+  CollectionSpec,
+  ParseSpec,
+  CryptoSpec,
+  BatchSpec,
+  TransactionSpec,
+  CacheSpec,
+  TransformSpec,
+  DelaySpec,
 } from '../types/flow';
 import type { DomainConfig } from '../types/domain';
 import type {
@@ -232,7 +240,9 @@ function checkTerminalNoOutgoing(flow: FlowDocument): ValidationIssue[] {
 function checkTriggerEvent(flow: FlowDocument): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const spec = flow.trigger.spec as TriggerSpec;
-  if (!spec.event || spec.event.trim() === '') {
+  const event = spec.event;
+  const isEmpty = !event || (typeof event === 'string' ? event.trim() === '' : event.length === 0);
+  if (isEmpty) {
     issues.push(issue('flow', 'error', 'spec_completeness',
       'Trigger must have an event defined',
       { nodeId: flow.trigger.id, suggestion: 'Set the trigger event in the spec panel' }
@@ -537,6 +547,129 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
           issues.push(issue('flow', 'warning', 'spec_completeness',
             `LLM call "${node.label}" has no prompt template defined`,
             { nodeId: node.id, suggestion: 'Set the prompt template with {{variables}} for dynamic content' }
+          ));
+        }
+        break;
+      }
+      case 'collection': {
+        const spec = node.spec as CollectionSpec;
+        if (!spec.operation) {
+          issues.push(issue('flow', 'error', 'spec_completeness',
+            `Collection "${node.label}" must have an operation set`,
+            { nodeId: node.id, suggestion: 'Set the operation (filter, map, reduce, sort, group_by, unique, flatten)' }
+          ));
+        }
+        if (!spec.input || spec.input.trim() === '') {
+          issues.push(issue('flow', 'error', 'spec_completeness',
+            `Collection "${node.label}" must have an input defined`,
+            { nodeId: node.id, suggestion: 'Set the input collection to operate on' }
+          ));
+        }
+        break;
+      }
+      case 'parse': {
+        const spec = node.spec as ParseSpec;
+        if (!spec.format) {
+          issues.push(issue('flow', 'error', 'spec_completeness',
+            `Parse "${node.label}" must have a format set`,
+            { nodeId: node.id, suggestion: 'Set the format (json, csv, xml, yaml, html, markdown, regex)' }
+          ));
+        }
+        if (!spec.input || spec.input.trim() === '') {
+          issues.push(issue('flow', 'error', 'spec_completeness',
+            `Parse "${node.label}" must have an input defined`,
+            { nodeId: node.id, suggestion: 'Set the input to parse' }
+          ));
+        }
+        break;
+      }
+      case 'crypto': {
+        const spec = node.spec as CryptoSpec;
+        if (!spec.operation) {
+          issues.push(issue('flow', 'error', 'spec_completeness',
+            `Crypto "${node.label}" must have an operation set`,
+            { nodeId: node.id, suggestion: 'Set the operation (encrypt, decrypt, hash, sign, verify, hmac)' }
+          ));
+        }
+        if (!spec.algorithm || spec.algorithm.trim() === '') {
+          issues.push(issue('flow', 'error', 'spec_completeness',
+            `Crypto "${node.label}" must have an algorithm defined`,
+            { nodeId: node.id, suggestion: 'Set the algorithm (e.g., aes-256-gcm, sha256)' }
+          ));
+        }
+        if (!spec.key_source || (!spec.key_source.env && !spec.key_source.vault)) {
+          issues.push(issue('flow', 'error', 'spec_completeness',
+            `Crypto "${node.label}" must have a key source defined`,
+            { nodeId: node.id, suggestion: 'Set the key source (env variable or vault path)' }
+          ));
+        }
+        break;
+      }
+      case 'batch': {
+        const spec = node.spec as BatchSpec;
+        if (!spec.input || spec.input.trim() === '') {
+          issues.push(issue('flow', 'error', 'spec_completeness',
+            `Batch "${node.label}" must have an input defined`,
+            { nodeId: node.id, suggestion: 'Set the input collection to process in batch' }
+          ));
+        }
+        if (!spec.operation_template || !spec.operation_template.type) {
+          issues.push(issue('flow', 'error', 'spec_completeness',
+            `Batch "${node.label}" must have an operation template defined`,
+            { nodeId: node.id, suggestion: 'Set the operation template with a type' }
+          ));
+        }
+        break;
+      }
+      case 'transaction': {
+        const spec = node.spec as TransactionSpec;
+        const steps = spec.steps ?? [];
+        if (steps.length < 2) {
+          issues.push(issue('flow', 'error', 'spec_completeness',
+            `Transaction "${node.label}" must have at least 2 steps`,
+            { nodeId: node.id, suggestion: 'Add at least 2 steps to the transaction' }
+          ));
+        }
+        break;
+      }
+      case 'cache': {
+        const spec = node.spec as CacheSpec;
+        if (!spec.key || spec.key.trim() === '') {
+          issues.push(issue('flow', 'error', 'spec_completeness',
+            `Cache "${node.label}" must have a key defined`,
+            { nodeId: node.id, suggestion: 'Set the cache key template (e.g. "search:{query}")' }
+          ));
+        }
+        if (!spec.store) {
+          issues.push(issue('flow', 'error', 'spec_completeness',
+            `Cache "${node.label}" must have a store defined`,
+            { nodeId: node.id, suggestion: 'Set the cache store (redis or memory)' }
+          ));
+        }
+        break;
+      }
+      case 'transform': {
+        const spec = node.spec as TransformSpec;
+        if (!spec.input_schema || spec.input_schema.trim() === '') {
+          issues.push(issue('flow', 'error', 'spec_completeness',
+            `Transform "${node.label}" must have an input_schema defined`,
+            { nodeId: node.id, suggestion: 'Set the input schema name' }
+          ));
+        }
+        if (!spec.output_schema || spec.output_schema.trim() === '') {
+          issues.push(issue('flow', 'error', 'spec_completeness',
+            `Transform "${node.label}" must have an output_schema defined`,
+            { nodeId: node.id, suggestion: 'Set the output schema name' }
+          ));
+        }
+        break;
+      }
+      case 'delay': {
+        const spec = node.spec as DelaySpec;
+        if (spec.min_ms == null) {
+          issues.push(issue('flow', 'error', 'spec_completeness',
+            `Delay "${node.label}" must have min_ms defined`,
+            { nodeId: node.id, suggestion: 'Set the minimum delay in milliseconds' }
           ));
         }
         break;
