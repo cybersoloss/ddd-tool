@@ -91,7 +91,7 @@ export function Breadcrumb() {
 
       // Cmd+Z / Cmd+Shift+Z / Cmd+Y — undo/redo
       if (e.key === 'z' && (e.metaKey || e.ctrlKey)) {
-        const flowId = useFlowStore.getState().currentFlow?.flow.id;
+        const flowId = useFlowStore.getState().currentFlow?.flow?.id;
         if (flowId) {
           e.preventDefault();
           if (e.shiftKey) {
@@ -105,7 +105,7 @@ export function Breadcrumb() {
 
       // Cmd+Y — alternative redo
       if (e.key === 'y' && (e.metaKey || e.ctrlKey)) {
-        const flowId = useFlowStore.getState().currentFlow?.flow.id;
+        const flowId = useFlowStore.getState().currentFlow?.flow?.id;
         if (flowId) {
           e.preventDefault();
           useUndoStore.getState().redo(flowId);

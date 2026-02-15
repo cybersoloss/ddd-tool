@@ -60,7 +60,7 @@ export function NodeToolbar({ pendingType, onSelectType, flowType = 'traditional
   const current = useSheetStore((s) => s.current);
   const buildPrompt = useImplementationStore((s) => s.buildPrompt);
   const openPanel = useImplementationStore((s) => s.openPanel);
-  const flowId = useFlowStore((s) => s.currentFlow?.flow.id);
+  const flowId = useFlowStore((s) => s.currentFlow?.flow?.id);
   const undoStacks = useUndoStore((s) => flowId ? s.stacks[flowId] : undefined);
   const undo = useUndoStore((s) => s.undo);
   const redo = useUndoStore((s) => s.redo);

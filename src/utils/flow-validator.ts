@@ -72,13 +72,13 @@ function buildResult(scope: ValidationScope, targetId: string, issues: Validatio
 }
 
 function getAllNodes(flow: FlowDocument): DddFlowNode[] {
-  return [flow.trigger, ...flow.nodes];
+  return [...(flow.trigger ? [flow.trigger] : []), ...(flow.nodes ?? [])];
 }
 
 function buildAdjacencyMap(flow: FlowDocument): Map<string, string[]> {
   const adj = new Map<string, string[]>();
   for (const node of getAllNodes(flow)) {
-    const targets = node.connections.map((c) => c.targetNodeId);
+    const targets = (node.connections ?? []).map((c) => c.targetNodeId);
     adj.set(node.id, targets);
   }
   return adj;
@@ -159,7 +159,7 @@ function checkOrphanedNodes(flow: FlowDocument): ValidationIssue[] {
 
 function checkCircularPaths(flow: FlowDocument): ValidationIssue[] {
   // Skip cycle detection for agent flows (loops are expected)
-  if (flow.flow.type === 'agent') return [];
+  if (flow.flow?.type === 'agent') return [];
 
   const issues: ValidationIssue[] = [];
   const adj = buildAdjacencyMap(flow);
@@ -311,7 +311,7 @@ function checkProcessDescription(flow: FlowDocument): ValidationIssue[] {
 // --- Agent flow checks ---
 
 function checkAgentFlow(flow: FlowDocument): ValidationIssue[] {
-  if (flow.flow.type !== 'agent') return [];
+  if (flow.flow?.type !== 'agent') return [];
 
   const issues: ValidationIssue[] = [];
   const allNodes = getAllNodes(flow);
@@ -685,6 +685,14 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
 export function validateFlow(flow: FlowDocument): ValidationResult {
   const flowMeta = flow.flow ?? { id: 'unknown', domain: 'unknown', name: 'unknown', type: 'traditional' as const };
   const flowId = `${flowMeta.domain}/${flowMeta.id}`;
+
+  // If trigger is missing, report it and skip graph-based checks that depend on it
+  if (!flow.trigger) {
+    const issues = [issue('flow', 'error', 'graph_completeness', 'Flow must have a trigger node')];
+    for (const i of issues) { i.flowId = flowMeta.id; i.domainId = flowMeta.domain; }
+    return buildResult('flow', flowId, issues);
+  }
+
   const issues: ValidationIssue[] = [
     ...checkTriggerExists(flow),
     ...checkAllPathsReachTerminal(flow),

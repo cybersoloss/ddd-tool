@@ -306,12 +306,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     if (!domain) throw new Error(`Domain ${domainId} not found`);
 
     // Remove from flows list and layout
-    const { [flowId]: _, ...remainingFlowPositions } = domain.layout.flows;
+    const { [flowId]: _, ...remainingFlowPositions } = domain.layout?.flows ?? {};
     const updatedDomain: DomainConfig = {
       ...domain,
       flows: domain.flows.filter((f) => f.id !== flowId),
       layout: {
-        ...domain.layout,
+        ...(domain.layout ?? { portals: {} }),
         flows: remainingFlowPositions,
       },
     };
@@ -453,7 +453,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const flowPath = `${projectPath}/specs/domains/${domainId}/flows/${flowId}.yaml`;
       const flowContent: string = await invoke('read_file', { path: flowPath });
       const flowDoc = parse(flowContent) as FlowDocument;
-      flowDoc.flow.name = newName;
+      if (flowDoc.flow) flowDoc.flow.name = newName;
       await invoke('write_file', {
         path: flowPath,
         contents: stringify(flowDoc),
@@ -500,8 +500,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       [domainId]: {
         ...domain,
         layout: {
-          ...domain.layout,
-          flows: { ...domain.layout.flows, [flowId]: position },
+          ...(domain.layout ?? { portals: {} }),
+          flows: { ...(domain.layout?.flows ?? {}), [flowId]: position },
         },
       },
     };
@@ -533,8 +533,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       [domainId]: {
         ...domain,
         layout: {
-          ...domain.layout,
-          portals: { ...domain.layout.portals, [portalId]: position },
+          ...(domain.layout ?? { flows: {} }),
+          portals: { ...(domain.layout?.portals ?? {}), [portalId]: position },
         },
       },
     };

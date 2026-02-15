@@ -28,7 +28,7 @@ export function buildContext(): LlmContext {
   }
 
   if (flow.currentFlow) {
-    const allNodes: DddFlowNode[] = [flow.currentFlow.trigger, ...flow.currentFlow.nodes];
+    const allNodes: DddFlowNode[] = [...(flow.currentFlow.trigger ? [flow.currentFlow.trigger] : []), ...(flow.currentFlow.nodes ?? [])];
     ctx.currentFlow = {
       name: flow.currentFlow.flow?.name ?? 'unknown',
       nodeCount: allNodes.length,
@@ -146,7 +146,7 @@ export function buildInlinePrompt(action: InlineAssistAction, nodeId?: string): 
       // Get the full node spec from the flow store
       const flow = useFlowStore.getState();
       const allNodes = flow.currentFlow
-        ? [flow.currentFlow.trigger, ...flow.currentFlow.nodes]
+        ? [...(flow.currentFlow.trigger ? [flow.currentFlow.trigger] : []), ...(flow.currentFlow.nodes ?? [])]
         : [];
       const fullNode = allNodes.find((n) => n.id === nodeId);
       if (fullNode) {

@@ -397,7 +397,7 @@ function debouncedSave(state: FlowState) {
 
     const updated: FlowDocument = {
       ...currentFlow,
-      metadata: { ...currentFlow.metadata, modified: new Date().toISOString() },
+      metadata: { ...(currentFlow.metadata ?? {}), modified: new Date().toISOString() },
     };
 
     try {

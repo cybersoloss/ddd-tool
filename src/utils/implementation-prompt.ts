@@ -31,7 +31,9 @@ export async function buildImplementationPrompt(
   projectPath: string,
   mappings: Record<string, FlowMapping>,
 ): Promise<BuiltPrompt> {
-  const { flow, trigger, nodes } = flowDoc;
+  const flow = flowDoc.flow ?? { id: 'unknown', name: 'unknown', domain: 'unknown', type: 'traditional' as const };
+  const trigger = flowDoc.trigger;
+  const nodes = flowDoc.nodes ?? [];
   const flowKey = `${flow.domain}/${flow.id}`;
   const existingMapping = mappings[flowKey];
   const mode = existingMapping ? 'update' : 'new';
@@ -75,7 +77,7 @@ export async function buildImplementationPrompt(
 
   // Trigger
   sections.push('## Trigger');
-  const triggerSpec = trigger.spec as { event?: string; source?: string; description?: string };
+  const triggerSpec = (trigger?.spec ?? {}) as { event?: string; source?: string; description?: string };
   if (triggerSpec.event) sections.push(`- Event: ${triggerSpec.event}`);
   if (triggerSpec.source) sections.push(`- Source: ${triggerSpec.source}`);
   if (triggerSpec.description) sections.push(`- Description: ${triggerSpec.description}`);
@@ -85,7 +87,7 @@ export async function buildImplementationPrompt(
   sections.push('## Nodes');
   for (const node of nodes) {
     sections.push(`### ${node.label} (${node.type})`);
-    const spec = node.spec as Record<string, unknown>;
+    const spec = (node.spec ?? {}) as Record<string, unknown>;
     for (const [key, value] of Object.entries(spec)) {
       if (value !== undefined && value !== null && value !== '' && !(Array.isArray(value) && value.length === 0)) {
         if (typeof value === 'object') {
@@ -96,10 +98,10 @@ export async function buildImplementationPrompt(
       }
     }
     // Connections
-    if (node.connections.length > 0) {
-      const targets = node.connections.map((c) => {
+    if ((node.connections ?? []).length > 0) {
+      const targets = (node.connections ?? []).map((c) => {
         const targetNode = nodes.find((n) => n.id === c.targetNodeId) ??
-          (trigger.id === c.targetNodeId ? trigger : null);
+          (trigger?.id === c.targetNodeId ? trigger : null);
         return targetNode?.label ?? c.targetNodeId;
       });
       sections.push(`- Connects to: ${targets.join(', ')}`);

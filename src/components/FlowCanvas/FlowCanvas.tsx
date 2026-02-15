@@ -54,16 +54,18 @@ function buildNodes(
 
   const result: Node<DddNodeData>[] = [];
 
-  const t = flow.trigger;
-  result.push({
-    id: t.id,
-    type: t.type,
-    position: t.position,
-    data: { label: t.label, spec: t.spec, dddType: t.type, validationIssues: nodeIssuesMap?.get(t.id) },
-    deletable: false,
-  });
+  if (flow.trigger) {
+    const t = flow.trigger;
+    result.push({
+      id: t.id,
+      type: t.type,
+      position: t.position,
+      data: { label: t.label, spec: t.spec, dddType: t.type, validationIssues: nodeIssuesMap?.get(t.id) },
+      deletable: false,
+    });
+  }
 
-  for (const n of flow.nodes) {
+  for (const n of flow.nodes ?? []) {
     const rfNode: Node<DddNodeData> = {
       id: n.id,
       type: n.type,
@@ -88,8 +90,8 @@ function buildEdges(flow: ReturnType<typeof useFlowStore.getState>['currentFlow'
 
   const result: Edge[] = [];
 
-  const addEdges = (node: { id: string; type: string; spec: unknown; connections: Array<{ targetNodeId: string; sourceHandle?: string; targetHandle?: string }> }) => {
-    for (const conn of node.connections) {
+  const addEdges = (node: { id: string; type: string; spec: unknown; connections?: Array<{ targetNodeId: string; sourceHandle?: string; targetHandle?: string }> }) => {
+    for (const conn of node.connections ?? []) {
       const edge: Edge = {
         id: `${node.id}->${conn.targetNodeId}${conn.sourceHandle ? `-${conn.sourceHandle}` : ''}`,
         source: node.id,
@@ -111,8 +113,8 @@ function buildEdges(flow: ReturnType<typeof useFlowStore.getState>['currentFlow'
     }
   };
 
-  addEdges(flow.trigger);
-  for (const n of flow.nodes) {
+  if (flow.trigger) addEdges(flow.trigger);
+  for (const n of flow.nodes ?? []) {
     addEdges(n);
   }
 
