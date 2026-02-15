@@ -53,7 +53,7 @@ export function AgentTestPanel() {
         {/* Idle: no flow or not agent flow */}
         {panelState === 'idle' && (
           <div className="text-center py-8 space-y-3">
-            {!currentFlow || currentFlow.flow.type !== 'agent' ? (
+            {!currentFlow || currentFlow.flow?.type !== 'agent' ? (
               <>
                 <p className="text-xs text-text-muted">No agent flow selected.</p>
                 <p className="text-[10px] text-text-muted">Navigate to an agent flow to test it.</p>
@@ -61,7 +61,7 @@ export function AgentTestPanel() {
             ) : (
               <>
                 <p className="text-xs text-text-secondary">
-                  Ready to test: <strong>{currentFlow.flow.name}</strong>
+                  Ready to test: <strong>{currentFlow.flow?.name}</strong>
                 </p>
                 <button className="btn-primary text-xs" onClick={handleStartTest}>
                   <FlaskConical className="w-3.5 h-3.5" />

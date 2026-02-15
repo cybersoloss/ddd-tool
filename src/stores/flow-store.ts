@@ -393,7 +393,7 @@ function debouncedSave(state: FlowState) {
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
     const { currentFlow, domainId, projectPath } = state;
-    if (!currentFlow || !domainId || !projectPath) return;
+    if (!currentFlow || !currentFlow.flow || !domainId || !projectPath) return;
 
     const updated: FlowDocument = {
       ...currentFlow,
@@ -402,7 +402,7 @@ function debouncedSave(state: FlowState) {
 
     try {
       await invoke('write_file', {
-        path: getFlowPath(projectPath, domainId, currentFlow.flow.id),
+        path: getFlowPath(projectPath, domainId, currentFlow.flow?.id ?? ''),
         contents: stringify(updated),
       });
     } catch {
@@ -467,6 +467,10 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       if (exists) {
         const content: string = await invoke('read_file', { path: flowPath });
         const doc = parse(content) as FlowDocument;
+        // Backfill flow metadata if YAML was saved without it
+        if (!doc.flow) {
+          doc.flow = { id: flowId, name: flowId, type: flowType ?? 'traditional', domain: domainId };
+        }
         set({ currentFlow: doc, loading: false });
       } else {
         // Create default flow document
@@ -490,7 +494,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
   unloadFlow: () => {
     if (saveTimer) clearTimeout(saveTimer);
     const { projectPath, currentFlow } = get();
-    if (projectPath && currentFlow) {
+    if (projectPath && currentFlow && currentFlow.flow) {
       cleanupAutoSave(projectPath, currentFlow.flow.id);
       // Clear undo/redo stacks for this flow
       if (_clearFlowUndoFn) _clearFlowUndoFn(currentFlow.flow.id);
@@ -514,7 +518,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     const { currentFlow } = get();
     if (!currentFlow) return;
 
-    pushUndo(currentFlow.flow.id, `Add ${defaultLabel(type)} node`);
+    pushUndo(currentFlow.flow?.id ?? '', `Add ${defaultLabel(type)} node`);
 
     const node: DddFlowNode = {
       id: type + '-' + nanoid(8),
@@ -538,7 +542,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     const { currentFlow } = get();
     if (!currentFlow) return;
 
-    pushUndo(currentFlow.flow.id, 'Move node');
+    pushUndo(currentFlow.flow?.id ?? '', 'Move node');
 
     // Check trigger
     if (currentFlow.trigger.id === nodeId) {
@@ -569,7 +573,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     // Cannot delete the trigger node
     if (currentFlow.trigger.id === nodeId) return;
 
-    pushUndo(currentFlow.flow.id, 'Delete node');
+    pushUndo(currentFlow.flow?.id ?? '', 'Delete node');
 
     // Remove node and clean up any connections referencing it
     // If deleting a loop node, clear parentId on children
@@ -601,7 +605,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     const { currentFlow } = get();
     if (!currentFlow) return;
 
-    pushUndo(currentFlow.flow.id, 'Add connection');
+    pushUndo(currentFlow.flow?.id ?? '', 'Add connection');
 
     const conn = { targetNodeId, sourceHandle, targetHandle };
 
@@ -634,7 +638,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     const { currentFlow } = get();
     if (!currentFlow) return;
 
-    pushUndo(currentFlow.flow.id, 'Remove connection');
+    pushUndo(currentFlow.flow?.id ?? '', 'Remove connection');
 
     const matchConn = (c: { targetNodeId: string; sourceHandle?: string }) =>
       !(c.targetNodeId === targetNodeId && c.sourceHandle === sourceHandle);
@@ -668,7 +672,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     const { currentFlow } = get();
     if (!currentFlow) return;
 
-    pushUndo(currentFlow.flow.id, 'Update spec');
+    pushUndo(currentFlow.flow?.id ?? '', 'Update spec');
 
     if (currentFlow.trigger.id === nodeId) {
       const updated: FlowDocument = {
@@ -694,7 +698,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     const { currentFlow } = get();
     if (!currentFlow) return;
 
-    pushUndo(currentFlow.flow.id, 'Update label');
+    pushUndo(currentFlow.flow?.id ?? '', 'Update label');
 
     if (currentFlow.trigger.id === nodeId) {
       const updated: FlowDocument = {
@@ -720,7 +724,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     const { currentFlow } = get();
     if (!currentFlow) return;
 
-    pushUndo(currentFlow.flow.id, 'Reparent node');
+    pushUndo(currentFlow.flow?.id ?? '', 'Reparent node');
 
     const updated: FlowDocument = {
       ...currentFlow,

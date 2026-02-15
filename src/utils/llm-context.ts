@@ -30,7 +30,7 @@ export function buildContext(): LlmContext {
   if (flow.currentFlow) {
     const allNodes: DddFlowNode[] = [flow.currentFlow.trigger, ...flow.currentFlow.nodes];
     ctx.currentFlow = {
-      name: flow.currentFlow.flow.name,
+      name: flow.currentFlow.flow?.name ?? 'unknown',
       nodeCount: allNodes.length,
       nodes: allNodes.map((n) => ({ id: n.id, type: n.type, label: n.label })),
     };

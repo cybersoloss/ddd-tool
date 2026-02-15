@@ -683,7 +683,8 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
 // --- Public: Flow validation ---
 
 export function validateFlow(flow: FlowDocument): ValidationResult {
-  const flowId = `${flow.flow.domain}/${flow.flow.id}`;
+  const flowMeta = flow.flow ?? { id: 'unknown', domain: 'unknown', name: 'unknown', type: 'traditional' as const };
+  const flowId = `${flowMeta.domain}/${flowMeta.id}`;
   const issues: ValidationIssue[] = [
     ...checkTriggerExists(flow),
     ...checkAllPathsReachTerminal(flow),
@@ -702,8 +703,8 @@ export function validateFlow(flow: FlowDocument): ValidationResult {
 
   // Tag all issues with flowId
   for (const i of issues) {
-    i.flowId = flow.flow.id;
-    i.domainId = flow.flow.domain;
+    i.flowId = flowMeta.id;
+    i.domainId = flowMeta.domain;
   }
 
   return buildResult('flow', flowId, issues);

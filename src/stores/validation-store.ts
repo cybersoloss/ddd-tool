@@ -33,7 +33,7 @@ export const useValidationStore = create<ValidationState>((set, get) => ({
 
   validateCurrentFlow: () => {
     const flow = useFlowStore.getState().currentFlow;
-    if (!flow) return;
+    if (!flow || !flow.flow) return;
 
     const result = validateFlow(flow);
     const key = `${flow.flow.domain}/${flow.flow.id}`;
@@ -90,7 +90,7 @@ export const useValidationStore = create<ValidationState>((set, get) => ({
 
   getCurrentFlowResult: () => {
     const flow = useFlowStore.getState().currentFlow;
-    if (!flow) return null;
+    if (!flow || !flow.flow) return null;
     const key = `${flow.flow.domain}/${flow.flow.id}`;
     return get().flowResults[key] ?? null;
   },

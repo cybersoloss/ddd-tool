@@ -327,7 +327,7 @@ function FlowCanvasInner() {
           <NodeToolbar
             pendingType={pendingNodeType}
             onSelectType={setPendingNodeType}
-            flowType={currentFlow.flow.type ?? flowType}
+            flowType={currentFlow.flow?.type ?? flowType}
           />
         )}
         <ReactFlow
