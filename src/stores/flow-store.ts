@@ -433,6 +433,33 @@ function normalizeFlowDocument(raw: Record<string, unknown>, domainId: string, f
       );
     }
 
+    // Normalize data_store: entity → model (ddd-create may use either name)
+    if (n.type === 'data_store' && spec.entity && !spec.model) {
+      spec.model = spec.entity;
+    }
+
+    // Normalize event: infer direction from label if missing
+    if (n.type === 'event' && !spec.direction) {
+      const label = (n.label ?? n.name ?? '') as string;
+      if (/^emit\b/i.test(label)) {
+        spec.direction = 'emit';
+      } else if (/^(consume|handle|listen|receive)\b/i.test(label)) {
+        spec.direction = 'consume';
+      }
+    }
+
+    // Normalize trigger: infer spec.event from label if missing
+    if (n.type === 'trigger') {
+      const event = spec.event;
+      const eventEmpty = !event || (typeof event === 'string' ? event.trim() === '' : (Array.isArray(event) && event.length === 0));
+      if (eventEmpty) {
+        const label = (n.label ?? n.name ?? '') as string;
+        if (label.trim()) {
+          spec.event = label.trim();
+        }
+      }
+    }
+
     return {
       id: n.id ?? `${n.type ?? 'node'}-auto-${Math.random().toString(36).slice(2, 8)}`,
       type: n.type ?? 'process',
