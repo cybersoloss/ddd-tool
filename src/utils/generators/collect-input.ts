@@ -57,17 +57,17 @@ export async function collectGeneratorInput(): Promise<GeneratorInput> {
 
         for (const node of allNodes) {
           if (node.type === 'input') {
-            const spec = node.spec as InputSpec;
+            const spec = (node.spec ?? {}) as InputSpec;
             if (spec.fields) {
               for (const field of spec.fields) {
                 inputs.push({ name: field.name, type: field.type, required: field.required });
               }
             }
           } else if (node.type === 'process') {
-            const spec = node.spec as ProcessSpec;
+            const spec = (node.spec ?? {}) as ProcessSpec;
             processes.push({ action: spec.action, service: spec.service });
           } else if (node.type === 'terminal') {
-            const spec = node.spec as TerminalSpec;
+            const spec = (node.spec ?? {}) as TerminalSpec;
             terminals.push({ outcome: spec.outcome });
           }
         }

@@ -18,7 +18,7 @@ export function DataStoreSpecEditor({ spec, onChange }: Props) {
     const allNodes = [currentFlow.trigger, ...currentFlow.nodes];
     for (const node of allNodes) {
       if (node.type === 'data_store') {
-        const m = (node.spec as DataStoreSpec).model;
+        const m = ((node.spec ?? {}) as DataStoreSpec).model;
         if (m && m.trim()) models.add(m.trim());
       }
     }

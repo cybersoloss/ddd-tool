@@ -100,7 +100,7 @@ function buildEdges(flow: ReturnType<typeof useFlowStore.getState>['currentFlow'
 
       // Circuit breaker edge for smart_router nodes
       if (node.type === 'smart_router') {
-        const spec = node.spec as SmartRouterSpec;
+        const spec = (node.spec ?? {}) as SmartRouterSpec;
         if (spec.policies?.circuit_breaker?.enabled) {
           edge.type = 'circuit_breaker';
           edge.data = { cbState: spec.policies.circuit_breaker.runtime_state ?? 'closed' };

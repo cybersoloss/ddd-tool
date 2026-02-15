@@ -115,7 +115,7 @@ export async function buildImplementationPrompt(
 
     const agentNode = nodes.find((n) => n.type === 'agent_loop');
     if (agentNode) {
-      const agentSpec = agentNode.spec as AgentLoopSpec;
+      const agentSpec = (agentNode.spec ?? {}) as AgentLoopSpec;
       if (agentSpec.tools && agentSpec.tools.length > 0) {
         sections.push('- Tool implementations:');
         for (const tool of agentSpec.tools) {

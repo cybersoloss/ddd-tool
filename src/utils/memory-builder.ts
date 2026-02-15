@@ -53,7 +53,7 @@ export async function buildSpecIndex(
         // Extract agent info
         for (const node of doc.nodes) {
           if (node.type === 'agent_loop') {
-            const spec = node.spec as AgentLoopSpec;
+            const spec = (node.spec ?? {}) as AgentLoopSpec;
             agentModel = spec.model;
             if (spec.tools) {
               for (const t of spec.tools) {

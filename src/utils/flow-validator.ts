@@ -332,7 +332,7 @@ function checkAgentFlow(flow: FlowDocument): ValidationIssue[] {
   }
 
   for (const agentLoop of agentLoops) {
-    const spec = agentLoop.spec as AgentLoopSpec;
+    const spec = (agentLoop.spec ?? {}) as AgentLoopSpec;
     const tools = spec.tools ?? [];
 
     if (tools.length === 0) {

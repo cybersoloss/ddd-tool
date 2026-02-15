@@ -19,7 +19,7 @@ export function TestInputForm({ onSubmit }: Props) {
   const allNodes = [currentFlow.trigger, ...currentFlow.nodes];
   for (const node of allNodes) {
     if (node.type === 'input') {
-      const spec = node.spec as InputSpec;
+      const spec = (node.spec ?? {}) as InputSpec;
       if (spec.fields) {
         for (const field of spec.fields) {
           if (!fields.some((f) => f.name === field.name)) {

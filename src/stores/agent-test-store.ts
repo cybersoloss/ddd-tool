@@ -121,7 +121,7 @@ export const useAgentTestStore = create<AgentTestState>((set, get) => ({
       try {
         if (node.type === 'agent_loop') {
           // For agent_loop nodes, call LLM
-          const spec = node.spec as AgentLoopSpec;
+          const spec = (node.spec ?? {}) as AgentLoopSpec;
           const settings = useAppStore.getState().settings;
           const provider = settings.llm.providers.find((p) => p.enabled);
 
