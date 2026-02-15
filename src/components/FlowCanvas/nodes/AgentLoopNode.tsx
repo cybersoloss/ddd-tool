@@ -59,9 +59,9 @@ function AgentLoopNodeComponent({ data, selected }: NodeProps<AgentLoopNodeType>
         <div className="mb-2">
           <p className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Tools</p>
           <div className="flex flex-wrap gap-1">
-            {tools.map((tool) => (
+            {tools.map((tool, i) => (
               <span
-                key={tool.id}
+                key={tool.id ?? tool.name ?? i}
                 className="inline-flex items-center gap-1 text-[11px] bg-bg-tertiary text-text-secondary px-2 py-0.5 rounded"
               >
                 <Wrench className="w-3 h-3" />

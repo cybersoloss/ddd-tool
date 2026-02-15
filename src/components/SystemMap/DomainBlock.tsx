@@ -7,6 +7,8 @@ interface Props {
   domain: SystemMapDomain;
   selected: boolean;
   isLocked?: boolean;
+  scale?: number;
+  animating?: boolean;
   onSelect: (domainId: string) => void;
   onPositionChange: (domainId: string, position: Position) => void;
   onDoubleClick: (domainId: string) => void;
@@ -16,11 +18,13 @@ interface Props {
   editingExternal?: boolean;
 }
 
-export function DomainBlock({ domain, selected, isLocked, onSelect, onPositionChange, onDoubleClick, onRename, onContextMenu, onStartConnect, editingExternal }: Props) {
+export function DomainBlock({ domain, selected, isLocked, scale = 1, animating, onSelect, onPositionChange, onDoubleClick, onRename, onContextMenu, onStartConnect, editingExternal }: Props) {
   const dragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const posStart = useRef({ x: 0, y: 0 });
   const didDrag = useRef(false);
+  const scaleRef = useRef(scale);
+  scaleRef.current = scale;
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
@@ -47,12 +51,12 @@ export function DomainBlock({ domain, selected, isLocked, onSelect, onPositionCh
 
       const handleMouseMove = (me: MouseEvent) => {
         if (!dragging.current) return;
-        const dx = me.clientX - dragStart.current.x;
-        const dy = me.clientY - dragStart.current.y;
-        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) didDrag.current = true;
+        const rawDx = me.clientX - dragStart.current.x;
+        const rawDy = me.clientY - dragStart.current.y;
+        if (Math.abs(rawDx) > 3 || Math.abs(rawDy) > 3) didDrag.current = true;
         onPositionChange(domain.id, {
-          x: posStart.current.x + dx,
-          y: posStart.current.y + dy,
+          x: posStart.current.x + rawDx / scaleRef.current,
+          y: posStart.current.y + rawDy / scaleRef.current,
         });
       };
 
@@ -115,6 +119,7 @@ export function DomainBlock({ domain, selected, isLocked, onSelect, onPositionCh
         left: domain.position.x,
         top: domain.position.y,
         minWidth: 200,
+        transition: animating ? 'left 300ms ease, top 300ms ease' : 'none',
       }}
       onMouseDown={handleMouseDown}
       onClick={(e) => e.stopPropagation()}

@@ -8,6 +8,8 @@ interface Props {
   selected: boolean;
   isStale?: boolean;
   isLocked?: boolean;
+  scale?: number;
+  animating?: boolean;
   onSelect: (flowId: string) => void;
   onPositionChange: (flowId: string, position: Position) => void;
   onDoubleClick: (flowId: string) => void;
@@ -18,11 +20,13 @@ interface Props {
   editingExternal?: boolean;
 }
 
-export function FlowBlock({ flow, selected, isStale, isLocked, onSelect, onPositionChange, onDoubleClick, onDelete, onRename, onContextMenu, onStartConnect, editingExternal }: Props) {
+export function FlowBlock({ flow, selected, isStale, isLocked, scale = 1, animating, onSelect, onPositionChange, onDoubleClick, onDelete, onRename, onContextMenu, onStartConnect, editingExternal }: Props) {
   const dragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const posStart = useRef({ x: 0, y: 0 });
   const didDrag = useRef(false);
+  const scaleRef = useRef(scale);
+  scaleRef.current = scale;
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
@@ -49,12 +53,12 @@ export function FlowBlock({ flow, selected, isStale, isLocked, onSelect, onPosit
 
       const handleMouseMove = (me: MouseEvent) => {
         if (!dragging.current) return;
-        const dx = me.clientX - dragStart.current.x;
-        const dy = me.clientY - dragStart.current.y;
-        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) didDrag.current = true;
+        const rawDx = me.clientX - dragStart.current.x;
+        const rawDy = me.clientY - dragStart.current.y;
+        if (Math.abs(rawDx) > 3 || Math.abs(rawDy) > 3) didDrag.current = true;
         onPositionChange(flow.id, {
-          x: posStart.current.x + dx,
-          y: posStart.current.y + dy,
+          x: posStart.current.x + rawDx / scaleRef.current,
+          y: posStart.current.y + rawDy / scaleRef.current,
         });
       };
 
@@ -125,6 +129,7 @@ export function FlowBlock({ flow, selected, isStale, isLocked, onSelect, onPosit
         left: flow.position.x,
         top: flow.position.y,
         minWidth: 180,
+        transition: animating ? 'left 300ms ease, top 300ms ease' : 'none',
       }}
       onMouseDown={handleMouseDown}
       onClick={(e) => e.stopPropagation()}

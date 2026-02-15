@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import { FormInput, Cog, GitFork, Square, RotateCw, Shield, Hand, Network, GitBranch, ArrowLeftRight, Box, Undo2, Redo2, Database, ExternalLink, Zap, Repeat, Columns, GitMerge, BrainCircuit, Copy, Check, RotateCcw, Clock, HardDrive, Shuffle, Filter, FileText, Lock, Layers, ShieldCheck } from 'lucide-react';
+import { useReactFlow } from '@xyflow/react';
+import { FormInput, Cog, GitFork, Square, RotateCw, Shield, Hand, Network, GitBranch, ArrowLeftRight, Box, Undo2, Redo2, Database, ExternalLink, Zap, Repeat, Columns, GitMerge, BrainCircuit, Copy, Check, RotateCcw, Clock, HardDrive, Shuffle, Filter, FileText, Lock, Layers, ShieldCheck, LayoutGrid } from 'lucide-react';
 import type { DddNodeType } from '../../types/flow';
 import { useSheetStore } from '../../stores/sheet-store';
 import { useUndoStore } from '../../stores/undo-store';
@@ -63,7 +64,9 @@ export function NodeToolbar({ pendingType, onSelectType, flowType = 'traditional
   const redo = useUndoStore((s) => s.redo);
 
   const reloadProject = useProjectStore((s) => s.reloadProject);
+  const autoLayout = useFlowStore((s) => s.autoLayout);
   const getLastDescription = useUndoStore((s) => s.getLastDescription);
+  const { fitView } = useReactFlow();
 
   const canUndo = (undoStacks?.undoStack.length ?? 0) > 0;
   const canRedo = (undoStacks?.redoStack.length ?? 0) > 0;
@@ -79,6 +82,11 @@ export function NodeToolbar({ pendingType, onSelectType, flowType = 'traditional
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }, [current.domainId, current.flowId]);
+
+  const handleAutoLayout = useCallback(() => {
+    autoLayout();
+    setTimeout(() => fitView({ duration: 300 }), 0);
+  }, [autoLayout, fitView]);
 
   const handleReload = useCallback(async () => {
     setReloading(true);
@@ -133,6 +141,14 @@ export function NodeToolbar({ pendingType, onSelectType, flowType = 'traditional
       >
         <RotateCcw className={`w-4 h-4 text-text-secondary ${reloading ? 'animate-spin' : ''}`} />
         <span className="text-sm text-text-primary">{reloading ? 'Reloading…' : 'Reload'}</span>
+      </div>
+      <div
+        className="flex items-center gap-2 px-3 py-2 rounded cursor-pointer transition-colors hover:bg-bg-hover"
+        onClick={handleAutoLayout}
+        title="Auto-arrange nodes top-to-bottom by connection depth"
+      >
+        <LayoutGrid className="w-4 h-4 text-text-secondary" />
+        <span className="text-sm text-text-primary">Auto Layout</span>
       </div>
       <div className="w-full h-px bg-border my-1" />
       <div className="flex items-center gap-1 px-2">

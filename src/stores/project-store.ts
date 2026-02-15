@@ -5,7 +5,7 @@ import { nanoid } from 'nanoid';
 import type { DomainConfig, DomainFlowEntry, EventWiring, SystemLayout } from '../types/domain';
 import type { Position } from '../types/sheet';
 import type { FlowDocument } from '../types/flow';
-import { generateAutoLayout } from '../utils/domain-parser';
+import { generateAutoLayout, generateFlowAutoLayout } from '../utils/domain-parser';
 import { FLOW_TEMPLATES } from '../utils/flow-templates';
 
 interface ProjectState {
@@ -29,6 +29,8 @@ interface ProjectState {
   updateEventWiring: (domainId: string, type: 'publish' | 'consume', index: number, wiring: EventWiring) => Promise<void>;
   removeEventWiring: (domainId: string, type: 'publish' | 'consume', index: number) => Promise<void>;
   addEventArrow: (sourceDomainId: string, targetDomainId: string, eventName: string, fromFlow?: string, handledByFlow?: string, description?: string) => Promise<void>;
+  autoLayoutDomains: () => void;
+  autoLayoutFlows: (domainId: string) => void;
   reloadProject: () => Promise<void>;
   reset: () => void;
 }
@@ -624,6 +626,77 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       handled_by_flow: handledByFlow,
       description,
     });
+  },
+
+  autoLayoutDomains: () => {
+    const { domainConfigs, systemLayout, projectPath } = get();
+    const domainIds = Object.keys(domainConfigs);
+    if (domainIds.length === 0) return;
+
+    const newLayout = generateAutoLayout(domainIds);
+    const updated: SystemLayout = { ...systemLayout, domains: newLayout.domains };
+    set({ systemLayout: updated });
+
+    // Debounce save
+    if (saveLayoutTimer) clearTimeout(saveLayoutTimer);
+    saveLayoutTimer = setTimeout(async () => {
+      if (!projectPath) return;
+      try {
+        await invoke('write_file', {
+          path: `${projectPath}/specs/system-layout.yaml`,
+          contents: stringify(get().systemLayout),
+        });
+      } catch {
+        // Silent
+      }
+    }, 500);
+  },
+
+  autoLayoutFlows: (domainId) => {
+    const { domainConfigs, projectPath } = get();
+    const domain = domainConfigs[domainId];
+    if (!domain) return;
+
+    const flowIds = domain.flows.map((f) => f.id);
+    const flowPositions = generateFlowAutoLayout(flowIds);
+
+    // Portals offset to the right of flows
+    const FLOW_GRID_COLS = 3;
+    const FLOW_H_SPACING = 250;
+    const portalKeys = Object.keys(domain.layout?.portals ?? {});
+    const portalPositions: Record<string, Position> = {};
+    const portalAutoLayout = generateFlowAutoLayout(portalKeys);
+    portalKeys.forEach((id) => {
+      const base = portalAutoLayout[id] ?? { x: 0, y: 0 };
+      portalPositions[id] = {
+        x: base.x + (flowIds.length > 0 ? FLOW_H_SPACING * Math.min(flowIds.length, FLOW_GRID_COLS) : 0),
+        y: base.y,
+      };
+    });
+
+    const updatedDomain: DomainConfig = {
+      ...domain,
+      layout: {
+        flows: flowPositions,
+        portals: portalPositions,
+      },
+    };
+    const updatedConfigs = { ...domainConfigs, [domainId]: updatedDomain };
+    set({ domainConfigs: updatedConfigs });
+
+    // Debounce save
+    if (domainSaveTimers[domainId]) clearTimeout(domainSaveTimers[domainId]);
+    domainSaveTimers[domainId] = setTimeout(async () => {
+      if (!projectPath) return;
+      try {
+        await invoke('write_file', {
+          path: `${projectPath}/specs/domains/${domainId}/domain.yaml`,
+          contents: stringify(get().domainConfigs[domainId]),
+        });
+      } catch {
+        // Silent
+      }
+    }, 500);
   },
 
   reloadProject: async () => {

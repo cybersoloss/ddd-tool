@@ -5,14 +5,18 @@ import type { Position } from '../../types/sheet';
 
 interface Props {
   portal: DomainMapPortal;
+  scale?: number;
+  animating?: boolean;
   onPositionChange: (portalId: string, position: Position) => void;
   onDoubleClick: (portalId: string) => void;
 }
 
-export function PortalNode({ portal, onPositionChange, onDoubleClick }: Props) {
+export function PortalNode({ portal, scale = 1, animating, onPositionChange, onDoubleClick }: Props) {
   const dragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const posStart = useRef({ x: 0, y: 0 });
+  const scaleRef = useRef(scale);
+  scaleRef.current = scale;
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -24,11 +28,11 @@ export function PortalNode({ portal, onPositionChange, onDoubleClick }: Props) {
 
       const handleMouseMove = (me: MouseEvent) => {
         if (!dragging.current) return;
-        const dx = me.clientX - dragStart.current.x;
-        const dy = me.clientY - dragStart.current.y;
+        const rawDx = me.clientX - dragStart.current.x;
+        const rawDy = me.clientY - dragStart.current.y;
         onPositionChange(portal.id, {
-          x: posStart.current.x + dx,
-          y: posStart.current.y + dy,
+          x: posStart.current.x + rawDx / scaleRef.current,
+          y: posStart.current.y + rawDy / scaleRef.current,
         });
       };
 
@@ -51,6 +55,7 @@ export function PortalNode({ portal, onPositionChange, onDoubleClick }: Props) {
         left: portal.position.x,
         top: portal.position.y,
         minWidth: 140,
+        transition: animating ? 'left 300ms ease, top 300ms ease' : 'none',
       }}
       onMouseDown={handleMouseDown}
       onDoubleClick={() => onDoubleClick(portal.id)}

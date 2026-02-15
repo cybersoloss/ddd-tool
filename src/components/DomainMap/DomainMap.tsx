@@ -1,16 +1,18 @@
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
-import { Plus, RotateCcw, Copy, Check, Database } from 'lucide-react';
+import { Plus, RotateCcw, Copy, Check, Database, LayoutGrid } from 'lucide-react';
 import { useSheetStore } from '../../stores/sheet-store';
 import { useProjectStore } from '../../stores/project-store';
 import { useImplementationStore } from '../../stores/implementation-store';
 import { useUiStore } from '../../stores/ui-store';
 import { buildDomainMapData } from '../../utils/domain-parser';
+import { useCanvasTransform } from '../../hooks/useCanvasTransform';
 import { FlowBlock } from './FlowBlock';
 import { PortalNode } from './PortalNode';
 import { DomainEventArrow } from './DomainEventArrow';
 import { AddFlowDialog } from './AddFlowDialog';
 import { FlowContextMenu } from './FlowContextMenu';
 import { NewFlowEventDialog } from './NewFlowEventDialog';
+import { ZoomControls } from '../shared/ZoomControls';
 import type { Position } from '../../types/sheet';
 
 const FLOW_WIDTH = 180;
@@ -28,6 +30,7 @@ export function DomainMap() {
   const deleteFlow = useProjectStore((s) => s.deleteFlow);
   const renameFlow = useProjectStore((s) => s.renameFlow);
   const reloadProject = useProjectStore((s) => s.reloadProject);
+  const autoLayoutFlows = useProjectStore((s) => s.autoLayoutFlows);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
@@ -37,7 +40,10 @@ export function DomainMap() {
   const [renamingFlowId, setRenamingFlowId] = useState<string | null>(null);
   const [connecting, setConnecting] = useState<{ sourceFlowId: string; currentX: number; currentY: number } | null>(null);
   const [newEventDialog, setNewEventDialog] = useState<{ sourceFlowId: string; targetFlowId: string } | null>(null);
+  const [animating, setAnimating] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
+
+  const { transform, transformStyle, screenToCanvas, fitView, zoomIn, zoomOut, handleCanvasMouseDown } = useCanvasTransform(canvasRef);
 
   const isLocked = useUiStore((s) => s.isLocked);
   const driftItems = useImplementationStore((s) => s.driftItems);
@@ -180,11 +186,8 @@ export function DomainMap() {
         window.removeEventListener('mousemove', handleMouseMove);
         window.removeEventListener('mouseup', handleMouseUp);
 
-        const canvasEl = canvasRef.current;
-        if (!canvasEl) { setConnecting(null); return; }
-        const rect = canvasEl.getBoundingClientRect();
-        const cx = e.clientX - rect.left;
-        const cy = e.clientY - rect.top;
+        // Hit test using canvas coordinates
+        const cursor = screenToCanvas(e.clientX, e.clientY);
 
         const configs = useProjectStore.getState().domainConfigs;
         const domain = configs[domainId!];
@@ -196,7 +199,7 @@ export function DomainMap() {
           if (f.id === flowId) continue;
           const pos = flowLayout[f.id];
           if (!pos) continue;
-          if (cx >= pos.x && cx <= pos.x + FLOW_WIDTH && cy >= pos.y && cy <= pos.y + FLOW_HEIGHT) {
+          if (cursor.x >= pos.x && cursor.x <= pos.x + FLOW_WIDTH && cursor.y >= pos.y && cursor.y <= pos.y + FLOW_HEIGHT) {
             targetId = f.id;
             break;
           }
@@ -211,8 +214,34 @@ export function DomainMap() {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
     },
-    [isLocked, domainId]
+    [isLocked, domainId, screenToCanvas]
   );
+
+  const handleAutoLayout = useCallback(async () => {
+    if (!domainId) return;
+    await autoLayoutFlows(domainId);
+    setAnimating(true);
+    // Fit view to new positions after layout
+    const configs = useProjectStore.getState().domainConfigs;
+    const domain = configs[domainId];
+    if (domain) {
+      const flowPositions = Object.values(domain.layout.flows);
+      const portalPositions = Object.values(domain.layout.portals ?? {});
+      const allPositions = [...flowPositions, ...portalPositions];
+      if (allPositions.length > 0) {
+        fitView(allPositions, FLOW_WIDTH, FLOW_HEIGHT);
+      }
+    }
+    setTimeout(() => setAnimating(false), 350);
+  }, [domainId, autoLayoutFlows, fitView]);
+
+  const handleFitView = useCallback(() => {
+    if (!mapData) return;
+    const flowPositions = mapData.flows.map((f) => f.position);
+    const portalPositions = mapData.portals.map((p) => p.position);
+    const allPositions = [...flowPositions, ...portalPositions];
+    fitView(allPositions, FLOW_WIDTH, FLOW_HEIGHT);
+  }, [mapData, fitView]);
 
   if (!mapData || (mapData.flows.length === 0 && mapData.portals.length === 0)) {
     return (
@@ -241,82 +270,108 @@ export function DomainMap() {
   }
 
   return (
-    <div ref={canvasRef} className="relative flex-1 overflow-hidden bg-bg-primary" onClick={() => { setSelectedFlowId(null); setContextMenu(null); }}>
-      {/* SVG arrow overlay */}
-      <svg className="absolute inset-0 w-full h-full pointer-events-none">
-        <defs>
-          <marker
-            id="domain-arrowhead"
-            markerWidth="10"
-            markerHeight="7"
-            refX="10"
-            refY="3.5"
-            orient="auto"
-          >
-            <polygon
-              points="0 0, 10 3.5, 0 7"
-              fill="var(--color-text-muted)"
+    <div ref={canvasRef} className="relative flex-1 overflow-hidden bg-bg-primary" onClick={() => { setSelectedFlowId(null); setContextMenu(null); }} onMouseDown={handleCanvasMouseDown}>
+      {/* Transform wrapper — contains all canvas-coordinate content */}
+      <div style={transformStyle}>
+        {/* SVG arrow overlay */}
+        <svg className="absolute top-0 left-0 pointer-events-none" style={{ overflow: 'visible', width: 1, height: 1 }}>
+          <defs>
+            <marker
+              id="domain-arrowhead"
+              markerWidth="10"
+              markerHeight="7"
+              refX="10"
+              refY="3.5"
+              orient="auto"
+            >
+              <polygon
+                points="0 0, 10 3.5, 0 7"
+                fill="var(--color-text-muted)"
+              />
+            </marker>
+          </defs>
+          {mapData.eventArrows.map((arrow) => (
+            <DomainEventArrow
+              key={arrow.id}
+              arrow={arrow}
+              flows={mapData.flows}
+              portals={mapData.portals}
             />
-          </marker>
-        </defs>
-        {mapData.eventArrows.map((arrow) => (
-          <DomainEventArrow
-            key={arrow.id}
-            arrow={arrow}
-            flows={mapData.flows}
-            portals={mapData.portals}
+          ))}
+          {connecting && (() => {
+            const sourceFlow = mapData.flows.find((f) => f.id === connecting.sourceFlowId);
+            if (!sourceFlow) return null;
+            const cursor = screenToCanvas(connecting.currentX, connecting.currentY);
+            return (
+              <line
+                x1={sourceFlow.position.x + FLOW_WIDTH / 2}
+                y1={sourceFlow.position.y + FLOW_HEIGHT / 2}
+                x2={cursor.x}
+                y2={cursor.y}
+                stroke="var(--color-accent)"
+                strokeWidth={2}
+                strokeDasharray="6 3"
+              />
+            );
+          })()}
+        </svg>
+
+        {/* Flow blocks */}
+        {mapData.flows.map((flow) => (
+          <FlowBlock
+            key={flow.id}
+            flow={flow}
+            selected={selectedFlowId === flow.id}
+            isStale={domainId ? staleFlowKeys.has(`${domainId}/${flow.id}`) : false}
+            isLocked={isLocked}
+            scale={transform.scale}
+            animating={animating}
+            onSelect={setSelectedFlowId}
+            onPositionChange={handleFlowPositionChange}
+            onDoubleClick={handleFlowDoubleClick}
+            onDelete={handleDeleteFlow}
+            onRename={handleRenameFlow}
+            onContextMenu={handleFlowContextMenu}
+            onStartConnect={handleStartConnect}
+            editingExternal={renamingFlowId === flow.id}
           />
         ))}
-        {connecting && (() => {
-          const sourceFlow = mapData.flows.find((f) => f.id === connecting.sourceFlowId);
-          if (!sourceFlow) return null;
-          const rect = canvasRef.current?.getBoundingClientRect();
-          const offsetX = rect?.left ?? 0;
-          const offsetY = rect?.top ?? 0;
+
+        {/* Portal nodes */}
+        {mapData.portals.map((portal) => (
+          <PortalNode
+            key={portal.id}
+            portal={portal}
+            scale={transform.scale}
+            animating={animating}
+            onPositionChange={handlePortalPositionChange}
+            onDoubleClick={handlePortalDoubleClick}
+          />
+        ))}
+
+        {/* Flow groups / swimlanes */}
+        {domainConfig?.groups?.map((group) => {
+          const groupFlows = mapData.flows.filter((f) => group.flow_ids.includes(f.id));
+          if (groupFlows.length === 0) return null;
+          const minX = Math.min(...groupFlows.map((f) => f.position.x)) - 20;
+          const minY = Math.min(...groupFlows.map((f) => f.position.y)) - 30;
+          const maxX = Math.max(...groupFlows.map((f) => f.position.x)) + FLOW_WIDTH + 20;
+          const maxY = Math.max(...groupFlows.map((f) => f.position.y)) + FLOW_HEIGHT + 20;
           return (
-            <line
-              x1={sourceFlow.position.x + FLOW_WIDTH / 2}
-              y1={sourceFlow.position.y + FLOW_HEIGHT / 2}
-              x2={connecting.currentX - offsetX}
-              y2={connecting.currentY - offsetY}
-              stroke="var(--color-accent)"
-              strokeWidth={2}
-              strokeDasharray="6 3"
-            />
+            <div
+              key={group.id}
+              className="absolute border border-dashed border-text-muted/20 rounded-xl pointer-events-none"
+              style={{ left: minX, top: minY, width: maxX - minX, height: maxY - minY }}
+            >
+              <span className="absolute -top-3 left-3 px-2 bg-bg-primary text-[10px] text-text-muted uppercase tracking-wider">
+                {group.name}
+              </span>
+            </div>
           );
-        })()}
-      </svg>
+        })}
+      </div>
 
-      {/* Flow blocks */}
-      {mapData.flows.map((flow) => (
-        <FlowBlock
-          key={flow.id}
-          flow={flow}
-          selected={selectedFlowId === flow.id}
-          isStale={domainId ? staleFlowKeys.has(`${domainId}/${flow.id}`) : false}
-          isLocked={isLocked}
-          onSelect={setSelectedFlowId}
-          onPositionChange={handleFlowPositionChange}
-          onDoubleClick={handleFlowDoubleClick}
-          onDelete={handleDeleteFlow}
-          onRename={handleRenameFlow}
-          onContextMenu={handleFlowContextMenu}
-          onStartConnect={handleStartConnect}
-          editingExternal={renamingFlowId === flow.id}
-        />
-      ))}
-
-      {/* Portal nodes */}
-      {mapData.portals.map((portal) => (
-        <PortalNode
-          key={portal.id}
-          portal={portal}
-          onPositionChange={handlePortalPositionChange}
-          onDoubleClick={handlePortalDoubleClick}
-        />
-      ))}
-
-      {/* Schema ownership badge */}
+      {/* Schema ownership badge — outside transform */}
       {domainConfig?.owns_schemas && domainConfig.owns_schemas.length > 0 && (
         <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5 bg-bg-secondary/90 backdrop-blur border border-border rounded-lg px-3 py-2">
           <Database className="w-3.5 h-3.5 text-emerald-400" />
@@ -327,26 +382,13 @@ export function DomainMap() {
         </div>
       )}
 
-      {/* Flow groups / swimlanes */}
-      {domainConfig?.groups?.map((group) => {
-        const groupFlows = mapData.flows.filter((f) => group.flow_ids.includes(f.id));
-        if (groupFlows.length === 0) return null;
-        const minX = Math.min(...groupFlows.map((f) => f.position.x)) - 20;
-        const minY = Math.min(...groupFlows.map((f) => f.position.y)) - 30;
-        const maxX = Math.max(...groupFlows.map((f) => f.position.x)) + FLOW_WIDTH + 20;
-        const maxY = Math.max(...groupFlows.map((f) => f.position.y)) + FLOW_HEIGHT + 20;
-        return (
-          <div
-            key={group.id}
-            className="absolute border border-dashed border-text-muted/20 rounded-xl pointer-events-none"
-            style={{ left: minX, top: minY, width: maxX - minX, height: maxY - minY }}
-          >
-            <span className="absolute -top-3 left-3 px-2 bg-bg-primary text-[10px] text-text-muted uppercase tracking-wider">
-              {group.name}
-            </span>
-          </div>
-        );
-      })}
+      {/* Zoom controls */}
+      <ZoomControls
+        scale={transform.scale}
+        onZoomIn={zoomIn}
+        onZoomOut={zoomOut}
+        onFitView={handleFitView}
+      />
 
       {/* Reload + Copy Implement buttons */}
       <div className="absolute bottom-4 left-4 z-10 flex gap-2">
@@ -367,6 +409,16 @@ export function DomainMap() {
           {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
           {copied ? 'Copied!' : 'Implement'}
         </button>
+        {!isLocked && domainId && (
+          <button
+            className="btn-secondary rounded-lg px-3 py-2 shadow-lg flex items-center gap-1.5 text-xs"
+            onClick={handleAutoLayout}
+            title="Auto-arrange flows into a grid"
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+            Auto Layout
+          </button>
+        )}
       </div>
 
       {/* Add Flow button */}

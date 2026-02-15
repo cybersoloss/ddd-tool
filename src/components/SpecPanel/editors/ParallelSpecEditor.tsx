@@ -8,7 +8,12 @@ interface Props {
 }
 
 export function ParallelSpecEditor({ spec, onChange }: Props) {
-  const branches = spec.branches ?? [];
+  const rawBranches = spec.branches;
+  const branches = Array.isArray(rawBranches)
+    ? rawBranches
+    : typeof rawBranches === 'number'
+      ? Array.from({ length: rawBranches }, (_, i) => `Branch ${i + 1}`)
+      : [];
 
   const addBranch = () => onChange({ ...spec, branches: [...branches, ''] });
   const removeBranch = (i: number) =>

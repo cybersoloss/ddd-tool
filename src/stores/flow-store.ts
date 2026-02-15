@@ -31,6 +31,7 @@ import type {
   AgentGroupSpec,
 } from '../types/flow';
 import type { Position } from '../types/sheet';
+import { computeDagLayout } from '../utils/auto-layout';
 
 // --- Skip-undo flag (used by undo-store to prevent loops) ---
 let _skipUndo = false;
@@ -56,6 +57,7 @@ interface FlowState {
   updateNodeSpec: (nodeId: string, spec: NodeSpec) => void;
   updateNodeLabel: (nodeId: string, label: string) => void;
   reparentNode: (nodeId: string, parentId: string | undefined) => void;
+  autoLayout: () => void;
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -834,6 +836,30 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       nodes: currentFlow.nodes.map((n) =>
         n.id === nodeId ? { ...n, parentId } : n
       ),
+    };
+    set({ currentFlow: updated });
+    debouncedSave(get());
+  },
+
+  autoLayout: () => {
+    const { currentFlow } = get();
+    if (!currentFlow) return;
+
+    pushUndo(currentFlow.flow?.id ?? '', 'Auto layout');
+
+    const positions = computeDagLayout(currentFlow);
+
+    const triggerPos = positions.get(currentFlow.trigger.id);
+    const updated: FlowDocument = {
+      ...currentFlow,
+      trigger: {
+        ...currentFlow.trigger,
+        position: triggerPos ?? currentFlow.trigger.position,
+      },
+      nodes: currentFlow.nodes.map((n) => {
+        const pos = positions.get(n.id);
+        return pos ? { ...n, position: pos } : n;
+      }),
     };
     set({ currentFlow: updated });
     debouncedSave(get());

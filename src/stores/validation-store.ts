@@ -5,19 +5,21 @@ import { useSheetStore } from './sheet-store';
 import { validateFlow, validateDomain, validateSystem } from '../utils/flow-validator';
 import type { ValidationResult, ValidationScope, ValidationIssue, ImplementGateState } from '../types/validation';
 
+export type PanelScope = ValidationScope | 'all';
+
 interface ValidationState {
   flowResults: Record<string, ValidationResult>;
   domainResults: Record<string, ValidationResult>;
   systemResult: ValidationResult | null;
   panelOpen: boolean;
-  panelScope: ValidationScope;
+  panelScope: PanelScope;
 
   validateCurrentFlow: () => void;
   validateDomain: (domainId: string) => void;
   validateSystem: () => void;
   validateAll: () => void;
   togglePanel: () => void;
-  setPanelScope: (scope: ValidationScope) => void;
+  setPanelScope: (scope: PanelScope) => void;
   getNodeIssues: (flowKey: string, nodeId: string) => ValidationIssue[];
   getCurrentFlowResult: () => ValidationResult | null;
   checkImplementGate: (flowId: string, domainId: string) => ImplementGateState;
@@ -78,7 +80,7 @@ export const useValidationStore = create<ValidationState>((set, get) => ({
     set((s) => ({ panelOpen: !s.panelOpen }));
   },
 
-  setPanelScope: (scope: ValidationScope) => {
+  setPanelScope: (scope: PanelScope) => {
     set({ panelScope: scope });
   },
 
