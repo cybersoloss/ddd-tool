@@ -1,8 +1,7 @@
 import { useEffect } from 'react';
-import { ShieldCheck, ShieldAlert, ShieldX, X, AlertCircle, AlertTriangle, Info, MousePointerClick, Sparkles } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, ShieldX, X, AlertCircle, AlertTriangle, Info, MousePointerClick } from 'lucide-react';
 import { useValidationStore } from '../../stores/validation-store';
 import { useFlowStore } from '../../stores/flow-store';
-import { useLlmStore } from '../../stores/llm-store';
 import type { ValidationIssue, ValidationScope } from '../../types/validation';
 
 const SCOPE_TABS: { scope: ValidationScope; label: string }[] = [
@@ -56,8 +55,6 @@ export function ValidationPanel() {
   const systemResult = useValidationStore((s) => s.systemResult);
   const getCurrentFlowResult = useValidationStore((s) => s.getCurrentFlowResult);
   const selectNode = useFlowStore((s) => s.selectNode);
-  const openLlmPanel = useLlmStore((s) => s.openPanel);
-  const sendMessage = useLlmStore((s) => s.sendMessage);
 
   // Close on Escape — capture phase so it's handled before Breadcrumb navigation
   useEffect(() => {
@@ -110,19 +107,6 @@ export function ValidationPanel() {
 
   const handleSelectNode = (nodeId: string) => {
     selectNode(nodeId);
-  };
-
-  const handleFixWithAI = () => {
-    if (issues.length === 0) return;
-
-    const summary = issues
-      .map((i) => `- [${i.severity.toUpperCase()}] ${i.message}${i.suggestion ? ` (Suggestion: ${i.suggestion})` : ''}`)
-      .join('\n');
-
-    const prompt = `I have the following validation issues in my flow. Please suggest fixes:\n\n${summary}`;
-
-    openLlmPanel();
-    sendMessage(prompt);
   };
 
   // Header icon
@@ -232,19 +216,6 @@ export function ValidationPanel() {
           </>
         )}
       </div>
-
-      {/* Fix with AI button */}
-      {issues.length > 0 && (
-        <div className="px-4 py-3 border-t border-border">
-          <button
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-accent/10 hover:bg-accent/20 text-accent text-xs font-medium rounded-lg transition-colors"
-            onClick={handleFixWithAI}
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            Fix with AI
-          </button>
-        </div>
-      )}
     </div>
   );
 }

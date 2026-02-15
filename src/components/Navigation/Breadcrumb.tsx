@@ -1,19 +1,14 @@
 import { useEffect, useMemo } from 'react';
-import { ChevronRight, ArrowLeft, GitBranch, Sparkles, Brain, Play, RefreshCw, Package, Map, BookOpen, FlaskConical, BarChart3, Lock, Unlock } from 'lucide-react';
+import { ChevronRight, ArrowLeft, GitBranch, Play, RefreshCw, Map, Lock, Unlock } from 'lucide-react';
 import { useSheetStore } from '../../stores/sheet-store';
 import { useProjectStore } from '../../stores/project-store';
 import { useAppStore } from '../../stores/app-store';
 import { useGitStore } from '../../stores/git-store';
-import { useLlmStore } from '../../stores/llm-store';
-import { useMemoryStore } from '../../stores/memory-store';
 import { useValidationStore } from '../../stores/validation-store';
 import { useImplementationStore } from '../../stores/implementation-store';
-import { useGeneratorStore } from '../../stores/generator-store';
 import { useUndoStore } from '../../stores/undo-store';
 import { useFlowStore } from '../../stores/flow-store';
 import { useUiStore } from '../../stores/ui-store';
-import { useAgentTestStore } from '../../stores/agent-test-store';
-import { useDashboardStore } from '../../stores/dashboard-store';
 import { ValidationBadge } from '../Validation/ValidationBadge';
 import type { BreadcrumbSegment } from '../../types/sheet';
 
@@ -29,27 +24,15 @@ export function Breadcrumb() {
   const gitUnstaged = useGitStore((s) => s.unstaged);
   const gitUntracked = useGitStore((s) => s.untracked);
   const toggleGitPanel = useGitStore((s) => s.togglePanel);
-  const llmPanelOpen = useLlmStore((s) => s.panelOpen);
-  const toggleLlmPanel = useLlmStore((s) => s.togglePanel);
-  const memoryPanelOpen = useMemoryStore((s) => s.panelOpen);
-  const toggleMemoryPanel = useMemoryStore((s) => s.togglePanel);
   const implPanelOpen = useImplementationStore((s) => s.panelOpen);
   const toggleImplPanel = useImplementationStore((s) => s.togglePanel);
   const reconPanelOpen = useImplementationStore((s) => s.reconPanelOpen);
   const toggleReconPanel = useImplementationStore((s) => s.toggleReconPanel);
   const driftItems = useImplementationStore((s) => s.driftItems);
-  const generatorPanelOpen = useGeneratorStore((s) => s.panelOpen);
-  const toggleGeneratorPanel = useGeneratorStore((s) => s.togglePanel);
-  const apiDocsPanelOpen = useGeneratorStore((s) => s.apiDocsPanelOpen);
-  const toggleApiDocsPanel = useGeneratorStore((s) => s.toggleApiDocsPanel);
   const minimapVisible = useUiStore((s) => s.minimapVisible);
   const toggleMinimap = useUiStore((s) => s.toggleMinimap);
   const isLocked = useUiStore((s) => s.isLocked);
   const toggleLock = useUiStore((s) => s.toggleLock);
-  const agentTestPanelOpen = useAgentTestStore((s) => s.panelOpen);
-  const toggleAgentTestPanel = useAgentTestStore((s) => s.togglePanel);
-  const dashboardPanelOpen = useDashboardStore((s) => s.panelOpen);
-  const toggleDashboardPanel = useDashboardStore((s) => s.togglePanel);
   const totalChanges = gitStaged.length + gitUnstaged.length + gitUntracked.length;
 
   const segments = useMemo(() => {
@@ -113,24 +96,10 @@ export function Breadcrumb() {
         return;
       }
 
-      // Cmd+L toggles LLM panel
-      if (e.key === 'l' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        toggleLlmPanel();
-        return;
-      }
-
       // Cmd+Shift+M toggles Minimap
       if (e.key === 'm' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
         e.preventDefault();
         toggleMinimap();
-        return;
-      }
-
-      // Cmd+M toggles Memory panel
-      if (e.key === 'm' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        toggleMemoryPanel();
         return;
       }
 
@@ -155,34 +124,6 @@ export function Breadcrumb() {
         return;
       }
 
-      // Cmd+T toggles Agent Test panel (at flow level for agent flows)
-      if (e.key === 't' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        toggleAgentTestPanel();
-        return;
-      }
-
-      // Cmd+Shift+D toggles Dashboard panel
-      if (e.key === 'd' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
-        e.preventDefault();
-        toggleDashboardPanel();
-        return;
-      }
-
-      // Cmd+D toggles API Docs panel
-      if (e.key === 'd' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        toggleApiDocsPanel();
-        return;
-      }
-
-      // Cmd+G toggles Generator panel
-      if (e.key === 'g' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        toggleGeneratorPanel();
-        return;
-      }
-
       // Cmd+Shift+L toggles project lock
       if (e.key === 'l' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
         e.preventDefault();
@@ -191,16 +132,9 @@ export function Breadcrumb() {
       }
 
       if (e.key === 'Escape') {
-        // If LLM, Memory, Validation, Implementation, or Reconciliation panel is open, let their handler (capture phase) handle Escape first
-        if (useLlmStore.getState().panelOpen) return;
-        if (useMemoryStore.getState().panelOpen) return;
         if (useValidationStore.getState().panelOpen) return;
         if (useImplementationStore.getState().panelOpen) return;
         if (useImplementationStore.getState().reconPanelOpen) return;
-        if (useGeneratorStore.getState().panelOpen) return;
-        if (useGeneratorStore.getState().apiDocsPanelOpen) return;
-        if (useAgentTestStore.getState().panelOpen) return;
-        if (useDashboardStore.getState().panelOpen) return;
         e.preventDefault();
         if (current.level === 'system') {
           setView('launcher');
@@ -212,7 +146,7 @@ export function Breadcrumb() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [current.level, navigateUp, setView, toggleLlmPanel, toggleMemoryPanel, toggleImplPanel, toggleReconPanel, toggleGeneratorPanel, toggleApiDocsPanel, toggleAgentTestPanel, toggleDashboardPanel, toggleMinimap, toggleLock]);
+  }, [current.level, navigateUp, setView, toggleImplPanel, toggleReconPanel, toggleMinimap, toggleLock]);
 
   return (
     <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-bg-secondary min-h-[44px]">
@@ -253,32 +187,6 @@ export function Breadcrumb() {
 
       <div className="flex-1" />
 
-      <button
-        className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors ${
-          llmPanelOpen
-            ? 'bg-accent/20 text-accent'
-            : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
-        }`}
-        onClick={toggleLlmPanel}
-        title="Toggle AI assistant (Cmd+L)"
-      >
-        <Sparkles className="w-3.5 h-3.5" />
-        <span>AI</span>
-      </button>
-
-      <button
-        className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors ${
-          memoryPanelOpen
-            ? 'bg-accent/20 text-accent'
-            : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
-        }`}
-        onClick={toggleMemoryPanel}
-        title="Toggle project memory (Cmd+M)"
-      >
-        <Brain className="w-3.5 h-3.5" />
-        <span>Memory</span>
-      </button>
-
       <ValidationBadge />
 
       <button
@@ -311,57 +219,6 @@ export function Breadcrumb() {
           </span>
         )}
       </button>
-
-      <button
-        className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors ${
-          generatorPanelOpen
-            ? 'bg-accent/20 text-accent'
-            : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
-        }`}
-        onClick={toggleGeneratorPanel}
-        title="Toggle Generators panel (Cmd+G)"
-      >
-        <Package className="w-3.5 h-3.5" />
-        <span>Generate</span>
-      </button>
-
-      <button
-        className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors ${
-          apiDocsPanelOpen
-            ? 'bg-accent/20 text-accent'
-            : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
-        }`}
-        onClick={toggleApiDocsPanel}
-        title="Toggle API Docs (Cmd+D)"
-      >
-        <BookOpen className="w-3.5 h-3.5" />
-      </button>
-
-      <button
-        className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors ${
-          dashboardPanelOpen
-            ? 'bg-accent/20 text-accent'
-            : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
-        }`}
-        onClick={toggleDashboardPanel}
-        title="Toggle Dashboard (Cmd+Shift+D)"
-      >
-        <BarChart3 className="w-3.5 h-3.5" />
-      </button>
-
-      {current.level === 'flow' && (
-        <button
-          className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors ${
-            agentTestPanelOpen
-              ? 'bg-accent/20 text-accent'
-              : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
-          }`}
-          onClick={toggleAgentTestPanel}
-          title="Toggle Agent Testing (Cmd+T)"
-        >
-          <FlaskConical className="w-3.5 h-3.5" />
-        </button>
-      )}
 
       <button
         className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors ${

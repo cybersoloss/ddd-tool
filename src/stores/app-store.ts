@@ -32,30 +32,6 @@ function recentPath(): string {
 }
 
 export const DEFAULT_SETTINGS: GlobalSettings = {
-  llm: {
-    providers: [
-      {
-        id: 'anthropic',
-        name: 'Anthropic',
-        type: 'anthropic',
-        apiKeyEnvVar: 'ANTHROPIC_API_KEY',
-        models: ['claude-sonnet-4-5-20250929', 'claude-haiku-4-5-20251001'],
-        enabled: true,
-      },
-      {
-        id: 'openai',
-        name: 'OpenAI',
-        type: 'openai',
-        apiKeyEnvVar: 'OPENAI_API_KEY',
-        models: ['gpt-4o', 'gpt-4o-mini'],
-        enabled: false,
-      },
-    ],
-  },
-  models: {
-    taskRouting: {},
-    fallbackChain: [],
-  },
   claudeCode: {
     enabled: true,
     command: 'claude',
@@ -78,7 +54,6 @@ export const DEFAULT_SETTINGS: GlobalSettings = {
     autoSaveInterval: 30,
     theme: 'dark',
     fontSize: 14,
-    ghostPreviewAnimation: true,
   },
   git: {
     autoCommitMessage: 'DDD: {action} in {flow_id}',

@@ -4,7 +4,6 @@ import { useSheetStore } from '../../stores/sheet-store';
 import { useProjectStore } from '../../stores/project-store';
 import { useImplementationStore } from '../../stores/implementation-store';
 import { useUiStore } from '../../stores/ui-store';
-import { useMemoryStore } from '../../stores/memory-store';
 import { buildDomainMapData } from '../../utils/domain-parser';
 import { FlowBlock } from './FlowBlock';
 import { PortalNode } from './PortalNode';
@@ -41,25 +40,15 @@ export function DomainMap() {
   const canvasRef = useRef<HTMLDivElement>(null);
 
   const isLocked = useUiStore((s) => s.isLocked);
-  const implementationStatus = useMemoryStore((s) => s.implementationStatus);
   const driftItems = useImplementationStore((s) => s.driftItems);
 
   const staleFlowKeys = useMemo(() => {
     const keys = new Set<string>();
-    // Check drift items from implementation store
     for (const drift of driftItems) {
       keys.add(drift.flowKey);
     }
-    // Also check memory store's implementation status
-    if (implementationStatus) {
-      for (const [key, status] of Object.entries(implementationStatus.flows)) {
-        if (status.status === 'stale') {
-          keys.add(key);
-        }
-      }
-    }
     return keys;
-  }, [driftItems, implementationStatus]);
+  }, [driftItems]);
 
   const domainConfig = domainId ? domainConfigs[domainId] : null;
 

@@ -24,14 +24,6 @@ export interface NewProjectConfig {
 export type AppView = 'launcher' | 'first-run' | 'project';
 
 export interface GlobalSettings {
-  llm: {
-    providers: ProviderConfig[];
-  };
-  models: {
-    taskRouting: Record<string, string>;
-    fallbackChain: string[];
-    costLimit?: { daily: number; monthly: number };
-  };
   claudeCode: {
     enabled: boolean;
     command: string;
@@ -54,7 +46,6 @@ export interface GlobalSettings {
     autoSaveInterval: number;
     theme: 'light' | 'dark' | 'system';
     fontSize: number;
-    ghostPreviewAnimation: boolean;
   };
   git: {
     autoCommitMessage: string;
@@ -70,16 +61,6 @@ export interface GlobalSettings {
     includeInPrompt: boolean;
     complianceCheck: boolean;
   };
-}
-
-export interface ProviderConfig {
-  id: string;
-  name: string;
-  type: 'anthropic' | 'openai' | 'ollama' | 'openai_compatible';
-  apiKeyEnvVar?: string;
-  baseUrl?: string;
-  models: string[];
-  enabled: boolean;
 }
 
 export interface FlowSnapshot {

@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { X, Zap, FormInput, Cog, GitFork, Square, RotateCw, Shield, Hand, Network, GitBranch, ArrowLeftRight, Box, Sparkles, Check, XCircle, Database, ExternalLink, Repeat, Columns, GitMerge, BrainCircuit, Clock, HardDrive, Shuffle, Filter, FileText, Lock, Layers, ShieldCheck } from 'lucide-react';
+import { X, Zap, FormInput, Cog, GitFork, Square, RotateCw, Shield, Hand, Network, GitBranch, ArrowLeftRight, Box, Database, ExternalLink, Repeat, Columns, GitMerge, BrainCircuit, Clock, HardDrive, Shuffle, Filter, FileText, Lock, Layers, ShieldCheck } from 'lucide-react';
 import { useFlowStore } from '../../stores/flow-store';
-import { useLlmStore } from '../../stores/llm-store';
 import { specEditors } from './editors';
-import { GhostSpecView } from './GhostSpecView';
 import { CrossCuttingEditor } from './editors/CrossCuttingEditor';
 import type { DddNodeType, DddFlowNode, NodeSpec } from '../../types/flow';
 import type { ObservabilityConfig, SecurityConfig } from '../../types/crosscutting';
@@ -50,9 +48,6 @@ export function SpecPanel() {
   const selectNode = useFlowStore((s) => s.selectNode);
   const updateNodeSpec = useFlowStore((s) => s.updateNodeSpec);
   const updateNodeLabel = useFlowStore((s) => s.updateNodeLabel);
-  const ghostPreview = useLlmStore((s) => s.ghostPreview);
-  const applyGhostPreview = useLlmStore((s) => s.applyGhostPreview);
-  const discardGhostPreview = useLlmStore((s) => s.discardGhostPreview);
 
   const node = selectedNodeId ? findNode(currentFlow, selectedNodeId) : null;
 
@@ -113,7 +108,6 @@ export function SpecPanel() {
 
   const { icon: Icon, color } = nodeIcons[node.type];
   const Editor = specEditors[node.type];
-  const hasGhost = ghostPreview && ghostPreview.nodeId === node.id;
 
   return (
     <div className="w-[320px] bg-bg-secondary border-l border-border flex flex-col h-full overflow-hidden">
@@ -156,48 +150,14 @@ export function SpecPanel() {
         </button>
       </div>
 
-      {/* Ghost Preview Banner */}
-      {hasGhost && (
-        <div className="flex items-center gap-2 px-4 py-2 bg-accent/10 border-b border-accent/20">
-          <Sparkles className="w-3.5 h-3.5 text-accent shrink-0" />
-          <span className="text-xs text-accent font-medium flex-1">AI Suggestion</span>
-          <button
-            className="flex items-center gap-1 text-[10px] text-success hover:text-success/80 transition-colors"
-            onClick={applyGhostPreview}
-            title="Apply suggestion"
-          >
-            <Check className="w-3 h-3" />
-            Apply
-          </button>
-          <button
-            className="flex items-center gap-1 text-[10px] text-danger hover:text-danger/80 transition-colors"
-            onClick={discardGhostPreview}
-            title="Discard suggestion"
-          >
-            <XCircle className="w-3 h-3" />
-            Discard
-          </button>
-        </div>
-      )}
-
       {/* Body */}
       <div className="flex-1 overflow-y-auto px-4 py-3">
-        {hasGhost ? (
-          <GhostSpecView
-            originalSpec={ghostPreview.originalSpec}
-            suggestedSpec={ghostPreview.suggestedSpec}
-            nodeType={node.type}
-          />
-        ) : (
-          <>
-            <Editor spec={node.spec} onChange={handleSpecChange} />
-            <CrossCuttingEditor
-              observability={node.observability}
-              security={node.security}
-              onChange={handleCrossCuttingChange}
-            />
-          </>
-        )}
+        <Editor spec={node.spec} onChange={handleSpecChange} />
+        <CrossCuttingEditor
+          observability={node.observability}
+          security={node.security}
+          onChange={handleCrossCuttingChange}
+        />
       </div>
 
       {/* Footer */}

@@ -23,14 +23,11 @@
 - **Session 6:** YAML Save/Load + Git — Git panel (status, staging, unstaging, commit, history), breadcrumb git toggle with change badge, 10s polling
 - **Session 7:** Agent Nodes + Agent Canvas — 3 agent node types (AgentLoop, Guardrail, HumanGate), spec editors, agent-specific toolbar, flow type distinction (traditional vs agent)
 - **Session 8:** Orchestration Nodes — 4 orchestration nodes (Orchestrator, SmartRouter, Handoff, AgentGroup), dynamic source handles on SmartRouter, orchestration validation rules
-- **Session 9:** LLM Design Assistant — ChatPanel with thread scoping, inline assist via right-click context menu, ghost preview with Apply/Discard, Rust llm_chat backend with 4 providers (Anthropic, OpenAI, Ollama, OpenAI-compatible)
-- **Session 10:** Project Memory — 5 memory layers (summary, spec index, decisions, flow map, implementation status), LLM-powered summary generation, decision CRUD, persistence to .ddd/memory/
-- **Session 11:** Design Validation — 20+ validation rules across flow/domain/system scopes, real-time node indicators (NodeValidationDot), ValidationPanel with scope tabs, implementation gate (checkImplementGate), "Fix with AI" integration
+- **Session 11:** Design Validation — 20+ validation rules across flow/domain/system scopes, real-time node indicators (NodeValidationDot), ValidationPanel with scope tabs, implementation gate (checkImplementGate)
 - **Session 12:** Claude Code Integration — ImplementationPanel with 5 states (idle/prompt_ready/running/done/failed), prompt builder, terminal streaming, auto-record with spec hash to .ddd/mapping.yaml, validation gate, ClaudeCode/Testing settings UI
 - **Session 13:** Test Runner + Test Generation — runTests action, parseTestOutput with error extraction, TestResults UI with expandable cases, fixFailingTest prompt, auto-run after implementation, file tracking in FlowMapping
 - **Session 14:** Reconciliation + Drift Detection — drift detection via hash comparison, stale banners on FlowBlock (L2) and FlowCanvas (L3), ReconciliationPanel with SyncScoreBar and DriftItem, accept/re-implement/ignore actions, reconciliation reports to .ddd/reconciliations/
-- **Session 15:** Production Generators — 5 generators (OpenAPI, Dockerfile, docker-compose, Kubernetes, CI/CD), generator-store, GeneratorPanel with preview/save workflow, Cmd+G shortcut, output to generated/
-- **Session 16:** First-Run, Settings, Polish — FirstRunWizard (3-step LLM/Claude Code/start), undo/redo store with Cmd+Z/Cmd+Shift+Z, auto-save to .ddd/autosave/, crash recovery dialog, ModelSettings task routing, GitSettings commit/branch templates, error toast recovery actions, recent projects pruning, auto-dismiss fix
+- **Session 16:** First-Run, Settings, Polish — FirstRunWizard (2-step Claude Code/start), undo/redo store with Cmd+Z/Cmd+Shift+Z, auto-save to .ddd/autosave/, crash recovery dialog, GitSettings commit/branch templates, error toast recovery actions, recent projects pruning, auto-dismiss fix
 - **Session 17:** Extended Nodes + Enhancements — 6 new node types (data_store, service_call, event, loop, parallel, sub_flow) with spec editors and validation, validation presets for InputNode, Mermaid diagram generator, flow templates (REST API, CRUD, Webhook, Event Processor), minimap toggle (Cmd+Shift+M), ui-store
 
 ### Session Plan
@@ -45,21 +42,18 @@
 | 6 | **YAML Save/Load + Git** | Save flow writes YAML to specs/, load project reads specs, Git panel shows status | Done |
 | 7 | **Agent Nodes + Agent Canvas** | Create agent flow, agent loop layout with tools, guardrails, human gate, memory blocks | Done |
 | 8 | **Orchestration Nodes** | Orchestrator, smart router, handoff, agent group nodes with L2 orchestration visuals | Done |
-| 9 | **LLM Design Assistant** | Chat panel, inline assist (right-click), ghost preview with Apply/Discard | Done |
-| 10 | **Project Memory** | Memory panel shows project summary, implementation status, design decisions, flow map | Done |
 | 11 | **Design Validation** | Real-time node indicators (green/amber/red), validation panel, cross-domain wiring checks | Done |
 | 12 | **Claude Code Integration** | Implementation panel with embedded terminal, prompt builder, Implement button with validation gate | Done |
 | 13 | **Test Runner + Test Generation** | Auto-run tests after implementation, derive test cases from flow graph, spec compliance check | Done |
 | 14 | **Reconciliation + Drift Detection** | Stale banners, sync scores, reconciliation report with accept/remove/ignore | Done |
-| 15 | **Production Generators** | Generate OpenAPI, CI/CD pipeline, Dockerfile, docker-compose, K8s manifests from specs | Done |
 | 16 | **First-Run, Settings, Polish** | First-run wizard, settings persistence, error toasts, undo/redo, final bug fixes | Done |
 | 17 | **Extended Nodes + Enhancements** | 6 new node types (data_store, service_call, event, loop, parallel, sub_flow), validation presets, Mermaid export, minimap toggle, flow templates | Done |
 
 **Milestone A (Sessions 1-6):** Working flow editor that saves real YAML ✅
 **Milestone B (Sessions 7-8):** Agent and orchestration support ✅
-**Milestone C (Sessions 9-11):** AI brain and quality gates ✅
+**Milestone C (Session 11):** Validation and quality gates ✅
 **Milestone D (Sessions 12-14):** Implementation, testing, reconciliation ✅
-**Milestone E (Sessions 15-17):** Production generators, polish, extended nodes ✅
+**Milestone E (Sessions 16-17):** Polish and extended nodes ✅
 
 ### Future Sessions
 | # | Session | What You'll See When Done |
@@ -72,21 +66,18 @@
 | sheet | src/stores/sheet-store.ts | navigation, breadcrumbs, current level |
 | flow | src/stores/flow-store.ts | current flow nodes/connections |
 | project | src/stores/project-store.ts | domains, schemas, configs |
-| ui | src/stores/ui-store.ts | minimap visibility |
+| ui | src/stores/ui-store.ts | minimap visibility, lock state |
 | git | src/stores/git-store.ts | git state |
-| llm | src/stores/llm-store.ts | chat, ghost nodes, LLM config |
-| memory | src/stores/memory-store.ts | project memory layers |
 | implementation | src/stores/implementation-store.ts | PTY, queue, test results, drift detection, reconciliation |
 | app | src/stores/app-store.ts | app view, recent projects, settings |
 | undo | src/stores/undo-store.ts | per-flow undo/redo stacks |
 | validation | src/stores/validation-store.ts | validation results, gate state |
-| generator | src/stores/generator-store.ts | generator panel, generated files, save state |
 
 ## Conventions
 - All Tauri commands in `src-tauri/src/commands/`
 - All types in `src/types/`
 - All utilities in `src/utils/`
-- Component folders match feature area (Canvas/, SpecPanel/, LLMAssistant/, etc.)
+- Component folders match feature area (Canvas/, SpecPanel/, FlowCanvas/, etc.)
 - Spec is source of truth — read from ~/code/DDD/ when needed
 
 ## Lessons Learned

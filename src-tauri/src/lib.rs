@@ -23,8 +23,6 @@ pub fn run() {
             commands::git::git_stage_file,
             commands::git::git_unstage_file,
             commands::git::git_clone,
-            commands::llm::llm_chat,
-            commands::llm::get_env_var,
             commands::implementation::compute_file_hash,
             commands::implementation::run_command,
         ])

@@ -1,4 +1,22 @@
-import type { GeneratorInput, GeneratedFile, GeneratorFunction } from '../../types/generator';
+export interface MermaidInput {
+  domains: Array<{
+    id: string;
+    flows: Array<{
+      flowId: string;
+      flowName: string;
+      triggerEvent?: string;
+      inputs: Array<{ name: string }>;
+      processes: Array<{ action?: string; service?: string }>;
+      terminals: Array<{ outcome?: string }>;
+    }>;
+  }>;
+}
+
+export interface MermaidFile {
+  relativePath: string;
+  content: string;
+  language: string;
+}
 
 function sanitizeId(id: string): string {
   return id.replace(/[^a-zA-Z0-9_]/g, '_');
@@ -8,13 +26,11 @@ function escapeLabel(label: string): string {
   return label.replace(/"/g, '#quot;');
 }
 
-export const generateMermaid: GeneratorFunction = (input: GeneratorInput): GeneratedFile[] => {
-  const files: GeneratedFile[] = [];
+export function generateMermaid(input: MermaidInput): MermaidFile[] {
+  const files: MermaidFile[] = [];
 
   for (const domain of input.domains) {
     for (const flow of domain.flows) {
-      // We generate a simple flowchart from the flow endpoint data
-      // Since GeneratorInput only has summary data, we create a high-level diagram
       const lines: string[] = ['flowchart TD'];
 
       const triggerId = sanitizeId(`${flow.flowId}_trigger`);
@@ -56,4 +72,4 @@ export const generateMermaid: GeneratorFunction = (input: GeneratorInput): Gener
   }
 
   return files;
-};
+}

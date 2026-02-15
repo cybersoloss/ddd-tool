@@ -4,27 +4,16 @@ import { useAppStore } from './stores/app-store';
 import { useProjectStore } from './stores/project-store';
 import { useSheetStore } from './stores/sheet-store';
 import { useGitStore } from './stores/git-store';
-import { useLlmStore } from './stores/llm-store';
-import { useMemoryStore } from './stores/memory-store';
 import { useImplementationStore } from './stores/implementation-store';
-import { useGeneratorStore } from './stores/generator-store';
 import { Breadcrumb } from './components/Navigation/Breadcrumb';
 import { SheetTabs } from './components/Navigation/SheetTabs';
 import { SystemMap } from './components/SystemMap/SystemMap';
 import { DomainMap } from './components/DomainMap/DomainMap';
 import { FlowCanvas } from './components/FlowCanvas/FlowCanvas';
 import { GitPanel } from './components/GitPanel/GitPanel';
-import { ChatPanel } from './components/LLMAssistant/ChatPanel';
-import { MemoryPanel } from './components/MemoryPanel/MemoryPanel';
 import { ImplementationPanel } from './components/ImplementationPanel/ImplementationPanel';
 import { ReconciliationPanel } from './components/ReconciliationPanel/ReconciliationPanel';
-import { GeneratorPanel } from './components/GeneratorPanel/GeneratorPanel';
-import { ApiDocsPanel } from './components/ApiDocs/ApiDocsPanel';
 import { CrashRecoveryDialog } from './components/shared/CrashRecoveryDialog';
-import { AgentTestPanel } from './components/AgentTesting/AgentTestPanel';
-import { DashboardPanel } from './components/OrchestrationDashboard/DashboardPanel';
-import { useAgentTestStore } from './stores/agent-test-store';
-import { useDashboardStore } from './stores/dashboard-store';
 
 export function AppShell() {
   const currentProjectPath = useAppStore((s) => s.currentProjectPath);
@@ -34,14 +23,8 @@ export function AppShell() {
   const loaded = useProjectStore((s) => s.loaded);
   const level = useSheetStore((s) => s.current.level);
   const panelOpen = useGitStore((s) => s.panelOpen);
-  const llmPanelOpen = useLlmStore((s) => s.panelOpen);
-  const memoryPanelOpen = useMemoryStore((s) => s.panelOpen);
   const implPanelOpen = useImplementationStore((s) => s.panelOpen);
   const reconPanelOpen = useImplementationStore((s) => s.reconPanelOpen);
-  const generatorPanelOpen = useGeneratorStore((s) => s.panelOpen);
-  const apiDocsPanelOpen = useGeneratorStore((s) => s.apiDocsPanelOpen);
-  const agentTestPanelOpen = useAgentTestStore((s) => s.panelOpen);
-  const dashboardPanelOpen = useDashboardStore((s) => s.panelOpen);
   const loadedPathRef = useRef<string | null>(null);
 
   const [recoveryFiles, setRecoveryFiles] = useState<string[]>([]);
@@ -56,7 +39,6 @@ export function AppShell() {
     useSheetStore.getState().reset();
     useProjectStore.getState().loadProject(currentProjectPath).then(async () => {
       useGitStore.getState().refresh();
-      useMemoryStore.getState().loadMemory();
       useImplementationStore.getState().loadMappings();
 
       // Check for crash recovery autosave files
@@ -80,9 +62,7 @@ export function AppShell() {
       loadedPathRef.current = null;
       useProjectStore.getState().reset();
       useGitStore.getState().reset();
-      useMemoryStore.getState().reset();
       useImplementationStore.getState().reset();
-      useGeneratorStore.getState().reset();
     };
   }, [currentProjectPath, pushError]);
 
@@ -123,14 +103,8 @@ export function AppShell() {
           {level === 'domain' && <DomainMap />}
           {level === 'flow' && <FlowCanvas />}
         </div>
-        {llmPanelOpen && <ChatPanel />}
-        {memoryPanelOpen && <MemoryPanel />}
         {implPanelOpen && <ImplementationPanel />}
         {reconPanelOpen && <ReconciliationPanel />}
-        {generatorPanelOpen && <GeneratorPanel />}
-        {apiDocsPanelOpen && <ApiDocsPanel />}
-        {agentTestPanelOpen && <AgentTestPanel />}
-        {dashboardPanelOpen && <DashboardPanel />}
         {panelOpen && <GitPanel />}
       </div>
 

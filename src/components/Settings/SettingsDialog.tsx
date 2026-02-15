@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
-import { X, Bot, Monitor, Cpu, Terminal, TestTube, GitBranch } from 'lucide-react';
+import { X, Monitor, Terminal, TestTube, GitBranch } from 'lucide-react';
 import { useAppStore } from '../../stores/app-store';
-import { LLMSettings } from './LLMSettings';
 import { EditorSettings } from './EditorSettings';
-import { ModelSettings } from './ModelSettings';
 import { ClaudeCodeSettings } from './ClaudeCodeSettings';
 import { TestingSettings } from './TestingSettings';
 import { GitSettings } from './GitSettings';
@@ -13,8 +11,6 @@ interface Props {
 }
 
 const TABS = [
-  { id: 'llm', label: 'LLM Providers', icon: Bot },
-  { id: 'models', label: 'Models', icon: Cpu },
   { id: 'editor', label: 'Editor', icon: Monitor },
   { id: 'claude-code', label: 'Claude Code', icon: Terminal },
   { id: 'testing', label: 'Testing', icon: TestTube },
@@ -24,8 +20,6 @@ const TABS = [
 type TabId = (typeof TABS)[number]['id'];
 
 const TAB_CONTENT: Record<TabId, React.FC> = {
-  llm: LLMSettings,
-  models: ModelSettings,
   editor: EditorSettings,
   'claude-code': ClaudeCodeSettings,
   testing: TestingSettings,
@@ -33,7 +27,7 @@ const TAB_CONTENT: Record<TabId, React.FC> = {
 };
 
 export function SettingsDialog({ onClose }: Props) {
-  const [activeTab, setActiveTab] = useState<TabId>('llm');
+  const [activeTab, setActiveTab] = useState<TabId>('editor');
   const [scope, setScope] = useState<'global' | 'project'>('global');
   const currentProjectPath = useAppStore((s) => s.currentProjectPath);
   const loadProjectSettings = useAppStore((s) => s.loadProjectSettings);

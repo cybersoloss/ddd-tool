@@ -30,7 +30,6 @@ import { nodeTypes } from './nodes';
 import { CircuitBreakerEdge } from './edges/CircuitBreakerEdge';
 import { NodeToolbar } from './NodeToolbar';
 import { SpecPanel } from '../SpecPanel/SpecPanel';
-import { NodeContextMenu } from './NodeContextMenu';
 import { ValidationPanel } from '../Validation/ValidationPanel';
 import { StaleBanner } from './StaleBanner';
 import type { DddNodeData, DddNodeType, SmartRouterSpec } from '../../types/flow';
@@ -145,7 +144,6 @@ function FlowCanvasInner() {
   const { screenToFlowPosition } = useReactFlow();
   const loadedRef = useRef<string | null>(null);
   const [pendingNodeType, setPendingNodeType] = useState<DddNodeType | null>(null);
-  const [contextMenu, setContextMenu] = useState<{ nodeId: string | null; x: number; y: number } | null>(null);
 
   // React Flow controlled nodes/edges state
   const [rfNodes, setRfNodes] = useState<Node<DddNodeData>[]>([]);
@@ -290,20 +288,9 @@ function FlowCanvasInner() {
     [pendingNodeType, screenToFlowPosition, addNode, selectNode]
   );
 
-  // Context menu handlers
-  const onNodeContextMenu = useCallback(
-    (event: React.MouseEvent, node: Node<DddNodeData>) => {
-      event.preventDefault();
-      selectNode(node.id);
-      setContextMenu({ nodeId: node.id, x: event.clientX, y: event.clientY });
-    },
-    [selectNode]
-  );
-
   const onPaneContextMenu = useCallback(
     (event: MouseEvent | React.MouseEvent) => {
       event.preventDefault();
-      setContextMenu({ nodeId: null, x: event.clientX, y: event.clientY });
     },
     []
   );
@@ -344,7 +331,6 @@ function FlowCanvasInner() {
           onEdgesDelete={onEdgesDelete}
           onConnect={onConnect}
           onPaneClick={onPaneClick}
-          onNodeContextMenu={onNodeContextMenu}
           onPaneContextMenu={onPaneContextMenu}
           nodesDraggable={!isLocked}
           nodesConnectable={!isLocked}
@@ -367,14 +353,6 @@ function FlowCanvasInner() {
             />
           )}
         </ReactFlow>
-        {contextMenu && (
-          <NodeContextMenu
-            x={contextMenu.x}
-            y={contextMenu.y}
-            nodeId={contextMenu.nodeId}
-            onClose={() => setContextMenu(null)}
-          />
-        )}
       </div>
       {selectedNodeId && <SpecPanel />}
       {validationPanelOpen && <ValidationPanel />}
