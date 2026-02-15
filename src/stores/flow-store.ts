@@ -396,11 +396,16 @@ function normalizeFlowDocument(raw: Record<string, unknown>, domainId: string, f
   const normalizeNode = (n: any): DddFlowNode => {
     // Normalize connections: target / targetId → targetNodeId
     const rawConns: Array<Record<string, unknown>> = n.connections ?? [];
-    const connections = rawConns.map((c: Record<string, unknown>) => ({
-      targetNodeId: (c.targetNodeId ?? c.target ?? c.targetId ?? '') as string,
-      sourceHandle: c.sourceHandle as string | undefined,
-      targetHandle: c.targetHandle as string | undefined,
-    }));
+    const connections = rawConns.map((c: Record<string, unknown>) => {
+      // Normalize "default" handle to undefined (React Flow's unnamed handle)
+      const sh = c.sourceHandle as string | undefined;
+      const th = c.targetHandle as string | undefined;
+      return {
+        targetNodeId: (c.targetNodeId ?? c.target ?? c.targetId ?? '') as string,
+        sourceHandle: sh === 'default' ? undefined : sh,
+        targetHandle: th === 'default' ? undefined : th,
+      };
+    });
 
     // Normalize spec: pull from `spec:`, `properties:`, `config:`, or inlined fields
     let spec = n.spec ?? n.properties ?? n.config ?? {};
