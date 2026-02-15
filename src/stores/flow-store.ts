@@ -433,9 +433,10 @@ function normalizeFlowDocument(raw: Record<string, unknown>, domainId: string, f
       );
     }
 
-    // Normalize data_store: entity → model (ddd-create may use either name)
-    if (n.type === 'data_store' && spec.entity && !spec.model) {
-      spec.model = spec.entity;
+    // Normalize data_store: entity/schema → model (ddd-create may use any name)
+    if (n.type === 'data_store' && !spec.model) {
+      if (spec.entity) spec.model = spec.entity;
+      else if (spec.schema) spec.model = spec.schema;
     }
 
     // Normalize event: infer direction from label if missing
