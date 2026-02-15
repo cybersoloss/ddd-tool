@@ -7,6 +7,7 @@ import type { Position } from '../types/sheet';
 import type { FlowDocument } from '../types/flow';
 import { generateAutoLayout, generateFlowAutoLayout } from '../utils/domain-parser';
 import { FLOW_TEMPLATES } from '../utils/flow-templates';
+import { markWriting } from './write-guard';
 
 interface ProjectState {
   projectPath: string | null;
@@ -173,6 +174,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set({ domainConfigs: updatedConfigs, systemLayout: updatedLayout });
 
     // Write domain.yaml
+    markWriting();
     await invoke('write_file', {
       path: `${projectPath}/specs/domains/${domainId}/domain.yaml`,
       contents: stringify(newDomain),
@@ -231,6 +233,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set({ domainConfigs: updatedConfigs });
 
     // Write updated domain.yaml
+    markWriting();
     await invoke('write_file', {
       path: `${projectPath}/specs/domains/${domainId}/domain.yaml`,
       contents: stringify(updatedDomain),
@@ -292,6 +295,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       }
     }
 
+    markWriting();
     await invoke('write_file', {
       path: `${projectPath}/specs/domains/${domainId}/flows/${flowId}.yaml`,
       contents: stringify(flowDoc),
@@ -323,6 +327,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set({ domainConfigs: updatedConfigs });
 
     // Write updated domain.yaml
+    markWriting();
     await invoke('write_file', {
       path: `${projectPath}/specs/domains/${domainId}/domain.yaml`,
       contents: stringify(updatedDomain),
@@ -341,6 +346,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   deleteDomain: async (domainId) => {
     const { projectPath, domainConfigs, systemLayout } = get();
     if (!projectPath) throw new Error('No project loaded');
+    markWriting();
 
     // Remove from domainConfigs
     const { [domainId]: _, ...remainingConfigs } = domainConfigs;
@@ -391,6 +397,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   renameDomain: async (domainId, newName) => {
     const { projectPath, domainConfigs } = get();
     if (!projectPath) throw new Error('No project loaded');
+    markWriting();
 
     const domain = domainConfigs[domainId];
     if (!domain) throw new Error(`Domain ${domainId} not found`);
@@ -430,6 +437,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   renameFlow: async (domainId, flowId, newName) => {
     const { projectPath, domainConfigs } = get();
     if (!projectPath) throw new Error('No project loaded');
+    markWriting();
 
     const domain = domainConfigs[domainId];
     if (!domain) throw new Error(`Domain ${domainId} not found`);
@@ -482,6 +490,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const projectPath = get().projectPath;
       if (!projectPath) return;
       try {
+        markWriting();
         await invoke('write_file', {
           path: `${projectPath}/specs/system-layout.yaml`,
           contents: stringify(get().systemLayout),
@@ -515,6 +524,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const projectPath = get().projectPath;
       if (!projectPath) return;
       try {
+        markWriting();
         await invoke('write_file', {
           path: `${projectPath}/specs/domains/${domainId}/domain.yaml`,
           contents: stringify(get().domainConfigs[domainId]),
@@ -548,6 +558,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const projectPath = get().projectPath;
       if (!projectPath) return;
       try {
+        markWriting();
         await invoke('write_file', {
           path: `${projectPath}/specs/domains/${domainId}/domain.yaml`,
           contents: stringify(get().domainConfigs[domainId]),
@@ -571,6 +582,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     };
     set({ domainConfigs: { ...domainConfigs, [domainId]: updatedDomain } });
 
+    markWriting();
     await invoke('write_file', {
       path: `${projectPath}/specs/domains/${domainId}/domain.yaml`,
       contents: stringify(updatedDomain),
@@ -589,6 +601,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const updatedDomain: DomainConfig = { ...domain, [key]: updatedList };
     set({ domainConfigs: { ...domainConfigs, [domainId]: updatedDomain } });
 
+    markWriting();
     await invoke('write_file', {
       path: `${projectPath}/specs/domains/${domainId}/domain.yaml`,
       contents: stringify(updatedDomain),
@@ -608,6 +621,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     };
     set({ domainConfigs: { ...domainConfigs, [domainId]: updatedDomain } });
 
+    markWriting();
     await invoke('write_file', {
       path: `${projectPath}/specs/domains/${domainId}/domain.yaml`,
       contents: stringify(updatedDomain),
@@ -642,6 +656,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     saveLayoutTimer = setTimeout(async () => {
       if (!projectPath) return;
       try {
+        markWriting();
         await invoke('write_file', {
           path: `${projectPath}/specs/system-layout.yaml`,
           contents: stringify(get().systemLayout),
@@ -689,6 +704,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     domainSaveTimers[domainId] = setTimeout(async () => {
       if (!projectPath) return;
       try {
+        markWriting();
         await invoke('write_file', {
           path: `${projectPath}/specs/domains/${domainId}/domain.yaml`,
           contents: stringify(get().domainConfigs[domainId]),

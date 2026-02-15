@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { useAppStore } from './stores/app-store';
 import { useProjectStore } from './stores/project-store';
+import { useFlowStore } from './stores/flow-store';
 import { useSheetStore } from './stores/sheet-store';
 import { useGitStore } from './stores/git-store';
 import { useImplementationStore } from './stores/implementation-store';
+import { useUiStore } from './stores/ui-store';
+import { isOwnWrite } from './stores/write-guard';
 import { Breadcrumb } from './components/Navigation/Breadcrumb';
 import { SheetTabs } from './components/Navigation/SheetTabs';
 import { SystemMap } from './components/SystemMap/SystemMap';
@@ -12,6 +16,39 @@ import { DomainMap } from './components/DomainMap/DomainMap';
 import { FlowCanvas } from './components/FlowCanvas/FlowCanvas';
 import { GitPanel } from './components/GitPanel/GitPanel';
 import { CrashRecoveryDialog } from './components/shared/CrashRecoveryDialog';
+import { SearchPalette } from './components/shared/SearchPalette';
+
+async function handleExternalChanges(changedPaths: string[], projectPath: string) {
+  const changedFlowYamls = changedPaths.filter(
+    (p) => p.includes('/flows/') && (p.endsWith('.yaml') || p.endsWith('.yml')),
+  );
+  const hasDomainOrProjectChange = changedPaths.some(
+    (p) => p.endsWith('domain.yaml') || p.endsWith('ddd-project.json') || p.endsWith('system-layout.yaml'),
+  );
+
+  if (hasDomainOrProjectChange) {
+    await useProjectStore.getState().reloadProject();
+    useUiStore.getState().flashSync();
+  }
+
+  if (changedFlowYamls.length > 0) {
+    const currentFlow = useFlowStore.getState().currentFlow;
+    if (currentFlow?.flow) {
+      const currentFlowPath = `${projectPath}/specs/domains/${currentFlow.flow.domain}/flows/${currentFlow.flow.id}.yaml`;
+      if (changedFlowYamls.some((p) => p === currentFlowPath)) {
+        const { current } = useSheetStore.getState();
+        if (current.domainId && current.flowId) {
+          await useFlowStore.getState().loadFlow(
+            current.domainId,
+            current.flowId,
+            projectPath,
+          );
+          useUiStore.getState().flashSync();
+        }
+      }
+    }
+  }
+}
 
 export function AppShell() {
   const currentProjectPath = useAppStore((s) => s.currentProjectPath);
@@ -21,6 +58,7 @@ export function AppShell() {
   const loaded = useProjectStore((s) => s.loaded);
   const level = useSheetStore((s) => s.current.level);
   const panelOpen = useGitStore((s) => s.panelOpen);
+  const searchOpen = useUiStore((s) => s.searchOpen);
   const loadedPathRef = useRef<string | null>(null);
 
   const [recoveryFiles, setRecoveryFiles] = useState<string[]>([]);
@@ -61,6 +99,31 @@ export function AppShell() {
       useImplementationStore.getState().reset();
     };
   }, [currentProjectPath, pushError]);
+
+  // File watcher for live spec reload
+  useEffect(() => {
+    if (!currentProjectPath || !loaded) return;
+
+    // Start watching specs directory
+    invoke('watch_directory', { path: `${currentProjectPath}/specs` }).catch(() => {
+      // Silent — watcher may not be available
+    });
+
+    let debounceTimer: ReturnType<typeof setTimeout>;
+    const unlistenPromise = listen<string[]>('spec-files-changed', (event) => {
+      if (isOwnWrite()) return;
+
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        handleExternalChanges(event.payload, currentProjectPath);
+      }, 1000);
+    });
+
+    return () => {
+      unlistenPromise.then((fn) => fn());
+      clearTimeout(debounceTimer);
+    };
+  }, [currentProjectPath, loaded]);
 
   if (loading) {
     return (
@@ -112,6 +175,8 @@ export function AppShell() {
           }}
         />
       )}
+
+      {searchOpen && <SearchPalette />}
     </div>
   );
 }

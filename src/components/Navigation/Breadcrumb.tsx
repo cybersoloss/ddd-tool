@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { ChevronRight, ArrowLeft, GitBranch, Map, Lock, Unlock } from 'lucide-react';
+import { ChevronRight, ArrowLeft, GitBranch, Map, Lock, Unlock, Search } from 'lucide-react';
 import { useSheetStore } from '../../stores/sheet-store';
 import { useProjectStore } from '../../stores/project-store';
 import { useAppStore } from '../../stores/app-store';
@@ -27,6 +27,7 @@ export function Breadcrumb() {
   const toggleMinimap = useUiStore((s) => s.toggleMinimap);
   const isLocked = useUiStore((s) => s.isLocked);
   const toggleLock = useUiStore((s) => s.toggleLock);
+  const syncFlash = useUiStore((s) => s.syncFlash);
   const totalChanges = gitStaged.length + gitUnstaged.length + gitUntracked.length;
 
   const segments = useMemo(() => {
@@ -104,6 +105,13 @@ export function Breadcrumb() {
         return;
       }
 
+      // Cmd+K opens search palette
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        useUiStore.getState().openSearch();
+        return;
+      }
+
       // Cmd+Shift+L toggles project lock
       if (e.key === 'l' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
         e.preventDefault();
@@ -164,6 +172,25 @@ export function Breadcrumb() {
       </nav>
 
       <div className="flex-1" />
+
+      {syncFlash && (
+        <span className="flex items-center gap-1 text-xs text-green-400 animate-pulse">
+          <span className="w-2 h-2 rounded-full bg-green-400" />
+          Synced
+        </span>
+      )}
+
+      <button
+        className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors"
+        onClick={() => useUiStore.getState().openSearch()}
+        title="Search (Cmd+K)"
+      >
+        <Search className="w-3.5 h-3.5" />
+        <span className="hidden sm:inline">Search</span>
+        <kbd className="text-[10px] text-text-muted bg-bg-secondary border border-border rounded px-1 py-0.5 ml-1">
+          ⌘K
+        </kbd>
+      </button>
 
       <ValidationBadge />
 

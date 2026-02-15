@@ -25,6 +25,7 @@ pub fn run() {
             commands::git::git_clone,
             commands::implementation::compute_file_hash,
             commands::implementation::run_command,
+            commands::file::watch_directory,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 import { stringify, parse } from 'yaml';
 import { nanoid } from 'nanoid';
+import { markWriting } from './write-guard';
 import type {
   FlowDocument,
   DddFlowNode,
@@ -572,6 +573,7 @@ function debouncedSave(state: FlowState) {
     };
 
     try {
+      markWriting();
       await invoke('write_file', {
         path: getFlowPath(projectPath, domainId, currentFlow.flow?.id ?? ''),
         contents: stringify(updated),
@@ -596,6 +598,7 @@ function startAutoSave(_projectPath: string, flowId: string) {
     const state = useFlowStore.getState();
     if (!state.currentFlow || !state.projectPath) return;
     try {
+      markWriting();
       await invoke('write_file', {
         path: getAutoSavePath(state.projectPath, flowId),
         contents: stringify(state.currentFlow),
@@ -643,6 +646,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       } else {
         // Create default flow document
         const doc = createDefaultFlow(domainId, flowId, flowId, flowType);
+        markWriting();
         await invoke('write_file', {
           path: flowPath,
           contents: stringify(doc),

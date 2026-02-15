@@ -3,6 +3,9 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::Path;
 
+use notify::{Watcher, RecursiveMode, EventKind};
+use tauri::Emitter;
+
 #[tauri::command]
 pub fn read_file(path: String) -> Result<String, String> {
     fs::read_to_string(&path).map_err(|e| format!("Failed to read file {}: {}", path, e))
@@ -102,4 +105,53 @@ pub fn list_directory(path: String) -> Vec<String> {
             .collect(),
         Err(_) => Vec::new(),
     }
+}
+
+#[tauri::command]
+pub fn watch_directory(window: tauri::Window, path: String) -> Result<(), String> {
+    let watch_path = path.clone();
+    std::thread::spawn(move || {
+        let (tx, rx) = std::sync::mpsc::channel();
+        let mut watcher = match notify::recommended_watcher(tx) {
+            Ok(w) => w,
+            Err(e) => {
+                eprintln!("Failed to create watcher: {}", e);
+                return;
+            }
+        };
+        if let Err(e) = watcher.watch(Path::new(&watch_path), RecursiveMode::Recursive) {
+            eprintln!("Failed to watch {}: {}", watch_path, e);
+            return;
+        }
+
+        loop {
+            match rx.recv() {
+                Ok(Ok(event)) => {
+                    if matches!(
+                        event.kind,
+                        EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_)
+                    ) {
+                        let paths: Vec<String> = event
+                            .paths
+                            .iter()
+                            .filter_map(|p| p.to_str().map(String::from))
+                            .filter(|p| {
+                                p.ends_with(".yaml")
+                                    || p.ends_with(".yml")
+                                    || p.ends_with(".json")
+                            })
+                            .collect();
+                        if !paths.is_empty() {
+                            let _ = window.emit("spec-files-changed", &paths);
+                        }
+                    }
+                }
+                Ok(Err(e)) => {
+                    eprintln!("Watch error: {}", e);
+                }
+                Err(_) => break,
+            }
+        }
+    });
+    Ok(())
 }
