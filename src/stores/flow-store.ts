@@ -413,17 +413,18 @@ function normalizeFlowDocument(raw: Record<string, unknown>, domainId: string, f
     let spec = n.spec ?? n.properties ?? n.config ?? {};
     if (typeof spec !== 'object' || spec === null) spec = {};
 
-    // If no explicit spec/properties/config, collect inlined spec-like fields
+    // Collect inlined spec-like fields (anything not structural)
     const STRUCTURAL_KEYS = new Set([
-      'id', 'type', 'label', 'position', 'connections', 'parentId',
+      'id', 'type', 'label', 'name', 'position', 'connections', 'parentId',
       'spec', 'properties', 'config', 'observability', 'security',
     ]);
-    if (!n.spec && !n.properties && !n.config) {
-      const inlined: Record<string, unknown> = {};
-      for (const [k, v] of Object.entries(n)) {
-        if (!STRUCTURAL_KEYS.has(k)) inlined[k] = v;
-      }
-      if (Object.keys(inlined).length > 0) spec = { ...spec, ...inlined };
+    const inlined: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(n)) {
+      if (!STRUCTURAL_KEYS.has(k)) inlined[k] = v;
+    }
+    // Merge: inlined fields are overridden by explicit spec/config/properties
+    if (Object.keys(inlined).length > 0) {
+      spec = { ...inlined, ...spec };
     }
 
     // Normalize smart_router: routes[].id → rules[].route
@@ -439,14 +440,34 @@ function normalizeFlowDocument(raw: Record<string, unknown>, domainId: string, f
       else if (spec.schema) spec.model = spec.schema;
     }
 
-    // Normalize event: infer direction from label if missing
-    if (n.type === 'event' && !spec.direction) {
-      const label = (n.label ?? n.name ?? '') as string;
-      if (/^emit\b/i.test(label)) {
-        spec.direction = 'emit';
-      } else if (/^(consume|handle|listen|receive)\b/i.test(label)) {
-        spec.direction = 'consume';
+    // Normalize event: event_type → event_name, infer direction from label if missing
+    if (n.type === 'event') {
+      if (!spec.event_name && spec.event_type) {
+        spec.event_name = spec.event_type;
       }
+      if (!spec.direction) {
+        const label = (n.label ?? n.name ?? '') as string;
+        if (/^(emit|publish)\b/i.test(label)) {
+          spec.direction = 'emit';
+        } else if (/^(consume|handle|listen|receive)\b/i.test(label)) {
+          spec.direction = 'consume';
+        }
+      }
+    }
+
+    // Normalize service_call: endpoint → url
+    if (n.type === 'service_call' && !spec.url && spec.endpoint) {
+      spec.url = spec.endpoint;
+    }
+
+    // Normalize sub_flow: flow → flow_ref
+    if (n.type === 'sub_flow' && !spec.flow_ref && spec.flow) {
+      spec.flow_ref = spec.flow;
+    }
+
+    // Normalize llm_call: prompt → prompt_template
+    if (n.type === 'llm_call' && !spec.prompt_template && spec.prompt) {
+      spec.prompt_template = spec.prompt;
     }
 
     // Normalize trigger: infer spec.event from label if missing

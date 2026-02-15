@@ -163,6 +163,11 @@ function checkCircularPaths(flow: FlowDocument): ValidationIssue[] {
 
   const issues: ValidationIssue[] = [];
   const adj = buildAdjacencyMap(flow);
+  const allNodes = getAllNodes(flow);
+  // Nodes that legitimately receive back-edges (loop body, parallel branches)
+  const loopLikeIds = new Set(
+    allNodes.filter((n) => n.type === 'loop' || n.type === 'parallel').map((n) => n.id)
+  );
   const visited = new Set<string>();
   const inStack = new Set<string>();
 
@@ -174,6 +179,8 @@ function checkCircularPaths(flow: FlowDocument): ValidationIssue[] {
     inStack.add(nodeId);
 
     for (const neighbor of adj.get(nodeId) ?? []) {
+      // Skip back-edges to loop/parallel nodes — these are legitimate cycles
+      if (loopLikeIds.has(neighbor) && inStack.has(neighbor)) continue;
       if (dfs(neighbor)) {
         return true;
       }
@@ -463,10 +470,12 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
             { nodeId: node.id, suggestion: 'Set the HTTP method (GET, POST, PUT, PATCH, DELETE)' }
           ));
         }
-        if (!spec.url || spec.url.trim() === '') {
+        // URL is required unless an integration reference is provided
+        const hasIntegration = !!spec.integration;
+        if (!hasIntegration && (!spec.url || spec.url.trim() === '')) {
           issues.push(issue('flow', 'error', 'spec_completeness',
-            `Service call "${node.label}" must have a URL defined`,
-            { nodeId: node.id, suggestion: 'Set the service URL' }
+            `Service call "${node.label}" must have a URL or integration defined`,
+            { nodeId: node.id, suggestion: 'Set the service URL or reference an integration' }
           ));
         }
         break;
@@ -556,7 +565,7 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
         if (!spec.operation) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Collection "${node.label}" must have an operation set`,
-            { nodeId: node.id, suggestion: 'Set the operation (filter, map, reduce, sort, group_by, unique, flatten)' }
+            { nodeId: node.id, suggestion: 'Set the operation (filter, sort, deduplicate, merge, group_by, aggregate, reduce, flatten)' }
           ));
         }
         if (!spec.input || spec.input.trim() === '') {
