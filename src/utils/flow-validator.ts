@@ -239,7 +239,7 @@ function checkTerminalNoOutgoing(flow: FlowDocument): ValidationIssue[] {
 
 function checkTriggerEvent(flow: FlowDocument): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
-  const spec = flow.trigger.spec as TriggerSpec;
+  const spec = (flow.trigger.spec ?? {}) as TriggerSpec;
   const event = spec.event;
   const isEmpty = !event || (typeof event === 'string' ? event.trim() === '' : event.length === 0);
   if (isEmpty) {
@@ -257,7 +257,7 @@ function checkInputFieldTypes(flow: FlowDocument): ValidationIssue[] {
 
   for (const node of allNodes) {
     if (node.type !== 'input') continue;
-    const spec = node.spec as InputSpec;
+    const spec = (node.spec ?? {}) as InputSpec;
     const fields = spec.fields ?? [];
     for (const field of fields) {
       if (!field.type || field.type.trim() === '') {
@@ -278,7 +278,7 @@ function checkDecisionCondition(flow: FlowDocument): ValidationIssue[] {
 
   for (const node of allNodes) {
     if (node.type !== 'decision') continue;
-    const spec = node.spec as DecisionSpec;
+    const spec = (node.spec ?? {}) as DecisionSpec;
     if (!spec.condition || spec.condition.trim() === '') {
       issues.push(issue('flow', 'error', 'spec_completeness',
         `Decision "${node.label}" must have a condition defined`,
@@ -296,7 +296,7 @@ function checkProcessDescription(flow: FlowDocument): ValidationIssue[] {
 
   for (const node of allNodes) {
     if (node.type !== 'process') continue;
-    const spec = node.spec as ProcessSpec;
+    const spec = (node.spec ?? {}) as ProcessSpec;
     if ((!spec.description || spec.description.trim() === '') && (!spec.action || spec.action.trim() === '')) {
       issues.push(issue('flow', 'warning', 'spec_completeness',
         `Process "${node.label}" has no description or action defined`,
@@ -377,7 +377,7 @@ function checkOrchestrationNodes(flow: FlowDocument): ValidationIssue[] {
   for (const node of allNodes) {
     switch (node.type) {
       case 'orchestrator': {
-        const spec = node.spec as OrchestratorSpec;
+        const spec = (node.spec ?? {}) as OrchestratorSpec;
         const agents = spec.agents ?? [];
         if (agents.length < 2) {
           issues.push(issue('flow', 'error', 'orchestration_validation',
@@ -394,7 +394,7 @@ function checkOrchestrationNodes(flow: FlowDocument): ValidationIssue[] {
         break;
       }
       case 'smart_router': {
-        const spec = node.spec as SmartRouterSpec;
+        const spec = (node.spec ?? {}) as SmartRouterSpec;
         const rules = spec.rules ?? [];
         if (rules.length === 0 && !spec.llm_routing?.enabled) {
           issues.push(issue('flow', 'error', 'orchestration_validation',
@@ -405,7 +405,7 @@ function checkOrchestrationNodes(flow: FlowDocument): ValidationIssue[] {
         break;
       }
       case 'handoff': {
-        const spec = node.spec as HandoffSpec;
+        const spec = (node.spec ?? {}) as HandoffSpec;
         if (!spec.target?.flow || spec.target.flow.trim() === '') {
           issues.push(issue('flow', 'error', 'orchestration_validation',
             `Handoff "${node.label}" must have a target flow`,
@@ -415,7 +415,7 @@ function checkOrchestrationNodes(flow: FlowDocument): ValidationIssue[] {
         break;
       }
       case 'agent_group': {
-        const spec = node.spec as AgentGroupSpec;
+        const spec = (node.spec ?? {}) as AgentGroupSpec;
         const members = spec.members ?? [];
         if (members.length < 2) {
           issues.push(issue('flow', 'error', 'orchestration_validation',
@@ -440,7 +440,7 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
   for (const node of allNodes) {
     switch (node.type) {
       case 'data_store': {
-        const spec = node.spec as DataStoreSpec;
+        const spec = (node.spec ?? {}) as DataStoreSpec;
         if (!spec.operation) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Data store "${node.label}" must have an operation set`,
@@ -456,7 +456,7 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
         break;
       }
       case 'service_call': {
-        const spec = node.spec as ServiceCallSpec;
+        const spec = (node.spec ?? {}) as ServiceCallSpec;
         if (!spec.method) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Service call "${node.label}" must have a method set`,
@@ -472,7 +472,7 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
         break;
       }
       case 'event': {
-        const spec = node.spec as EventNodeSpec;
+        const spec = (node.spec ?? {}) as EventNodeSpec;
         if (!spec.direction) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Event "${node.label}" must have a direction set`,
@@ -488,7 +488,7 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
         break;
       }
       case 'loop': {
-        const spec = node.spec as LoopSpec;
+        const spec = (node.spec ?? {}) as LoopSpec;
         if (!spec.collection || spec.collection.trim() === '') {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Loop "${node.label}" must have a collection defined`,
@@ -504,7 +504,7 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
         break;
       }
       case 'parallel': {
-        const spec = node.spec as ParallelSpec;
+        const spec = (node.spec ?? {}) as ParallelSpec;
         const branches = spec.branches ?? [];
         if (branches.length < 2) {
           issues.push(issue('flow', 'error', 'spec_completeness',
@@ -521,7 +521,7 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
         break;
       }
       case 'sub_flow': {
-        const spec = node.spec as SubFlowSpec;
+        const spec = (node.spec ?? {}) as SubFlowSpec;
         if (!spec.flow_ref || spec.flow_ref.trim() === '') {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Sub-flow "${node.label}" must have a flow reference defined`,
@@ -536,7 +536,7 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
         break;
       }
       case 'llm_call': {
-        const spec = node.spec as LlmCallSpec;
+        const spec = (node.spec ?? {}) as LlmCallSpec;
         if (!spec.model || spec.model.trim() === '') {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `LLM call "${node.label}" must have a model specified`,
@@ -552,7 +552,7 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
         break;
       }
       case 'collection': {
-        const spec = node.spec as CollectionSpec;
+        const spec = (node.spec ?? {}) as CollectionSpec;
         if (!spec.operation) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Collection "${node.label}" must have an operation set`,
@@ -568,7 +568,7 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
         break;
       }
       case 'parse': {
-        const spec = node.spec as ParseSpec;
+        const spec = (node.spec ?? {}) as ParseSpec;
         if (!spec.format) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Parse "${node.label}" must have a format set`,
@@ -584,7 +584,7 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
         break;
       }
       case 'crypto': {
-        const spec = node.spec as CryptoSpec;
+        const spec = (node.spec ?? {}) as CryptoSpec;
         if (!spec.operation) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Crypto "${node.label}" must have an operation set`,
@@ -606,7 +606,7 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
         break;
       }
       case 'batch': {
-        const spec = node.spec as BatchSpec;
+        const spec = (node.spec ?? {}) as BatchSpec;
         if (!spec.input || spec.input.trim() === '') {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Batch "${node.label}" must have an input defined`,
@@ -622,7 +622,7 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
         break;
       }
       case 'transaction': {
-        const spec = node.spec as TransactionSpec;
+        const spec = (node.spec ?? {}) as TransactionSpec;
         const steps = spec.steps ?? [];
         if (steps.length < 2) {
           issues.push(issue('flow', 'error', 'spec_completeness',
@@ -633,7 +633,7 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
         break;
       }
       case 'cache': {
-        const spec = node.spec as CacheSpec;
+        const spec = (node.spec ?? {}) as CacheSpec;
         if (!spec.key || spec.key.trim() === '') {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Cache "${node.label}" must have a key defined`,
@@ -649,7 +649,7 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
         break;
       }
       case 'transform': {
-        const spec = node.spec as TransformSpec;
+        const spec = (node.spec ?? {}) as TransformSpec;
         if (!spec.input_schema || spec.input_schema.trim() === '') {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Transform "${node.label}" must have an input_schema defined`,
@@ -665,7 +665,7 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
         break;
       }
       case 'delay': {
-        const spec = node.spec as DelaySpec;
+        const spec = (node.spec ?? {}) as DelaySpec;
         if (spec.min_ms == null) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Delay "${node.label}" must have min_ms defined`,

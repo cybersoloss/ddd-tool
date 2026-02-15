@@ -13,7 +13,7 @@ const MODE_CONFIG = {
 } as const;
 
 function HandoffNodeComponent({ data, selected }: NodeProps<HandoffNodeType>) {
-  const spec = data.spec as HandoffSpec;
+  const spec = (data.spec ?? {}) as HandoffSpec;
   const mode = spec.mode ?? 'transfer';
   const config = MODE_CONFIG[mode];
   const Icon = config.icon;

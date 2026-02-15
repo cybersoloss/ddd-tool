@@ -7,7 +7,7 @@ import { NodeValidationDot } from './NodeValidationDot';
 type GuardrailNodeType = Node<DddNodeData, 'guardrail'>;
 
 function GuardrailNodeComponent({ data, selected }: NodeProps<GuardrailNodeType>) {
-  const spec = data.spec as GuardrailSpec;
+  const spec = (data.spec ?? {}) as GuardrailSpec;
   const checks = spec.checks ?? [];
   const positionLabel = spec.position === 'output' ? 'Output Guardrail' : 'Input Guardrail';
 

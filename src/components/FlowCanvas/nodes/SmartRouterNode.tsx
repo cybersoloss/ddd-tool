@@ -7,7 +7,7 @@ import { NodeValidationDot } from './NodeValidationDot';
 type SmartRouterNodeType = Node<DddNodeData, 'smart_router'>;
 
 function SmartRouterNodeComponent({ data, selected }: NodeProps<SmartRouterNodeType>) {
-  const spec = data.spec as SmartRouterSpec;
+  const spec = (data.spec ?? {}) as SmartRouterSpec;
   const rules = spec.rules ?? [];
   const llm = spec.llm_routing;
   const policies = spec.policies;

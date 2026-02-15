@@ -7,7 +7,7 @@ import { NodeValidationDot } from './NodeValidationDot';
 type AgentLoopNodeType = Node<DddNodeData, 'agent_loop'>;
 
 function AgentLoopNodeComponent({ data, selected }: NodeProps<AgentLoopNodeType>) {
-  const spec = data.spec as AgentLoopSpec;
+  const spec = (data.spec ?? {}) as AgentLoopSpec;
   const tools = spec.tools ?? [];
   const memory = spec.memory ?? [];
 

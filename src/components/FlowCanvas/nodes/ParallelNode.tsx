@@ -7,7 +7,7 @@ import { NodeValidationDot } from './NodeValidationDot';
 type ParallelNodeType = Node<DddNodeData, 'parallel'>;
 
 function ParallelNodeComponent({ data, selected }: NodeProps<ParallelNodeType>) {
-  const spec = data.spec as ParallelSpec;
+  const spec = (data.spec ?? {}) as ParallelSpec;
   const joinStrategy = spec?.join;
   const branches = spec?.branches ?? [];
   const badgeValue =

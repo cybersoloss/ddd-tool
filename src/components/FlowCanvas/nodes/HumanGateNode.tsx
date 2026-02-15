@@ -7,7 +7,7 @@ import { NodeValidationDot } from './NodeValidationDot';
 type HumanGateNodeType = Node<DddNodeData, 'human_gate'>;
 
 function HumanGateNodeComponent({ data, selected }: NodeProps<HumanGateNodeType>) {
-  const spec = data.spec as HumanGateSpec;
+  const spec = (data.spec ?? {}) as HumanGateSpec;
   const options = spec.approval_options ?? [];
   const timeout = spec.timeout;
 
