@@ -89,6 +89,24 @@
 - Component folders match feature area (Canvas/, SpecPanel/, LLMAssistant/, etc.)
 - Spec is source of truth — read from ~/code/DDD/ when needed
 
+## Lessons Learned
+
+### Null Safety
+- **Never use bare `as SomeType` casts** on data loaded from YAML. Always use `(value ?? {}) as SomeType` or optional chaining.
+- Properties that are guaranteed when created via the UI (`spec`, `connections`, `flow`, `metadata`, `trigger`, `nodes`) can be undefined when loaded from external YAML files.
+- **When fixing a pattern that appears across many files, audit the entire codebase for that pattern FIRST, fix everything in one pass, then test.** Do not fix one file at a time — it leads to a frustrating whack-a-mole cycle of crash→fix→new crash→fix.
+
+### External YAML Interoperability
+- The DDD Tool's internal format differs from what `/ddd-create` produces. The `normalizeFlowDocument()` function in `flow-store.ts` bridges this gap. When adding new node types or fields, ensure normalization handles both formats.
+- Key format differences to remember:
+  - Connections: `target` or `targetId` (external) vs `targetNodeId` (internal)
+  - Spec location: inlined fields, `config:`, or `properties:` (external) vs `spec:` (internal)
+  - Handle names: `sourceHandle: "default"` (external) means unnamed handle (internal `undefined`)
+  - Node labels: `name:` (external) vs `label:` (internal)
+  - Trigger location: can be inside `nodes[]` (external) vs top-level `trigger:` (internal)
+  - Numeric values: `branches: 2` (external number) vs `branches: [...]` (internal array)
+- **Node components must accept all handle ID conventions** used in external YAML (e.g., GuardrailNode accepts both `pass`/`block` and `valid`/`invalid`).
+
 ## Known Issues
 _(none yet)_
 
