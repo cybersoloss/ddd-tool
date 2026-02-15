@@ -200,7 +200,7 @@ function checkDecisionBranches(flow: FlowDocument): ValidationIssue[] {
   for (const node of allNodes) {
     if (node.type !== 'decision') continue;
 
-    const handles = new Set(node.connections.map((c) => c.sourceHandle));
+    const handles = new Set((node.connections ?? []).map((c) => c.sourceHandle));
     if (!handles.has('true')) {
       issues.push(issue('flow', 'error', 'graph_completeness',
         `Decision "${node.label}" is missing a "Yes" (true) branch connection`,
@@ -224,7 +224,7 @@ function checkTerminalNoOutgoing(flow: FlowDocument): ValidationIssue[] {
 
   for (const node of allNodes) {
     if (node.type !== 'terminal') continue;
-    if (node.connections.length > 0) {
+    if ((node.connections ?? []).length > 0) {
       issues.push(issue('flow', 'warning', 'graph_completeness',
         `Terminal "${node.label}" has outgoing connections — terminals should be endpoints`,
         { nodeId: node.id, suggestion: 'Remove outgoing connections from this terminal node' }

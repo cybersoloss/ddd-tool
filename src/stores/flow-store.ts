@@ -581,15 +581,15 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       ...currentFlow,
       trigger: {
         ...currentFlow.trigger,
-        connections: currentFlow.trigger.connections.filter(
+        connections: (currentFlow.trigger?.connections ?? []).filter(
           (c) => c.targetNodeId !== nodeId
         ),
       },
-      nodes: currentFlow.nodes
+      nodes: (currentFlow.nodes ?? [])
         .filter((n) => n.id !== nodeId)
         .map((n) => ({
           ...n,
-          connections: n.connections.filter((c) => c.targetNodeId !== nodeId),
+          connections: (n.connections ?? []).filter((c) => c.targetNodeId !== nodeId),
           parentId: n.parentId === nodeId ? undefined : n.parentId,
         })),
     };
@@ -614,7 +614,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
         ...currentFlow,
         trigger: {
           ...currentFlow.trigger,
-          connections: [...currentFlow.trigger.connections, conn],
+          connections: [...(currentFlow.trigger?.connections ?? []), conn],
         },
       };
       set({ currentFlow: updated });
@@ -624,9 +624,9 @@ export const useFlowStore = create<FlowState>((set, get) => ({
 
     const updated: FlowDocument = {
       ...currentFlow,
-      nodes: currentFlow.nodes.map((n) =>
+      nodes: (currentFlow.nodes ?? []).map((n) =>
         n.id === sourceNodeId
-          ? { ...n, connections: [...n.connections, conn] }
+          ? { ...n, connections: [...(n.connections ?? []), conn] }
           : n
       ),
     };
@@ -648,7 +648,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
         ...currentFlow,
         trigger: {
           ...currentFlow.trigger,
-          connections: currentFlow.trigger.connections.filter(matchConn),
+          connections: (currentFlow.trigger?.connections ?? []).filter(matchConn),
         },
       };
       set({ currentFlow: updated });
@@ -658,9 +658,9 @@ export const useFlowStore = create<FlowState>((set, get) => ({
 
     const updated: FlowDocument = {
       ...currentFlow,
-      nodes: currentFlow.nodes.map((n) =>
+      nodes: (currentFlow.nodes ?? []).map((n) =>
         n.id === sourceNodeId
-          ? { ...n, connections: n.connections.filter(matchConn) }
+          ? { ...n, connections: (n.connections ?? []).filter(matchConn) }
           : n
       ),
     };

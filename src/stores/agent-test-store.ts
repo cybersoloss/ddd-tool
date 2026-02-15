@@ -22,7 +22,8 @@ interface AgentTestState {
 }
 
 function walkFlowGraph(flow: FlowDocument): DddFlowNode[] {
-  const allNodes = [flow.trigger, ...flow.nodes];
+  if (!flow.trigger) return [];
+  const allNodes = [flow.trigger, ...(flow.nodes ?? [])];
   const nodeMap = new Map(allNodes.map((n) => [n.id, n]));
   const visited = new Set<string>();
   const order: DddFlowNode[] = [];
@@ -33,7 +34,7 @@ function walkFlowGraph(flow: FlowDocument): DddFlowNode[] {
     const node = nodeMap.get(nodeId);
     if (!node) return;
     order.push(node);
-    for (const conn of node.connections) {
+    for (const conn of node.connections ?? []) {
       dfs(conn.targetNodeId);
     }
   }

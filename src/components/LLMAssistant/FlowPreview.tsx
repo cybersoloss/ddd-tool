@@ -77,8 +77,8 @@ function FlowPreviewInner({ flow, height = 200 }: Props) {
       });
     };
 
-    const addEdges = (node: { id: string; connections: Array<{ targetNodeId: string }> }) => {
-      for (const conn of node.connections) {
+    const addEdges = (node: { id: string; connections?: Array<{ targetNodeId: string }> }) => {
+      for (const conn of node.connections ?? []) {
         edges.push({
           id: `${node.id}->${conn.targetNodeId}`,
           source: node.id,
