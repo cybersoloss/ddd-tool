@@ -9,7 +9,7 @@ type ProcessNodeType = Node<DddNodeData, 'process'>;
 function ProcessNodeComponent({ data, selected }: NodeProps<ProcessNodeType>) {
   return (
     <div
-      className={`relative min-w-[160px] bg-bg-secondary border-l-4 border-l-text-muted border border-border rounded-lg shadow-lg px-3 py-2 ${
+      className={`relative min-w-[160px] max-w-[240px] bg-bg-secondary border-l-4 border-l-text-muted border border-border rounded-lg shadow-lg px-3 py-2 ${
         selected ? 'ring-2 ring-accent' : ''
       }`}
     >

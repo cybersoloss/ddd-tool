@@ -13,7 +13,7 @@ function HumanGateNodeComponent({ data, selected }: NodeProps<HumanGateNodeType>
 
   return (
     <div
-      className={`relative min-w-[200px] bg-bg-secondary border-l-4 border-l-red-600 border border-border rounded-lg shadow-lg px-3 py-2 ${
+      className={`relative min-w-[200px] max-w-[280px] bg-bg-secondary border-l-4 border-l-red-600 border border-border rounded-lg shadow-lg px-3 py-2 ${
         selected ? 'ring-2 ring-accent' : ''
       }`}
     >

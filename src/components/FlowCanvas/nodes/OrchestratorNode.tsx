@@ -13,7 +13,7 @@ function OrchestratorNodeComponent({ data, selected }: NodeProps<OrchestratorNod
 
   return (
     <div
-      className={`relative min-w-[450px] bg-bg-secondary border-l-4 border-l-indigo-500 border border-border rounded-lg shadow-lg px-4 py-3 ${
+      className={`relative min-w-[450px] max-w-[560px] bg-bg-secondary border-l-4 border-l-indigo-500 border border-border rounded-lg shadow-lg px-4 py-3 ${
         selected ? 'ring-2 ring-accent' : ''
       }`}
     >

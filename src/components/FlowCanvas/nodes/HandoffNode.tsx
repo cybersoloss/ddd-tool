@@ -20,7 +20,7 @@ function HandoffNodeComponent({ data, selected }: NodeProps<HandoffNodeType>) {
 
   return (
     <div
-      className={`relative min-w-[220px] bg-bg-secondary border-l-4 ${config.border} border border-border rounded-lg shadow-lg px-3 py-2 ${
+      className={`relative min-w-[220px] max-w-[280px] bg-bg-secondary border-l-4 ${config.border} border border-border rounded-lg shadow-lg px-3 py-2 ${
         selected ? 'ring-2 ring-accent' : ''
       }`}
     >

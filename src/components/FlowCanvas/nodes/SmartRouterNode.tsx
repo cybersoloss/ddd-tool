@@ -23,7 +23,7 @@ function SmartRouterNodeComponent({ data, selected }: NodeProps<SmartRouterNodeT
 
   return (
     <div
-      className={`relative min-w-[380px] bg-bg-secondary border-l-4 border-l-cyan-500 border border-border rounded-lg shadow-lg px-4 py-3 ${
+      className={`relative min-w-[380px] max-w-[480px] bg-bg-secondary border-l-4 border-l-cyan-500 border border-border rounded-lg shadow-lg px-4 py-3 ${
         selected ? 'ring-2 ring-accent' : ''
       }`}
     >

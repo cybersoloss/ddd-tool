@@ -13,7 +13,7 @@ function AgentLoopNodeComponent({ data, selected }: NodeProps<AgentLoopNodeType>
 
   return (
     <div
-      className={`relative min-w-[360px] bg-bg-secondary border-l-4 border-l-blue-500 border border-border rounded-lg shadow-lg px-4 py-3 ${
+      className={`relative min-w-[360px] max-w-[460px] bg-bg-secondary border-l-4 border-l-blue-500 border border-border rounded-lg shadow-lg px-4 py-3 ${
         selected ? 'ring-2 ring-accent' : ''
       }`}
     >
