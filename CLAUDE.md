@@ -24,9 +24,9 @@
 - **Session 7:** Agent Nodes + Agent Canvas — 3 agent node types (AgentLoop, Guardrail, HumanGate), spec editors, agent-specific toolbar, flow type distinction (traditional vs agent)
 - **Session 8:** Orchestration Nodes — 4 orchestration nodes (Orchestrator, SmartRouter, Handoff, AgentGroup), dynamic source handles on SmartRouter, orchestration validation rules
 - **Session 11:** Design Validation — 20+ validation rules across flow/domain/system scopes, real-time node indicators (NodeValidationDot), ValidationPanel with scope tabs, implementation gate (checkImplementGate)
-- **Session 12:** Claude Code Integration — ImplementationPanel with 5 states (idle/prompt_ready/running/done/failed), prompt builder, terminal streaming, auto-record with spec hash to .ddd/mapping.yaml, validation gate, ClaudeCode/Testing settings UI
-- **Session 13:** Test Runner + Test Generation — runTests action, parseTestOutput with error extraction, TestResults UI with expandable cases, fixFailingTest prompt, auto-run after implementation, file tracking in FlowMapping
-- **Session 14:** Reconciliation + Drift Detection — drift detection via hash comparison, stale banners on FlowBlock (L2) and FlowCanvas (L3), ReconciliationPanel with SyncScoreBar and DriftItem, accept/re-implement/ignore actions, reconciliation reports to .ddd/reconciliations/
+- **Session 12:** Claude Code Integration — validation gate, ClaudeCode settings UI, spec hash recording to .ddd/mapping.yaml
+- **Session 13:** File tracking in FlowMapping
+- **Session 14:** Drift Detection — drift detection via hash comparison, stale banners on FlowBlock (L2) and FlowCanvas (L3), reconciliation reports to .ddd/reconciliations/
 - **Session 16:** First-Run, Settings, Polish — FirstRunWizard (2-step Claude Code/start), undo/redo store with Cmd+Z/Cmd+Shift+Z, auto-save to .ddd/autosave/, crash recovery dialog, GitSettings commit/branch templates, error toast recovery actions, recent projects pruning, auto-dismiss fix
 - **Session 17:** Extended Nodes + Enhancements — 6 new node types (data_store, service_call, event, loop, parallel, sub_flow) with spec editors and validation, validation presets for InputNode, Mermaid diagram generator, flow templates (REST API, CRUD, Webhook, Event Processor), minimap toggle (Cmd+Shift+M), ui-store
 
@@ -43,9 +43,9 @@
 | 7 | **Agent Nodes + Agent Canvas** | Create agent flow, agent loop layout with tools, guardrails, human gate, memory blocks | Done |
 | 8 | **Orchestration Nodes** | Orchestrator, smart router, handoff, agent group nodes with L2 orchestration visuals | Done |
 | 11 | **Design Validation** | Real-time node indicators (green/amber/red), validation panel, cross-domain wiring checks | Done |
-| 12 | **Claude Code Integration** | Implementation panel with embedded terminal, prompt builder, Implement button with validation gate | Done |
-| 13 | **Test Runner + Test Generation** | Auto-run tests after implementation, derive test cases from flow graph, spec compliance check | Done |
-| 14 | **Reconciliation + Drift Detection** | Stale banners, sync scores, reconciliation report with accept/remove/ignore | Done |
+| 12 | **Claude Code Integration** | Validation gate, ClaudeCode settings, spec hash mapping | Done |
+| 13 | **File Tracking** | File tracking in FlowMapping | Done |
+| 14 | **Drift Detection** | Stale banners, drift detection via hash comparison, reconciliation reports | Done |
 | 16 | **First-Run, Settings, Polish** | First-run wizard, settings persistence, error toasts, undo/redo, final bug fixes | Done |
 | 17 | **Extended Nodes + Enhancements** | 6 new node types (data_store, service_call, event, loop, parallel, sub_flow), validation presets, Mermaid export, minimap toggle, flow templates | Done |
 
@@ -68,7 +68,7 @@
 | project | src/stores/project-store.ts | domains, schemas, configs |
 | ui | src/stores/ui-store.ts | minimap visibility, lock state |
 | git | src/stores/git-store.ts | git state |
-| implementation | src/stores/implementation-store.ts | PTY, queue, test results, drift detection, reconciliation |
+| implementation | src/stores/implementation-store.ts | drift detection, mapping persistence |
 | app | src/stores/app-store.ts | app view, recent projects, settings |
 | undo | src/stores/undo-store.ts | per-flow undo/redo stacks |
 | validation | src/stores/validation-store.ts | validation results, gate state |

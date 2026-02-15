@@ -1,8 +1,7 @@
 import { useState, useCallback } from 'react';
-import { FormInput, Cog, GitFork, Square, RotateCw, Shield, Hand, Network, GitBranch, ArrowLeftRight, Box, Play, Undo2, Redo2, Database, ExternalLink, Zap, Repeat, Columns, GitMerge, BrainCircuit, Copy, Check, RotateCcw, Clock, HardDrive, Shuffle, Filter, FileText, Lock, Layers, ShieldCheck } from 'lucide-react';
+import { FormInput, Cog, GitFork, Square, RotateCw, Shield, Hand, Network, GitBranch, ArrowLeftRight, Box, Undo2, Redo2, Database, ExternalLink, Zap, Repeat, Columns, GitMerge, BrainCircuit, Copy, Check, RotateCcw, Clock, HardDrive, Shuffle, Filter, FileText, Lock, Layers, ShieldCheck } from 'lucide-react';
 import type { DddNodeType } from '../../types/flow';
 import { useSheetStore } from '../../stores/sheet-store';
-import { useImplementationStore } from '../../stores/implementation-store';
 import { useUndoStore } from '../../stores/undo-store';
 import { useFlowStore } from '../../stores/flow-store';
 import { useProjectStore } from '../../stores/project-store';
@@ -58,8 +57,6 @@ interface Props {
 export function NodeToolbar({ pendingType, onSelectType, flowType = 'traditional' }: Props) {
   const TOOLBAR_ITEMS = flowType === 'agent' ? AGENT_ITEMS : TRADITIONAL_ITEMS;
   const current = useSheetStore((s) => s.current);
-  const buildPrompt = useImplementationStore((s) => s.buildPrompt);
-  const openPanel = useImplementationStore((s) => s.openPanel);
   const flowId = useFlowStore((s) => s.currentFlow?.flow?.id);
   const undoStacks = useUndoStore((s) => flowId ? s.stacks[flowId] : undefined);
   const undo = useUndoStore((s) => s.undo);
@@ -75,13 +72,6 @@ export function NodeToolbar({ pendingType, onSelectType, flowType = 'traditional
 
   const [copied, setCopied] = useState(false);
   const [reloading, setReloading] = useState(false);
-
-  const handleImplement = () => {
-    if (current.flowId && current.domainId) {
-      buildPrompt(current.flowId, current.domainId);
-      openPanel();
-    }
-  };
 
   const handleCopyCommand = useCallback(() => {
     if (!current.domainId || !current.flowId) return;
@@ -128,14 +118,6 @@ export function NodeToolbar({ pendingType, onSelectType, flowType = 'traditional
       <div className="w-full h-px bg-border my-1" />
       <ValidationBadge />
       <div className="w-full h-px bg-border my-1" />
-      <div
-        className="flex items-center gap-2 px-3 py-2 rounded cursor-pointer transition-colors hover:bg-bg-hover"
-        onClick={handleImplement}
-        title="Implement this flow with Claude Code"
-      >
-        <Play className="w-4 h-4 text-accent" />
-        <span className="text-sm text-text-primary">Implement</span>
-      </div>
       <div
         className="flex items-center gap-2 px-3 py-2 rounded cursor-pointer transition-colors hover:bg-bg-hover"
         onClick={handleCopyCommand}

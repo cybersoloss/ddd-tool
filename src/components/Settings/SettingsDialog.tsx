@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
-import { X, Monitor, Terminal, TestTube, GitBranch } from 'lucide-react';
+import { X, Monitor, Terminal, GitBranch } from 'lucide-react';
 import { useAppStore } from '../../stores/app-store';
 import { EditorSettings } from './EditorSettings';
 import { ClaudeCodeSettings } from './ClaudeCodeSettings';
-import { TestingSettings } from './TestingSettings';
 import { GitSettings } from './GitSettings';
 
 interface Props {
@@ -13,7 +12,6 @@ interface Props {
 const TABS = [
   { id: 'editor', label: 'Editor', icon: Monitor },
   { id: 'claude-code', label: 'Claude Code', icon: Terminal },
-  { id: 'testing', label: 'Testing', icon: TestTube },
   { id: 'git', label: 'Git', icon: GitBranch },
 ] as const;
 
@@ -22,7 +20,6 @@ type TabId = (typeof TABS)[number]['id'];
 const TAB_CONTENT: Record<TabId, React.FC> = {
   editor: EditorSettings,
   'claude-code': ClaudeCodeSettings,
-  testing: TestingSettings,
   git: GitSettings,
 };
 

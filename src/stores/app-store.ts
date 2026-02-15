@@ -35,19 +35,6 @@ export const DEFAULT_SETTINGS: GlobalSettings = {
   claudeCode: {
     enabled: true,
     command: 'claude',
-    postImplement: {
-      runTests: true,
-      runLint: true,
-      autoCommit: false,
-      regenerateClaudeMd: false,
-    },
-  },
-  testing: {
-    command: 'npm',
-    args: ['test'],
-    scoped: false,
-    scopePattern: '',
-    autoRun: true,
   },
   editor: {
     gridSnap: true,
@@ -58,16 +45,6 @@ export const DEFAULT_SETTINGS: GlobalSettings = {
   git: {
     autoCommitMessage: 'DDD: {action} in {flow_id}',
     branchNaming: 'ddd/{flow_id}',
-  },
-  reconciliation: {
-    autoRun: false,
-    autoAcceptMatching: false,
-    notifyOnDrift: true,
-  },
-  testGeneration: {
-    autoDerive: true,
-    includeInPrompt: true,
-    complianceCheck: true,
   },
 };
 

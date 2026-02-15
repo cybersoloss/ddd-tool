@@ -27,19 +27,6 @@ export interface GlobalSettings {
   claudeCode: {
     enabled: boolean;
     command: string;
-    postImplement: {
-      runTests: boolean;
-      runLint: boolean;
-      autoCommit: boolean;
-      regenerateClaudeMd: boolean;
-    };
-  };
-  testing: {
-    command: string;
-    args: string[];
-    scoped: boolean;
-    scopePattern: string;
-    autoRun: boolean;
   };
   editor: {
     gridSnap: boolean;
@@ -50,16 +37,6 @@ export interface GlobalSettings {
   git: {
     autoCommitMessage: string;
     branchNaming: string;
-  };
-  reconciliation: {
-    autoRun: boolean;
-    autoAcceptMatching: boolean;
-    notifyOnDrift: boolean;
-  };
-  testGeneration: {
-    autoDerive: boolean;
-    includeInPrompt: boolean;
-    complianceCheck: boolean;
   };
 }
 

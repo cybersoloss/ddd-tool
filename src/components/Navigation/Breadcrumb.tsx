@@ -1,11 +1,10 @@
 import { useEffect, useMemo } from 'react';
-import { ChevronRight, ArrowLeft, GitBranch, Play, RefreshCw, Map, Lock, Unlock } from 'lucide-react';
+import { ChevronRight, ArrowLeft, GitBranch, Map, Lock, Unlock } from 'lucide-react';
 import { useSheetStore } from '../../stores/sheet-store';
 import { useProjectStore } from '../../stores/project-store';
 import { useAppStore } from '../../stores/app-store';
 import { useGitStore } from '../../stores/git-store';
 import { useValidationStore } from '../../stores/validation-store';
-import { useImplementationStore } from '../../stores/implementation-store';
 import { useUndoStore } from '../../stores/undo-store';
 import { useFlowStore } from '../../stores/flow-store';
 import { useUiStore } from '../../stores/ui-store';
@@ -24,11 +23,6 @@ export function Breadcrumb() {
   const gitUnstaged = useGitStore((s) => s.unstaged);
   const gitUntracked = useGitStore((s) => s.untracked);
   const toggleGitPanel = useGitStore((s) => s.togglePanel);
-  const implPanelOpen = useImplementationStore((s) => s.panelOpen);
-  const toggleImplPanel = useImplementationStore((s) => s.togglePanel);
-  const reconPanelOpen = useImplementationStore((s) => s.reconPanelOpen);
-  const toggleReconPanel = useImplementationStore((s) => s.toggleReconPanel);
-  const driftItems = useImplementationStore((s) => s.driftItems);
   const minimapVisible = useUiStore((s) => s.minimapVisible);
   const toggleMinimap = useUiStore((s) => s.toggleMinimap);
   const isLocked = useUiStore((s) => s.isLocked);
@@ -103,20 +97,6 @@ export function Breadcrumb() {
         return;
       }
 
-      // Cmd+I toggles Implementation panel
-      if (e.key === 'i' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        toggleImplPanel();
-        return;
-      }
-
-      // Cmd+Shift+R toggles Reconciliation panel
-      if (e.key === 'r' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
-        e.preventDefault();
-        toggleReconPanel();
-        return;
-      }
-
       // Cmd+R reloads project from disk
       if (e.key === 'r' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
         e.preventDefault();
@@ -133,8 +113,6 @@ export function Breadcrumb() {
 
       if (e.key === 'Escape') {
         if (useValidationStore.getState().panelOpen) return;
-        if (useImplementationStore.getState().panelOpen) return;
-        if (useImplementationStore.getState().reconPanelOpen) return;
         e.preventDefault();
         if (current.level === 'system') {
           setView('launcher');
@@ -146,7 +124,7 @@ export function Breadcrumb() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [current.level, navigateUp, setView, toggleImplPanel, toggleReconPanel, toggleMinimap, toggleLock]);
+  }, [current.level, navigateUp, setView, toggleMinimap, toggleLock]);
 
   return (
     <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-bg-secondary min-h-[44px]">
@@ -188,37 +166,6 @@ export function Breadcrumb() {
       <div className="flex-1" />
 
       <ValidationBadge />
-
-      <button
-        className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors ${
-          implPanelOpen
-            ? 'bg-accent/20 text-accent'
-            : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
-        }`}
-        onClick={toggleImplPanel}
-        title="Toggle Implementation panel (Cmd+I)"
-      >
-        <Play className="w-3.5 h-3.5" />
-        <span>Implement</span>
-      </button>
-
-      <button
-        className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors ${
-          reconPanelOpen
-            ? 'bg-accent/20 text-accent'
-            : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
-        }`}
-        onClick={toggleReconPanel}
-        title="Toggle Reconciliation panel (Cmd+Shift+R)"
-      >
-        <RefreshCw className="w-3.5 h-3.5" />
-        <span>Recon</span>
-        {driftItems.length > 0 && (
-          <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-500 text-white text-[10px] font-medium leading-none">
-            {driftItems.length > 9 ? '9+' : driftItems.length}
-          </span>
-        )}
-      </button>
 
       <button
         className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors ${

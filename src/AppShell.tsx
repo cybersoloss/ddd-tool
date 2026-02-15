@@ -11,8 +11,6 @@ import { SystemMap } from './components/SystemMap/SystemMap';
 import { DomainMap } from './components/DomainMap/DomainMap';
 import { FlowCanvas } from './components/FlowCanvas/FlowCanvas';
 import { GitPanel } from './components/GitPanel/GitPanel';
-import { ImplementationPanel } from './components/ImplementationPanel/ImplementationPanel';
-import { ReconciliationPanel } from './components/ReconciliationPanel/ReconciliationPanel';
 import { CrashRecoveryDialog } from './components/shared/CrashRecoveryDialog';
 
 export function AppShell() {
@@ -23,8 +21,6 @@ export function AppShell() {
   const loaded = useProjectStore((s) => s.loaded);
   const level = useSheetStore((s) => s.current.level);
   const panelOpen = useGitStore((s) => s.panelOpen);
-  const implPanelOpen = useImplementationStore((s) => s.panelOpen);
-  const reconPanelOpen = useImplementationStore((s) => s.reconPanelOpen);
   const loadedPathRef = useRef<string | null>(null);
 
   const [recoveryFiles, setRecoveryFiles] = useState<string[]>([]);
@@ -103,8 +99,6 @@ export function AppShell() {
           {level === 'domain' && <DomainMap />}
           {level === 'flow' && <FlowCanvas />}
         </div>
-        {implPanelOpen && <ImplementationPanel />}
-        {reconPanelOpen && <ReconciliationPanel />}
         {panelOpen && <GitPanel />}
       </div>
 

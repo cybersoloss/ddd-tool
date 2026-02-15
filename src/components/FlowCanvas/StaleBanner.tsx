@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, X, Play, Check } from 'lucide-react';
+import { AlertTriangle, X, Check } from 'lucide-react';
 import { useImplementationStore } from '../../stores/implementation-store';
 
 interface Props {
@@ -19,13 +19,6 @@ export function StaleBanner({ flowKey }: Props) {
         This flow's spec has changed since it was implemented
       </span>
       <div className="flex items-center gap-1.5 ml-2">
-        <button
-          className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded transition-colors"
-          onClick={() => resolveFlow(flowKey, 'reimpl')}
-        >
-          <Play className="w-3 h-3" />
-          Re-implement
-        </button>
         <button
           className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded transition-colors"
           onClick={() => resolveFlow(flowKey, 'accept')}
