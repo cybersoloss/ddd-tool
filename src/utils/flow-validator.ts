@@ -265,7 +265,7 @@ function checkInputFieldTypes(flow: FlowDocument): ValidationIssue[] {
   for (const node of allNodes) {
     if (node.type !== 'input') continue;
     const spec = (node.spec ?? {}) as InputSpec;
-    const fields = spec.fields ?? [];
+    const fields = Array.isArray(spec.fields) ? spec.fields : [];
     for (const field of fields) {
       if (!field.type || field.type.trim() === '') {
         issues.push(issue('flow', 'error', 'spec_completeness',
@@ -340,7 +340,7 @@ function checkAgentFlow(flow: FlowDocument): ValidationIssue[] {
 
   for (const agentLoop of agentLoops) {
     const spec = (agentLoop.spec ?? {}) as AgentLoopSpec;
-    const tools = spec.tools ?? [];
+    const tools = Array.isArray(spec.tools) ? spec.tools : [];
 
     if (tools.length === 0) {
       issues.push(issue('flow', 'error', 'agent_validation',
@@ -385,7 +385,7 @@ function checkOrchestrationNodes(flow: FlowDocument): ValidationIssue[] {
     switch (node.type) {
       case 'orchestrator': {
         const spec = (node.spec ?? {}) as OrchestratorSpec;
-        const agents = spec.agents ?? [];
+        const agents = Array.isArray(spec.agents) ? spec.agents : [];
         if (agents.length < 2) {
           issues.push(issue('flow', 'error', 'orchestration_validation',
             `Orchestrator "${node.label}" must have at least 2 agents`,
@@ -402,7 +402,7 @@ function checkOrchestrationNodes(flow: FlowDocument): ValidationIssue[] {
       }
       case 'smart_router': {
         const spec = (node.spec ?? {}) as SmartRouterSpec;
-        const rules = spec.rules ?? [];
+        const rules = Array.isArray(spec.rules) ? spec.rules : [];
         if (rules.length === 0 && !spec.llm_routing?.enabled) {
           issues.push(issue('flow', 'error', 'orchestration_validation',
             `Smart router "${node.label}" has no rules defined`,
@@ -423,7 +423,7 @@ function checkOrchestrationNodes(flow: FlowDocument): ValidationIssue[] {
       }
       case 'agent_group': {
         const spec = (node.spec ?? {}) as AgentGroupSpec;
-        const members = spec.members ?? [];
+        const members = Array.isArray(spec.members) ? spec.members : [];
         if (members.length < 2) {
           issues.push(issue('flow', 'error', 'orchestration_validation',
             `Agent group "${node.label}" must have at least 2 members`,
@@ -514,7 +514,7 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
       }
       case 'parallel': {
         const spec = (node.spec ?? {}) as ParallelSpec;
-        const branches = spec.branches ?? [];
+        const branches = Array.isArray(spec.branches) ? spec.branches : [];
         if (branches.length < 2) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Parallel "${node.label}" must have at least 2 branches`,
@@ -590,6 +590,20 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
             { nodeId: node.id, suggestion: 'Set the input to parse' }
           ));
         }
+        if (typeof spec.strategy === 'object' && spec.strategy !== null && 'selectors' in spec.strategy) {
+          const sels = Array.isArray(spec.strategy.selectors) ? spec.strategy.selectors : [];
+          if (sels.length === 0) {
+            issues.push(issue('flow', 'warning', 'spec_completeness',
+              `Parse "${node.label}" has selector strategy but no selectors defined`,
+              { nodeId: node.id, suggestion: 'Add at least one CSS selector' }
+            ));
+          } else if (sels.some((s: { name?: string; css?: string }) => !s.name || !s.css)) {
+            issues.push(issue('flow', 'warning', 'spec_completeness',
+              `Parse "${node.label}" has selectors with missing name or CSS selector`,
+              { nodeId: node.id, suggestion: 'Fill in name and CSS selector for all entries' }
+            ));
+          }
+        }
         break;
       }
       case 'crypto': {
@@ -632,7 +646,7 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
       }
       case 'transaction': {
         const spec = (node.spec ?? {}) as TransactionSpec;
-        const steps = spec.steps ?? [];
+        const steps = Array.isArray(spec.steps) ? spec.steps : [];
         if (steps.length < 2) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Transaction "${node.label}" must have at least 2 steps`,

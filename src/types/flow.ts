@@ -330,16 +330,23 @@ export interface CollectionSpec {
   predicate?: string;
   key?: string;
   direction?: 'asc' | 'desc';
-  accumulator?: string;
+  accumulator?: { init?: unknown; expression?: string } | string;
   output?: string;
   description?: string;
   [key: string]: unknown;
 }
 
+export interface ParseSelectorDef {
+  name: string;
+  css: string;
+  extract?: string;
+  multiple?: boolean;
+}
+
 export interface ParseSpec {
   format?: 'rss' | 'atom' | 'html' | 'xml' | 'json' | 'csv' | 'markdown';
   input?: string;
-  strategy?: 'strict' | 'lenient' | 'streaming';
+  strategy?: 'strict' | 'lenient' | 'streaming' | { selectors: ParseSelectorDef[] };
   library?: string;
   output?: string;
   description?: string;
@@ -414,6 +421,9 @@ export interface DddFlowNode {
     targetNodeId: string;
     sourceHandle?: string;
     targetHandle?: string;
+    label?: string;
+    data?: Array<{ name: string; type: string }>;
+    behavior?: 'continue' | 'stop' | 'retry' | 'circuit_break';
   }>;
   spec: NodeSpec;
   label: string;
@@ -431,6 +441,12 @@ export interface FlowDocument {
     type: 'traditional' | 'agent';
     domain: string;
     description?: string;
+    template?: boolean;
+    parameters?: Record<string, { type: string; values?: string[] }>;
+    contract?: {
+      inputs?: Array<{ name: string; type: string; required?: boolean; ref?: string }>;
+      outputs?: Array<{ name: string; type: string }>;
+    };
   };
   trigger: DddFlowNode;
   nodes: DddFlowNode[];
