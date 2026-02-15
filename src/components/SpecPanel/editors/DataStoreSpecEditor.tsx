@@ -141,20 +141,56 @@ export function DataStoreSpecEditor({ spec, onChange }: Props) {
         />
       </div>
       {(spec.operation === 'create_many' || spec.operation === 'update_many' || spec.operation === 'delete_many') && (
-        <div className="flex items-center gap-2">
-          <label className="label flex-1">Returning</label>
-          <button
-            className={`relative w-9 h-5 rounded-full transition-colors ${
-              spec.returning ? 'bg-accent' : 'bg-surface-2'
-            }`}
-            onClick={() => onChange({ ...spec, returning: !spec.returning })}
-          >
-            <span
-              className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
-                spec.returning ? 'translate-x-4' : ''
+        <>
+          <div className="flex items-center gap-2">
+            <label className="label flex-1">Batch</label>
+            <button
+              className={`relative w-9 h-5 rounded-full transition-colors ${
+                spec.batch ? 'bg-accent' : 'bg-surface-2'
               }`}
-            />
-          </button>
+              onClick={() => onChange({ ...spec, batch: !spec.batch })}
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                  spec.batch ? 'translate-x-4' : ''
+                }`}
+              />
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="label flex-1">Returning</label>
+            <button
+              className={`relative w-9 h-5 rounded-full transition-colors ${
+                spec.returning ? 'bg-accent' : 'bg-surface-2'
+              }`}
+              onClick={() => onChange({ ...spec, returning: !spec.returning })}
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                  spec.returning ? 'translate-x-4' : ''
+                }`}
+              />
+            </button>
+          </div>
+        </>
+      )}
+      {spec.operation === 'upsert' && (
+        <div>
+          <label className="label">Upsert Key</label>
+          <input
+            className="input"
+            value={(Array.isArray(spec.upsert_key) ? spec.upsert_key : []).join(', ')}
+            onChange={(e) =>
+              onChange({
+                ...spec,
+                upsert_key: e.target.value
+                  .split(',')
+                  .map((s) => s.trim())
+                  .filter(Boolean),
+              })
+            }
+            placeholder="Comma-separated keys, e.g. email, tenant_id"
+          />
         </div>
       )}
       <div>

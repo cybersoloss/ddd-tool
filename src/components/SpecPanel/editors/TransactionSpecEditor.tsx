@@ -8,7 +8,7 @@ interface Props {
 }
 
 export function TransactionSpecEditor({ spec, onChange }: Props) {
-  const steps = spec.steps ?? [];
+  const steps = Array.isArray(spec.steps) ? spec.steps : [];
 
   const addStep = () => {
     onChange({ ...spec, steps: [...steps, { action: '', rollback: '' }] });

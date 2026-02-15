@@ -11,7 +11,7 @@ const CHECK_TYPES = ['content_filter', 'pii_detection', 'topic_restriction', 'pr
 const CHECK_ACTIONS: GuardrailCheck['action'][] = ['block', 'warn', 'log'];
 
 export function GuardrailSpecEditor({ spec, onChange }: Props) {
-  const checks = spec.checks ?? [];
+  const checks = Array.isArray(spec.checks) ? spec.checks : [];
 
   const addCheck = () => {
     const check: GuardrailCheck = { type: 'content_filter', action: 'block' };

@@ -61,6 +61,26 @@ export function HandoffSpecEditor({ spec, onChange }: Props) {
 
       {/* Context Transfer */}
       <div>
+        <label className="label">Include Types</label>
+        <input
+          className="input"
+          value={(Array.isArray(contextTransfer.include_types) ? contextTransfer.include_types : []).join(', ')}
+          onChange={(e) =>
+            onChange({
+              ...spec,
+              context_transfer: {
+                ...contextTransfer,
+                include_types: e.target.value
+                  .split(',')
+                  .map((s) => s.trim())
+                  .filter(Boolean),
+              },
+            })
+          }
+          placeholder="Comma-separated, e.g. messages, tool_results"
+        />
+      </div>
+      <div>
         <label className="label">Max Context Tokens</label>
         <input
           type="number"

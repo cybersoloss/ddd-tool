@@ -30,6 +30,8 @@ import { nodeTypes } from './nodes';
 import { CircuitBreakerEdge } from './edges/CircuitBreakerEdge';
 import { NodeToolbar } from './NodeToolbar';
 import { SpecPanel } from '../SpecPanel/SpecPanel';
+import { ConnectionEditor } from '../SpecPanel/ConnectionEditor';
+import { FlowSettingsDialog } from './FlowSettingsDialog';
 import { ValidationPanel } from '../Validation/ValidationPanel';
 import { StaleBanner } from './StaleBanner';
 import type { DddNodeData, DddNodeType, SmartRouterSpec } from '../../types/flow';
@@ -89,7 +91,7 @@ function buildEdges(flow: ReturnType<typeof useFlowStore.getState>['currentFlow'
 
   const result: Edge[] = [];
 
-  const addEdges = (node: { id: string; type: string; spec: unknown; connections?: Array<{ targetNodeId: string; sourceHandle?: string; targetHandle?: string }> }) => {
+  const addEdges = (node: { id: string; type: string; spec: unknown; connections?: Array<{ targetNodeId: string; sourceHandle?: string; targetHandle?: string; label?: string; data?: Array<{ name: string; type: string }>; behavior?: string }> }) => {
     for (const conn of node.connections ?? []) {
       const edge: Edge = {
         id: `${node.id}->${conn.targetNodeId}${conn.sourceHandle ? `-${conn.sourceHandle}` : ''}`,
@@ -97,6 +99,7 @@ function buildEdges(flow: ReturnType<typeof useFlowStore.getState>['currentFlow'
         target: conn.targetNodeId,
         sourceHandle: conn.sourceHandle ?? null,
         targetHandle: conn.targetHandle ?? null,
+        label: conn.label,
       };
 
       // Circuit breaker edge for smart_router nodes
@@ -144,6 +147,8 @@ function FlowCanvasInner() {
   const { screenToFlowPosition } = useReactFlow();
   const loadedRef = useRef<string | null>(null);
   const [pendingNodeType, setPendingNodeType] = useState<DddNodeType | null>(null);
+  const [selectedEdge, setSelectedEdge] = useState<{ sourceId: string; targetId: string; sourceHandle?: string } | null>(null);
+  const [flowSettingsOpen, setFlowSettingsOpen] = useState(false);
 
   // React Flow controlled nodes/edges state
   const [rfNodes, setRfNodes] = useState<Node<DddNodeData>[]>([]);
@@ -222,6 +227,7 @@ function FlowCanvasInner() {
         }
         if (change.type === 'select' && change.selected) {
           selectNode(change.id);
+          setSelectedEdge(null);
         }
       }
     },
@@ -232,8 +238,31 @@ function FlowCanvasInner() {
   const onEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
       setRfEdges((eds) => applyEdgeChanges(changes, eds));
+
+      for (const change of changes) {
+        if (change.type === 'select' && change.selected) {
+          // Parse edge id: "source->target-handle" or "source->target"
+          const edge = rfEdges.find((e) => e.id === change.id);
+          if (edge) {
+            selectNode(null); // deselect node
+            setSelectedEdge({
+              sourceId: edge.source,
+              targetId: edge.target,
+              sourceHandle: edge.sourceHandle ?? undefined,
+            });
+          }
+        } else if (change.type === 'select' && !change.selected) {
+          setSelectedEdge((prev) => {
+            const edge = rfEdges.find((e) => e.id === change.id);
+            if (edge && prev?.sourceId === edge.source && prev?.targetId === edge.target) {
+              return null;
+            }
+            return prev;
+          });
+        }
+      }
     },
-    []
+    [rfEdges, selectNode]
   );
 
   // Handle node deletion
@@ -281,8 +310,9 @@ function FlowCanvasInner() {
         addNode(pendingNodeType, position);
         setPendingNodeType(null);
       } else {
-        // Deselect node when clicking empty canvas
+        // Deselect node and edge when clicking empty canvas
         selectNode(null);
+        setSelectedEdge(null);
       }
     },
     [pendingNodeType, screenToFlowPosition, addNode, selectNode]
@@ -317,6 +347,7 @@ function FlowCanvasInner() {
             pendingType={pendingNodeType}
             onSelectType={setPendingNodeType}
             flowType={currentFlow.flow?.type ?? flowType}
+            onOpenFlowSettings={() => setFlowSettingsOpen(true)}
           />
         )}
         <ReactFlow
@@ -354,8 +385,17 @@ function FlowCanvasInner() {
           )}
         </ReactFlow>
       </div>
-      {selectedNodeId && <SpecPanel />}
+      {selectedNodeId && !selectedEdge && <SpecPanel />}
+      {selectedEdge && (
+        <ConnectionEditor
+          sourceId={selectedEdge.sourceId}
+          targetId={selectedEdge.targetId}
+          sourceHandle={selectedEdge.sourceHandle}
+          onClose={() => setSelectedEdge(null)}
+        />
+      )}
       {validationPanelOpen && <ValidationPanel />}
+      <FlowSettingsDialog open={flowSettingsOpen} onClose={() => setFlowSettingsOpen(false)} />
     </div>
   );
 }

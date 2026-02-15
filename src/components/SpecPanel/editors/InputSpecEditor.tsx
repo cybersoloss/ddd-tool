@@ -16,7 +16,7 @@ interface Props {
 }
 
 export function InputSpecEditor({ spec, onChange }: Props) {
-  const fields = spec.fields ?? [];
+  const fields = Array.isArray(spec.fields) ? spec.fields : [];
 
   const addField = () => {
     onChange({ ...spec, fields: [...fields, { name: '', type: 'string', required: false }] });

@@ -1,6 +1,6 @@
 import { nanoid } from 'nanoid';
 import { Plus, Trash2 } from 'lucide-react';
-import type { OrchestratorSpec, OrchestratorAgent, SharedMemoryEntry, NodeSpec } from '../../../types/flow';
+import type { OrchestratorSpec, OrchestratorAgent, SharedMemoryEntry, SupervisionRule, NodeSpec } from '../../../types/flow';
 import { ExtraFieldsEditor } from './ExtraFieldsEditor';
 
 interface Props {
@@ -14,9 +14,9 @@ const MERGE_OPTIONS: OrchestratorSpec['result_merge_strategy'][] = ['last_wins',
 const ACCESS_OPTIONS: SharedMemoryEntry['access'][] = ['read_write', 'read_only'];
 
 export function OrchestratorSpecEditor({ spec, onChange }: Props) {
-  const agents = spec.agents ?? [];
-  const sharedMemory = spec.shared_memory ?? [];
-  const fallbackChain = spec.fallback_chain ?? [];
+  const agents = Array.isArray(spec.agents) ? spec.agents : [];
+  const sharedMemory = Array.isArray(spec.shared_memory) ? spec.shared_memory : [];
+  const fallbackChain = Array.isArray(spec.fallback_chain) ? spec.fallback_chain : [];
 
   const addAgent = () => {
     const agent: OrchestratorAgent = { id: nanoid(6), flow: '', specialization: '', priority: 0 };
@@ -187,6 +187,103 @@ export function OrchestratorSpecEditor({ spec, onChange }: Props) {
               </select>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Supervision */}
+      <div>
+        <label className="label">Supervision</label>
+        <div className="bg-bg-primary rounded p-2 space-y-2">
+          <div>
+            <label className="text-[10px] text-text-muted">Monitor Iterations</label>
+            <input
+              type="number"
+              className="input py-1 text-xs"
+              value={spec.supervision?.monitor_iterations ?? ''}
+              onChange={(e) =>
+                onChange({
+                  ...spec,
+                  supervision: {
+                    ...spec.supervision,
+                    monitor_iterations: e.target.value ? parseInt(e.target.value) : undefined,
+                  },
+                })
+              }
+              placeholder="5"
+            />
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[10px] text-text-muted">Intervene On</label>
+              <button
+                type="button"
+                className="btn-icon !p-0.5"
+                onClick={() => {
+                  const rules = spec.supervision?.intervene_on ?? [];
+                  onChange({
+                    ...spec,
+                    supervision: {
+                      ...spec.supervision,
+                      intervene_on: [...rules, { condition: '', action: '' }],
+                    },
+                  });
+                }}
+                title="Add rule"
+              >
+                <Plus className="w-3 h-3" />
+              </button>
+            </div>
+            {(spec.supervision?.intervene_on ?? []).map((rule: SupervisionRule, i: number) => (
+              <div key={i} className="flex items-start gap-1 mb-1">
+                <div className="flex-1 space-y-1">
+                  <input
+                    className="input py-1 text-xs"
+                    value={rule.condition}
+                    onChange={(e) => {
+                      const rules = [...(spec.supervision?.intervene_on ?? [])];
+                      rules[i] = { ...rules[i], condition: e.target.value };
+                      onChange({ ...spec, supervision: { ...spec.supervision, intervene_on: rules } });
+                    }}
+                    placeholder="Condition"
+                  />
+                  <div className="flex gap-1">
+                    <input
+                      type="number"
+                      className="input py-1 text-xs w-16"
+                      value={rule.threshold ?? ''}
+                      onChange={(e) => {
+                        const rules = [...(spec.supervision?.intervene_on ?? [])];
+                        rules[i] = { ...rules[i], threshold: e.target.value ? Number(e.target.value) : undefined };
+                        onChange({ ...spec, supervision: { ...spec.supervision, intervene_on: rules } });
+                      }}
+                      placeholder="Thr"
+                      title="Threshold"
+                    />
+                    <input
+                      className="input py-1 text-xs flex-1"
+                      value={rule.action}
+                      onChange={(e) => {
+                        const rules = [...(spec.supervision?.intervene_on ?? [])];
+                        rules[i] = { ...rules[i], action: e.target.value };
+                        onChange({ ...spec, supervision: { ...spec.supervision, intervene_on: rules } });
+                      }}
+                      placeholder="Action"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn-icon !p-0.5 mt-1"
+                  onClick={() => {
+                    const rules = (spec.supervision?.intervene_on ?? []).filter((_: SupervisionRule, j: number) => j !== i);
+                    onChange({ ...spec, supervision: { ...spec.supervision, intervene_on: rules } });
+                  }}
+                >
+                  <Trash2 className="w-3 h-3 text-text-muted hover:text-red-400" />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 

@@ -109,6 +109,53 @@ export function EventSpecEditor({ spec, onChange }: Props) {
           />
         </button>
       </div>
+      {direction === 'emit' && (
+        <div className="border-t border-border/50 pt-2 space-y-2">
+          <p className="text-[10px] uppercase tracking-wider text-text-muted font-medium">
+            Queue Settings
+          </p>
+          <div>
+            <label className="label">Target Queue</label>
+            <input
+              className="input"
+              value={spec.target_queue ?? ''}
+              onChange={(e) => onChange({ ...spec, target_queue: e.target.value || undefined })}
+              placeholder="e.g. notifications"
+            />
+          </div>
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <label className="label">Priority</label>
+              <input
+                type="number"
+                className="input"
+                value={spec.priority ?? ''}
+                onChange={(e) => onChange({ ...spec, priority: e.target.value ? Number(e.target.value) : undefined })}
+                placeholder="0"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="label">Delay (ms)</label>
+              <input
+                type="number"
+                className="input"
+                value={spec.delay_ms ?? ''}
+                onChange={(e) => onChange({ ...spec, delay_ms: e.target.value ? Number(e.target.value) : undefined })}
+                placeholder="0"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="label">Dedup Key</label>
+            <input
+              className="input"
+              value={spec.dedup_key ?? ''}
+              onChange={(e) => onChange({ ...spec, dedup_key: e.target.value || undefined })}
+              placeholder="e.g. order_id"
+            />
+          </div>
+        </div>
+      )}
       <div>
         <label className="label">Description</label>
         <textarea

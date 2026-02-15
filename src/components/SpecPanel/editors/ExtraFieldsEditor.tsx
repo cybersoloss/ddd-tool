@@ -4,7 +4,7 @@ import type { NodeSpec, DddNodeType } from '../../../types/flow';
 
 // Known (typed) keys per node type — anything else is an "extra field"
 const KNOWN_KEYS: Record<DddNodeType, Set<string>> = {
-  trigger: new Set(['event', 'source', 'filter', 'description']),
+  trigger: new Set(['event', 'source', 'filter', 'description', 'job_config', 'pattern']),
   input: new Set(['fields', 'validation', 'description']),
   process: new Set(['action', 'service', 'category', 'inputs', 'outputs', 'description']),
   decision: new Set(['condition', 'trueLabel', 'falseLabel', 'description']),
@@ -17,8 +17,8 @@ const KNOWN_KEYS: Record<DddNodeType, Set<string>> = {
   handoff: new Set(['mode', 'target', 'context_transfer', 'on_complete', 'on_failure', 'notify_customer']),
   agent_group: new Set(['name', 'description', 'members', 'shared_memory', 'coordination']),
   data_store: new Set(['operation', 'model', 'data', 'query', 'description', 'pagination', 'sort', 'batch', 'upsert_key', 'include', 'returning']),
-  service_call: new Set(['method', 'url', 'headers', 'body', 'timeout_ms', 'retry', 'error_mapping', 'description']),
-  event: new Set(['direction', 'event_name', 'payload', 'payload_source', 'async', 'description']),
+  service_call: new Set(['method', 'url', 'headers', 'body', 'timeout_ms', 'retry', 'error_mapping', 'description', 'request_config', 'integration']),
+  event: new Set(['direction', 'event_name', 'payload', 'payload_source', 'async', 'description', 'target_queue', 'priority', 'delay_ms', 'dedup_key']),
   loop: new Set(['collection', 'iterator', 'break_condition', 'on_error', 'accumulate', 'description']),
   parallel: new Set(['branches', 'join', 'join_count', 'timeout_ms', 'description']),
   sub_flow: new Set(['flow_ref', 'input_mapping', 'output_mapping', 'description']),

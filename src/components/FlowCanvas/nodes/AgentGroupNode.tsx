@@ -8,8 +8,8 @@ type AgentGroupNodeType = Node<DddNodeData, 'agent_group'>;
 
 function AgentGroupNodeComponent({ data, selected }: NodeProps<AgentGroupNodeType>) {
   const spec = (data.spec ?? {}) as AgentGroupSpec;
-  const members = spec.members ?? [];
-  const sharedMemory = spec.shared_memory ?? [];
+  const members = Array.isArray(spec.members) ? spec.members : [];
+  const sharedMemory = Array.isArray(spec.shared_memory) ? spec.shared_memory : [];
   const coordination = spec.coordination;
 
   return (

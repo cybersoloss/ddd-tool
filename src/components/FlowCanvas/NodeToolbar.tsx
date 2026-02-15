@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useReactFlow } from '@xyflow/react';
-import { FormInput, Cog, GitFork, Square, RotateCw, Shield, Hand, Network, GitBranch, ArrowLeftRight, Box, Undo2, Redo2, Database, ExternalLink, Zap, Repeat, Columns, GitMerge, BrainCircuit, Copy, Check, RotateCcw, Clock, HardDrive, Shuffle, Filter, FileText, Lock, Layers, ShieldCheck, LayoutGrid } from 'lucide-react';
+import { FormInput, Cog, GitFork, Square, RotateCw, Shield, Hand, Network, GitBranch, ArrowLeftRight, Box, Undo2, Redo2, Database, ExternalLink, Zap, Repeat, Columns, GitMerge, BrainCircuit, Copy, Check, RotateCcw, Clock, HardDrive, Shuffle, Filter, FileText, Lock, Layers, ShieldCheck, LayoutGrid, Settings } from 'lucide-react';
 import type { DddNodeType } from '../../types/flow';
 import { useSheetStore } from '../../stores/sheet-store';
 import { useUndoStore } from '../../stores/undo-store';
@@ -53,9 +53,10 @@ interface Props {
   pendingType: DddNodeType | null;
   onSelectType: (type: DddNodeType | null) => void;
   flowType?: 'traditional' | 'agent';
+  onOpenFlowSettings?: () => void;
 }
 
-export function NodeToolbar({ pendingType, onSelectType, flowType = 'traditional' }: Props) {
+export function NodeToolbar({ pendingType, onSelectType, flowType = 'traditional', onOpenFlowSettings }: Props) {
   const TOOLBAR_ITEMS = flowType === 'agent' ? AGENT_ITEMS : TRADITIONAL_ITEMS;
   const current = useSheetStore((s) => s.current);
   const flowId = useFlowStore((s) => s.currentFlow?.flow?.id);
@@ -149,6 +150,14 @@ export function NodeToolbar({ pendingType, onSelectType, flowType = 'traditional
       >
         <LayoutGrid className="w-4 h-4 text-text-secondary" />
         <span className="text-sm text-text-primary">Auto Layout</span>
+      </div>
+      <div
+        className="flex items-center gap-2 px-3 py-2 rounded cursor-pointer transition-colors hover:bg-bg-hover"
+        onClick={onOpenFlowSettings}
+        title="Flow settings (template, parameters, contract)"
+      >
+        <Settings className="w-4 h-4 text-text-secondary" />
+        <span className="text-sm text-text-primary">Flow Settings</span>
       </div>
       <div className="w-full h-px bg-border my-1" />
       <div className="flex items-center gap-1 px-2">

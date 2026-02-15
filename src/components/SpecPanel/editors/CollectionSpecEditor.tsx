@@ -7,6 +7,12 @@ interface Props {
 }
 
 export function CollectionSpecEditor({ spec, onChange }: Props) {
+  const showAccumulator = spec.operation === 'reduce' || spec.operation === 'aggregate';
+  const accum = spec.accumulator;
+  const isAccumObj = typeof accum === 'object' && accum !== null;
+  const accumInit = isAccumObj ? JSON.stringify(accum.init ?? '', null, 2) : '';
+  const accumExpr = isAccumObj ? (accum.expression ?? '') : (typeof accum === 'string' ? accum : '');
+
   return (
     <div className="space-y-3">
       <div>
@@ -70,16 +76,42 @@ export function CollectionSpecEditor({ spec, onChange }: Props) {
           </select>
         </div>
       )}
-      {spec.operation === 'reduce' && (
-        <div>
-          <label className="label">Accumulator</label>
-          <input
-            className="input"
-            value={spec.accumulator ?? ''}
-            onChange={(e) => onChange({ ...spec, accumulator: e.target.value })}
-            placeholder="e.g. sum, count"
-          />
-        </div>
+      {showAccumulator && (
+        <>
+          <div>
+            <label className="label">Accumulator Expression</label>
+            <input
+              className="input"
+              value={accumExpr}
+              onChange={(e) => {
+                if (isAccumObj) {
+                  onChange({ ...spec, accumulator: { ...accum, expression: e.target.value } });
+                } else {
+                  onChange({ ...spec, accumulator: e.target.value });
+                }
+              }}
+              placeholder="e.g. sum, count, or an expression"
+            />
+          </div>
+          <div>
+            <label className="label">Accumulator Init</label>
+            <textarea
+              className="input min-h-[40px] resize-y font-mono text-xs"
+              value={accumInit}
+              onChange={(e) => {
+                let initVal: unknown;
+                try {
+                  initVal = JSON.parse(e.target.value);
+                } catch {
+                  initVal = e.target.value;
+                }
+                const expr = isAccumObj ? (accum.expression ?? '') : (typeof accum === 'string' ? accum : '');
+                onChange({ ...spec, accumulator: { init: initVal, expression: expr } });
+              }}
+              placeholder="Initial value (JSON), e.g. 0, [], {}"
+            />
+          </div>
+        </>
       )}
       <div>
         <label className="label">Output</label>

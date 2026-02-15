@@ -46,7 +46,7 @@ export function ProcessSpecEditor({ spec, onChange }: Props) {
         <label className="label">Inputs (comma-separated)</label>
         <input
           className="input"
-          value={(spec.inputs ?? []).join(', ')}
+          value={(Array.isArray(spec.inputs) ? spec.inputs : []).join(', ')}
           onChange={(e) => onChange({ ...spec, inputs: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
           placeholder="e.g. order, user"
         />
@@ -55,7 +55,7 @@ export function ProcessSpecEditor({ spec, onChange }: Props) {
         <label className="label">Outputs (comma-separated)</label>
         <input
           className="input"
-          value={(spec.outputs ?? []).join(', ')}
+          value={(Array.isArray(spec.outputs) ? spec.outputs : []).join(', ')}
           onChange={(e) => onChange({ ...spec, outputs: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
           placeholder="e.g. validated_order"
         />

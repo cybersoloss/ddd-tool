@@ -15,8 +15,8 @@ const COMMUNICATION_OPTIONS: NonNullable<AgentGroupSpec['coordination']>['commun
 const ACCESS_OPTIONS: SharedMemoryEntry['access'][] = ['read_write', 'read_only'];
 
 export function AgentGroupSpecEditor({ spec, onChange }: Props) {
-  const members = spec.members ?? [];
-  const sharedMemory = spec.shared_memory ?? [];
+  const members = Array.isArray(spec.members) ? spec.members : [];
+  const sharedMemory = Array.isArray(spec.shared_memory) ? spec.shared_memory : [];
   const coordination = spec.coordination ?? {
     communication: 'via_orchestrator',
     max_active_agents: 3,

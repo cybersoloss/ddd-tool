@@ -9,9 +9,9 @@ interface Props {
 }
 
 export function SmartRouterSpecEditor({ spec, onChange }: Props) {
-  const rules = spec.rules ?? [];
+  const rules = Array.isArray(spec.rules) ? spec.rules : [];
   const llm = spec.llm_routing ?? { enabled: false, model: 'claude-haiku', routing_prompt: '', confidence_threshold: 0.8, routes: {} };
-  const fallbackChain = spec.fallback_chain ?? [];
+  const fallbackChain = Array.isArray(spec.fallback_chain) ? spec.fallback_chain : [];
   const policies = spec.policies ?? {};
   const retry = policies.retry ?? { max_attempts: 3, on_failure: 'fallback' };
   const timeout = policies.timeout ?? { per_route: 30, total: 120 };
@@ -140,6 +140,21 @@ export function SmartRouterSpecEditor({ spec, onChange }: Props) {
                 step={0.05}
                 value={llm.confidence_threshold ?? 0.8}
                 onChange={(e) => updateLlm({ confidence_threshold: parseFloat(e.target.value) })}
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-text-muted">Routes (intent → target)</label>
+              <textarea
+                className="input min-h-[60px] resize-y font-mono text-xs"
+                value={JSON.stringify(llm.routes ?? {}, null, 2)}
+                onChange={(e) => {
+                  try {
+                    updateLlm({ routes: JSON.parse(e.target.value) });
+                  } catch {
+                    // Keep raw while editing
+                  }
+                }}
+                placeholder='{"billing": "billing-agent", "technical": "tech-support"}'
               />
             </div>
           </div>

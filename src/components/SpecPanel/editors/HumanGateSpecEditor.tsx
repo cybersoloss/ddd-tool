@@ -11,7 +11,7 @@ interface Props {
 const TIMEOUT_ACTIONS = ['escalate', 'auto_approve', 'auto_reject'] as const;
 
 export function HumanGateSpecEditor({ spec, onChange }: Props) {
-  const options = spec.approval_options ?? [];
+  const options = Array.isArray(spec.approval_options) ? spec.approval_options : [];
   const timeout = spec.timeout ?? { duration: 3600, action: 'escalate' };
 
   const addOption = () => {
@@ -33,6 +33,25 @@ export function HumanGateSpecEditor({ spec, onChange }: Props) {
 
   return (
     <div className="space-y-4">
+      {/* Notification Channels */}
+      <div>
+        <label className="label">Notification Channels</label>
+        <input
+          className="input"
+          value={(Array.isArray(spec.notification_channels) ? spec.notification_channels : []).join(', ')}
+          onChange={(e) =>
+            onChange({
+              ...spec,
+              notification_channels: e.target.value
+                .split(',')
+                .map((s) => s.trim())
+                .filter(Boolean),
+            })
+          }
+          placeholder="Comma-separated, e.g. slack, email"
+        />
+      </div>
+
       {/* Approval Options */}
       <div>
         <div className="flex items-center justify-between mb-1">
@@ -118,7 +137,7 @@ export function HumanGateSpecEditor({ spec, onChange }: Props) {
         <label className="label">Context for Human</label>
         <input
           className="input"
-          value={(spec.context_for_human ?? []).join(', ')}
+          value={(Array.isArray(spec.context_for_human) ? spec.context_for_human : []).join(', ')}
           onChange={(e) =>
             onChange({
               ...spec,

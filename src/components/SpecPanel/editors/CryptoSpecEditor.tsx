@@ -57,7 +57,7 @@ export function CryptoSpecEditor({ spec, onChange }: Props) {
         <label className="label">Input Fields (comma-separated)</label>
         <input
           className="input"
-          value={(spec.input_fields ?? []).join(', ')}
+          value={(Array.isArray(spec.input_fields) ? spec.input_fields : []).join(', ')}
           onChange={(e) => onChange({ ...spec, input_fields: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
           placeholder="e.g. email, phone"
         />

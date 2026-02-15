@@ -13,8 +13,8 @@ const ON_MAX_OPTIONS: AgentLoopSpec['on_max_iterations'][] = ['escalate', 'respo
 const MEMORY_TYPES: MemoryStoreDefinition['type'][] = ['conversation_history', 'vector_store', 'key_value'];
 
 export function AgentLoopSpecEditor({ spec, onChange }: Props) {
-  const tools = spec.tools ?? [];
-  const memory = spec.memory ?? [];
+  const tools = Array.isArray(spec.tools) ? spec.tools : [];
+  const memory = Array.isArray(spec.memory) ? spec.memory : [];
 
   const addTool = () => {
     const tool: ToolDefinition = {
@@ -110,6 +110,25 @@ export function AgentLoopSpecEditor({ spec, onChange }: Props) {
         </div>
       </div>
 
+      {/* Stop Conditions */}
+      <div>
+        <label className="label">Stop Conditions</label>
+        <input
+          className="input"
+          value={(Array.isArray(spec.stop_conditions) ? spec.stop_conditions : []).join(', ')}
+          onChange={(e) =>
+            onChange({
+              ...spec,
+              stop_conditions: e.target.value
+                .split(',')
+                .map((s) => s.trim())
+                .filter(Boolean),
+            })
+          }
+          placeholder="Comma-separated, e.g. answer_provided, escalation_needed"
+        />
+      </div>
+
       {/* On Max Iterations */}
       <div>
         <label className="label">On Max Iterations</label>
@@ -155,15 +174,38 @@ export function AgentLoopSpecEditor({ spec, onChange }: Props) {
                 onChange={(e) => updateTool(i, { description: e.target.value })}
                 placeholder="Description"
               />
-              <label className="flex items-center gap-1.5 text-xs text-text-secondary cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="accent-accent"
-                  checked={tool.is_terminal ?? false}
-                  onChange={(e) => updateTool(i, { is_terminal: e.target.checked })}
-                />
-                Terminal tool
-              </label>
+              <input
+                className="input py-1 text-xs font-mono"
+                value={tool.parameters ?? ''}
+                onChange={(e) => updateTool(i, { parameters: e.target.value || undefined })}
+                placeholder='Parameters JSON schema, e.g. {"query": "string"}'
+              />
+              <input
+                className="input py-1 text-xs"
+                value={tool.implementation ?? ''}
+                onChange={(e) => updateTool(i, { implementation: e.target.value || undefined })}
+                placeholder="Implementation ref (optional)"
+              />
+              <div className="flex gap-3">
+                <label className="flex items-center gap-1.5 text-xs text-text-secondary cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="accent-accent"
+                    checked={tool.is_terminal ?? false}
+                    onChange={(e) => updateTool(i, { is_terminal: e.target.checked })}
+                  />
+                  Terminal
+                </label>
+                <label className="flex items-center gap-1.5 text-xs text-text-secondary cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="accent-accent"
+                    checked={tool.requires_confirmation ?? false}
+                    onChange={(e) => updateTool(i, { requires_confirmation: e.target.checked })}
+                  />
+                  Confirm
+                </label>
+              </div>
             </div>
           ))}
         </div>
@@ -209,6 +251,12 @@ export function AgentLoopSpecEditor({ spec, onChange }: Props) {
                 value={mem.max_tokens ?? ''}
                 onChange={(e) => updateMemory(i, { max_tokens: e.target.value ? parseInt(e.target.value) : undefined })}
                 placeholder="Max tokens (optional)"
+              />
+              <input
+                className="input py-1 text-xs"
+                value={mem.strategy ?? ''}
+                onChange={(e) => updateMemory(i, { strategy: e.target.value || undefined })}
+                placeholder="Strategy (e.g. sliding_window)"
               />
             </div>
           ))}

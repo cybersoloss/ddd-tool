@@ -406,6 +406,9 @@ function normalizeFlowDocument(raw: Record<string, unknown>, domainId: string, f
         targetNodeId: (c.targetNodeId ?? c.target ?? c.targetId ?? '') as string,
         sourceHandle: sh === 'default' ? undefined : sh,
         targetHandle: th === 'default' ? undefined : th,
+        label: c.label as string | undefined,
+        data: c.data as Array<{ name: string; type: string }> | undefined,
+        behavior: c.behavior as 'continue' | 'stop' | 'retry' | 'circuit_break' | undefined,
       };
     });
 
@@ -521,14 +524,25 @@ function normalizeFlowDocument(raw: Record<string, unknown>, domainId: string, f
 
   const normalizedNodes = (nodes as Array<Record<string, unknown>>).map(normalizeNode);
 
+  // Preserve flow-level fields from external YAML
+  const flowObj = doc.flow ?? {
+    id: (raw as Record<string, unknown>).name as string ?? flowId,
+    name: (raw as Record<string, unknown>).name as string ?? flowId,
+    type: (flowType as 'traditional' | 'agent') ?? 'traditional',
+    domain: (raw as Record<string, unknown>).domain as string ?? domainId,
+    description: (raw as Record<string, unknown>).description as string,
+  };
+  // Preserve template/parameters/contract if present
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rawFlow = doc.flow as any;
+  if (rawFlow) {
+    if (rawFlow.template !== undefined) flowObj.template = rawFlow.template;
+    if (rawFlow.parameters !== undefined) flowObj.parameters = rawFlow.parameters;
+    if (rawFlow.contract !== undefined) flowObj.contract = rawFlow.contract;
+  }
+
   return {
-    flow: doc.flow ?? {
-      id: (raw as Record<string, unknown>).name as string ?? flowId,
-      name: (raw as Record<string, unknown>).name as string ?? flowId,
-      type: (flowType as 'traditional' | 'agent') ?? 'traditional',
-      domain: (raw as Record<string, unknown>).domain as string ?? domainId,
-      description: (raw as Record<string, unknown>).description as string,
-    },
+    flow: flowObj,
     trigger: normalizedTrigger,
     nodes: normalizedNodes,
     metadata: doc.metadata ?? {

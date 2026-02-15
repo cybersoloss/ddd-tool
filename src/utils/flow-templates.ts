@@ -170,6 +170,119 @@ export const FLOW_TEMPLATES: FlowTemplate[] = [
     },
   },
 
+  // --- Additional Traditional Templates ---
+
+  {
+    id: 'cached-api',
+    name: 'Cached API Call',
+    description: 'Trigger → Input → Cache (hit→Transform→Terminal, miss→Service Call→Terminal)',
+    type: 'traditional',
+    nodeCount: 7,
+    create(flowId, flowName, domainId) {
+      const termHit = node('terminal', 'Cache Hit', { x: 50, y: 550 }, { outcome: 'cache_hit', description: '' });
+      const termMiss = node('terminal', 'API Result', { x: 400, y: 550 }, { outcome: 'api_result', description: '' });
+      const transformHit = node('transform', 'Format Cached', { x: 50, y: 420 }, { input_schema: '', output_schema: '', field_mappings: {}, description: '' }, [
+        { targetNodeId: termHit.id },
+      ]);
+      const serviceCall = node('service_call', 'Call API', { x: 400, y: 350 }, { method: 'GET', url: '', headers: {}, body: {}, timeout_ms: 5000, retry: { max_attempts: 3, backoff_ms: 1000 }, error_mapping: {}, description: '' }, [
+        { targetNodeId: termMiss.id },
+      ]);
+      const cacheNode = node('cache', 'Check Cache', { x: 250, y: 220 }, { key: '', ttl_ms: 3600000, store: 'redis', description: '' }, [
+        { targetNodeId: transformHit.id, sourceHandle: 'hit' },
+        { targetNodeId: serviceCall.id, sourceHandle: 'miss' },
+      ]);
+      const input = node('input', 'API Input', { x: 250, y: 120 }, { fields: [], validation: '', description: '' }, [
+        { targetNodeId: cacheNode.id },
+      ]);
+      const trigger: DddFlowNode = {
+        id: `trigger-${nanoid(8)}`,
+        type: 'trigger',
+        position: { x: 250, y: 20 },
+        connections: [{ targetNodeId: input.id }],
+        spec: { event: 'API Request', source: 'API Gateway', description: '' },
+        label: 'API Request',
+      };
+
+      return {
+        flow: { id: flowId, name: flowName, type: 'traditional', domain: domainId },
+        trigger,
+        nodes: [input, cacheNode, transformHit, serviceCall, termHit, termMiss],
+        metadata: meta(),
+      };
+    },
+  },
+  {
+    id: 'collection-processing',
+    name: 'Collection Processing',
+    description: 'Trigger → Loop → Collection (filter) → Event (emit) → Terminal',
+    type: 'traditional',
+    nodeCount: 5,
+    create(flowId, flowName, domainId) {
+      const terminal = node('terminal', 'Done', { x: 250, y: 520 }, { outcome: 'items processed', description: '' });
+      const emitEvent = node('event', 'Emit Result', { x: 250, y: 400 }, { direction: 'emit', event_name: '', payload: {}, async: true, description: '' }, [
+        { targetNodeId: terminal.id },
+      ]);
+      const collection = node('collection', 'Filter Items', { x: 250, y: 280 }, { operation: 'filter', input: 'items', predicate: '', output: 'filtered', description: '' }, [
+        { targetNodeId: emitEvent.id },
+      ]);
+      const loop = node('loop', 'Iterate', { x: 250, y: 160 }, { collection: 'items', iterator: 'item', break_condition: '', description: '' }, [
+        { targetNodeId: collection.id },
+      ]);
+      const trigger: DddFlowNode = {
+        id: `trigger-${nanoid(8)}`,
+        type: 'trigger',
+        position: { x: 250, y: 40 },
+        connections: [{ targetNodeId: loop.id }],
+        spec: { event: 'Process Items', source: '', description: '' },
+        label: 'Process Items',
+      };
+
+      return {
+        flow: { id: flowId, name: flowName, type: 'traditional', domain: domainId },
+        trigger,
+        nodes: [loop, collection, emitEvent, terminal],
+        metadata: meta(),
+      };
+    },
+  },
+  {
+    id: 'data-import',
+    name: 'Data Import with Parsing',
+    description: 'Trigger → Service Call → Parse → Collection (deduplicate) → Data Store → Terminal',
+    type: 'traditional',
+    nodeCount: 6,
+    create(flowId, flowName, domainId) {
+      const terminal = node('terminal', 'Import Done', { x: 250, y: 600 }, { outcome: 'data imported', description: '' });
+      const dataStore = node('data_store', 'Store Records', { x: 250, y: 480 }, { operation: 'create_many', model: '', data: {}, query: {}, description: '' }, [
+        { targetNodeId: terminal.id },
+      ]);
+      const collection = node('collection', 'Deduplicate', { x: 250, y: 360 }, { operation: 'deduplicate', input: 'records', predicate: 'item.id', output: 'unique_records', description: '' }, [
+        { targetNodeId: dataStore.id },
+      ]);
+      const parseNode = node('parse', 'Parse Data', { x: 250, y: 240 }, { format: 'csv', input: 'raw_data', output: 'records', strategy: 'lenient', description: '' }, [
+        { targetNodeId: collection.id },
+      ]);
+      const serviceCall = node('service_call', 'Fetch Source', { x: 250, y: 120 }, { method: 'GET', url: '', headers: {}, body: {}, timeout_ms: 10000, retry: { max_attempts: 3, backoff_ms: 2000 }, error_mapping: {}, description: '' }, [
+        { targetNodeId: parseNode.id },
+      ]);
+      const trigger: DddFlowNode = {
+        id: `trigger-${nanoid(8)}`,
+        type: 'trigger',
+        position: { x: 250, y: 20 },
+        connections: [{ targetNodeId: serviceCall.id }],
+        spec: { event: 'Import Triggered', source: 'Scheduler', description: '' },
+        label: 'Import Start',
+      };
+
+      return {
+        flow: { id: flowId, name: flowName, type: 'traditional', domain: domainId },
+        trigger,
+        nodes: [serviceCall, parseNode, collection, dataStore, terminal],
+        metadata: meta(),
+      };
+    },
+  },
+
   // --- Agent Templates ---
 
   {

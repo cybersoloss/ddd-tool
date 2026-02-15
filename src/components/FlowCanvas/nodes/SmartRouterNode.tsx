@@ -8,10 +8,10 @@ type SmartRouterNodeType = Node<DddNodeData, 'smart_router'>;
 
 function SmartRouterNodeComponent({ data, selected }: NodeProps<SmartRouterNodeType>) {
   const spec = (data.spec ?? {}) as SmartRouterSpec;
-  const rules = spec.rules ?? [];
+  const rules = Array.isArray(spec.rules) ? spec.rules : [];
   const llm = spec.llm_routing;
   const policies = spec.policies;
-  const fallback = spec.fallback_chain ?? [];
+  const fallback = Array.isArray(spec.fallback_chain) ? spec.fallback_chain : [];
 
   // Collect unique route names for dynamic source handles
   const routeNames = useMemo(() => {

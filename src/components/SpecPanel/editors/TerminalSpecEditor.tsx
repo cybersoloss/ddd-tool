@@ -38,6 +38,20 @@ export function TerminalSpecEditor({ spec, onChange }: Props) {
         />
       </div>
       <div>
+        <label className="label">Response Type</label>
+        <select
+          className="input"
+          value={spec.response_type ?? ''}
+          onChange={(e) => onChange({ ...spec, response_type: (e.target.value || undefined) as TerminalSpec['response_type'] })}
+        >
+          <option value="">Default</option>
+          <option value="json">JSON</option>
+          <option value="stream">Stream</option>
+          <option value="sse">SSE</option>
+          <option value="empty">Empty</option>
+        </select>
+      </div>
+      <div>
         <label className="label">Response Body</label>
         <textarea
           className="input min-h-[60px] resize-y font-mono text-xs"
@@ -50,6 +64,21 @@ export function TerminalSpecEditor({ spec, onChange }: Props) {
             }
           }}
           placeholder="{}"
+        />
+      </div>
+      <div>
+        <label className="label">Headers</label>
+        <textarea
+          className="input min-h-[60px] resize-y font-mono text-xs"
+          value={JSON.stringify(spec.headers ?? {}, null, 2)}
+          onChange={(e) => {
+            try {
+              onChange({ ...spec, headers: JSON.parse(e.target.value) });
+            } catch {
+              // Keep raw while editing
+            }
+          }}
+          placeholder='{"Content-Type": "application/json"}'
         />
       </div>
       <ExtraFieldsEditor spec={spec} nodeType="terminal" onChange={onChange} />

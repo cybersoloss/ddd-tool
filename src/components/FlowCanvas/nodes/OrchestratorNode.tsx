@@ -8,8 +8,8 @@ type OrchestratorNodeType = Node<DddNodeData, 'orchestrator'>;
 
 function OrchestratorNodeComponent({ data, selected }: NodeProps<OrchestratorNodeType>) {
   const spec = (data.spec ?? {}) as OrchestratorSpec;
-  const agents = spec.agents ?? [];
-  const sharedMemory = spec.shared_memory ?? [];
+  const agents = Array.isArray(spec.agents) ? spec.agents : [];
+  const sharedMemory = Array.isArray(spec.shared_memory) ? spec.shared_memory : [];
 
   return (
     <div
