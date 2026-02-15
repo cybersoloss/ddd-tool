@@ -677,7 +677,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
     // Portals offset to the right of flows
     const FLOW_GRID_COLS = 3;
-    const FLOW_H_SPACING = 250;
+    const FLOW_H_SPACING = 320;
     const portalKeys = Object.keys(domain.layout?.portals ?? {});
     const portalPositions: Record<string, Position> = {};
     const portalAutoLayout = generateFlowAutoLayout(portalKeys);

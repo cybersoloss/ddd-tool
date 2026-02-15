@@ -129,6 +129,7 @@ export function FlowBlock({ flow, selected, isStale, isLocked, scale = 1, animat
         left: flow.position.x,
         top: flow.position.y,
         minWidth: 180,
+        maxWidth: 280,
         transition: animating ? 'left 300ms ease, top 300ms ease' : 'none',
       }}
       onMouseDown={handleMouseDown}

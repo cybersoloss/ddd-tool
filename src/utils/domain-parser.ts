@@ -99,8 +99,8 @@ export function buildSystemMapData(
 // --- L2 Domain Map ---
 
 const FLOW_GRID_COLS = 3;
-const FLOW_H_SPACING = 250;
-const FLOW_V_SPACING = 160;
+const FLOW_H_SPACING = 320;
+const FLOW_V_SPACING = 180;
 const FLOW_OFFSET_X = 60;
 const FLOW_OFFSET_Y = 40;
 
