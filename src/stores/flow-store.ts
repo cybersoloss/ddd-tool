@@ -432,8 +432,8 @@ function normalizeFlowDocument(raw: Record<string, unknown>, domainId: string, f
     }
 
     return {
-      id: n.id,
-      type: n.type,
+      id: n.id ?? `${n.type ?? 'node'}-auto-${Math.random().toString(36).slice(2, 8)}`,
+      type: n.type ?? 'process',
       position: n.position ?? { x: 0, y: 0 },
       connections,
       spec,
