@@ -19,8 +19,11 @@ export function computeDagLayout(flow: FlowDocument): Map<string, Position> {
     children.set(node.id, (node.connections ?? []).map((c) => c.targetNodeId));
   }
 
-  // BFS from trigger to assign layers (max depth from root)
+  // BFS from trigger to assign layers (longest path from root)
+  // Track push counts to detect cycles and prevent infinite loops
   const layers = new Map<string, number>();
+  const pushCount = new Map<string, number>();
+  const maxPushes = allNodes.length + 1; // no acyclic path can exceed node count
   const queue = [flow.trigger.id];
   layers.set(flow.trigger.id, 0);
 
@@ -30,6 +33,9 @@ export function computeDagLayout(flow: FlowDocument): Map<string, Position> {
     for (const childId of children.get(nodeId) ?? []) {
       const existing = layers.get(childId);
       if (existing === undefined || existing < layer + 1) {
+        const count = (pushCount.get(childId) ?? 0) + 1;
+        if (count > maxPushes) continue; // cycle detected — stop re-queuing
+        pushCount.set(childId, count);
         layers.set(childId, layer + 1);
         queue.push(childId);
       }
