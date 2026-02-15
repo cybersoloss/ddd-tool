@@ -381,6 +381,100 @@ function createDefaultFlow(domainId: string, flowId: string, flowName: string, f
   return doc;
 }
 
+/**
+ * Normalize a raw YAML-parsed document into the internal FlowDocument shape.
+ * Handles two external YAML conventions:
+ *   - connections using `target` or `targetId` instead of `targetNodeId`
+ *   - spec fields inlined on the node instead of nested under `spec:`
+ *   - trigger embedded inside `nodes:` array (older format)
+ *   - `properties:` used instead of `spec:` (older format)
+ */
+function normalizeFlowDocument(raw: Record<string, unknown>, domainId: string, flowId: string, flowType?: string): FlowDocument {
+  const doc = raw as unknown as FlowDocument;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const normalizeNode = (n: any): DddFlowNode => {
+    // Normalize connections: target / targetId → targetNodeId
+    const rawConns: Array<Record<string, unknown>> = n.connections ?? [];
+    const connections = rawConns.map((c: Record<string, unknown>) => ({
+      targetNodeId: (c.targetNodeId ?? c.target ?? c.targetId ?? '') as string,
+      sourceHandle: c.sourceHandle as string | undefined,
+      targetHandle: c.targetHandle as string | undefined,
+    }));
+
+    // Normalize spec: pull from `spec:`, `properties:`, `config:`, or inlined fields
+    let spec = n.spec ?? n.properties ?? n.config ?? {};
+    if (typeof spec !== 'object' || spec === null) spec = {};
+
+    // If no explicit spec/properties/config, collect inlined spec-like fields
+    const STRUCTURAL_KEYS = new Set([
+      'id', 'type', 'label', 'position', 'connections', 'parentId',
+      'spec', 'properties', 'config', 'observability', 'security',
+    ]);
+    if (!n.spec && !n.properties && !n.config) {
+      const inlined: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(n)) {
+        if (!STRUCTURAL_KEYS.has(k)) inlined[k] = v;
+      }
+      if (Object.keys(inlined).length > 0) spec = { ...spec, ...inlined };
+    }
+
+    return {
+      id: n.id,
+      type: n.type,
+      position: n.position ?? { x: 0, y: 0 },
+      connections,
+      spec,
+      label: n.label ?? n.id,
+      parentId: n.parentId,
+      observability: n.observability,
+      security: n.security,
+    };
+  };
+
+  // Handle older format: trigger metadata at top level, trigger node inside nodes[]
+  let trigger = doc.trigger;
+  let nodes: unknown[] = (doc.nodes as unknown[]) ?? [];
+
+  if (!trigger || !trigger.id) {
+    // Look for trigger node inside the nodes array
+    const triggerIdx = (nodes as Array<Record<string, unknown>>).findIndex(
+      (n) => n.type === 'trigger'
+    );
+    if (triggerIdx >= 0) {
+      trigger = (nodes as Array<Record<string, unknown>>)[triggerIdx] as unknown as typeof trigger;
+      nodes = [...(nodes as unknown[]).slice(0, triggerIdx), ...(nodes as unknown[]).slice(triggerIdx + 1)];
+    }
+  }
+
+  const normalizedTrigger = trigger ? normalizeNode(trigger) : {
+    id: 'trigger-default',
+    type: 'trigger' as const,
+    position: { x: 250, y: 50 },
+    connections: [],
+    spec: {},
+    label: 'Trigger',
+  };
+
+  const normalizedNodes = (nodes as Array<Record<string, unknown>>).map(normalizeNode);
+
+  return {
+    flow: doc.flow ?? {
+      id: (raw as Record<string, unknown>).name as string ?? flowId,
+      name: (raw as Record<string, unknown>).name as string ?? flowId,
+      type: (flowType as 'traditional' | 'agent') ?? 'traditional',
+      domain: (raw as Record<string, unknown>).domain as string ?? domainId,
+      description: (raw as Record<string, unknown>).description as string,
+    },
+    trigger: normalizedTrigger,
+    nodes: normalizedNodes,
+    metadata: doc.metadata ?? {
+      created: new Date().toISOString(),
+      modified: new Date().toISOString(),
+    },
+  };
+}
+
 function getFlowPath(projectPath: string, domainId: string, flowId: string): string {
   return `${projectPath}/specs/domains/${domainId}/flows/${flowId}.yaml`;
 }
@@ -466,11 +560,8 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       const exists: boolean = await invoke('path_exists', { path: flowPath });
       if (exists) {
         const content: string = await invoke('read_file', { path: flowPath });
-        const doc = parse(content) as FlowDocument;
-        // Backfill flow metadata if YAML was saved without it
-        if (!doc.flow) {
-          doc.flow = { id: flowId, name: flowId, type: flowType ?? 'traditional', domain: domainId };
-        }
+        const raw = parse(content) as Record<string, unknown>;
+        const doc = normalizeFlowDocument(raw, domainId, flowId, flowType);
         set({ currentFlow: doc, loading: false });
       } else {
         // Create default flow document
