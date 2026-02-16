@@ -47,14 +47,33 @@ export function DataStoreSpecEditor({ spec, onChange }: Props) {
           value={spec.operation ?? 'read'}
           onChange={(e) => onChange({ ...spec, operation: e.target.value as DataStoreSpec['operation'] })}
         >
-          <option value="create">Create</option>
-          <option value="read">Read</option>
-          <option value="update">Update</option>
-          <option value="delete">Delete</option>
-          <option value="upsert">Upsert</option>
-          <option value="create_many">Create Many</option>
-          <option value="update_many">Update Many</option>
-          <option value="delete_many">Delete Many</option>
+          {storeType === 'memory' ? (
+            <>
+              <option value="get">Get</option>
+              <option value="set">Set</option>
+              <option value="merge">Merge</option>
+              <option value="reset">Reset</option>
+              <option value="subscribe">Subscribe</option>
+              <option value="update_where">Update Where</option>
+              <optgroup label="CRUD (legacy)">
+                <option value="read">Read</option>
+                <option value="create">Create</option>
+                <option value="update">Update</option>
+                <option value="delete">Delete</option>
+              </optgroup>
+            </>
+          ) : (
+            <>
+              <option value="create">Create</option>
+              <option value="read">Read</option>
+              <option value="update">Update</option>
+              <option value="delete">Delete</option>
+              <option value="upsert">Upsert</option>
+              <option value="create_many">Create Many</option>
+              <option value="update_many">Update Many</option>
+              <option value="delete_many">Delete Many</option>
+            </>
+          )}
         </select>
       </div>
 
@@ -275,11 +294,39 @@ export function DataStoreSpecEditor({ spec, onChange }: Props) {
               placeholder="e.g. domains, currentFlow.nodes"
             />
           </div>
+          {spec.operation === 'update_where' && (
+            <>
+              <div>
+                <label className="label">Predicate</label>
+                <input
+                  className="input"
+                  value={spec.predicate ?? ''}
+                  onChange={(e) => onChange({ ...spec, predicate: e.target.value })}
+                  placeholder="e.g. $.id === targetId"
+                />
+              </div>
+              <div>
+                <label className="label">Patch</label>
+                <textarea
+                  className="input min-h-[60px] resize-y font-mono text-xs"
+                  value={JSON.stringify(spec.patch ?? {}, null, 2)}
+                  onChange={(e) => {
+                    try {
+                      onChange({ ...spec, patch: JSON.parse(e.target.value) });
+                    } catch {
+                      // Keep raw while editing
+                    }
+                  }}
+                  placeholder='{"dismissed": true}'
+                />
+              </div>
+            </>
+          )}
         </>
       )}
 
       {/* Safety mode (for reads) */}
-      {spec.operation === 'read' && (
+      {(spec.operation === 'read' || spec.operation === 'get' || spec.operation === 'subscribe') && (
         <div>
           <label className="label">Safety</label>
           <select

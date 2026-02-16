@@ -1,5 +1,5 @@
 import { useRef, useCallback, useState, useEffect } from 'react';
-import { Layers, GripVertical, User, Database, Cog, Globe } from 'lucide-react';
+import { Layers, GripVertical, User, Database, Cog, Globe, HardDrive } from 'lucide-react';
 import { useValidationStore } from '../../stores/validation-store';
 import type { SystemMapDomain } from '../../types/domain';
 import type { Position } from '../../types/sheet';
@@ -200,6 +200,12 @@ export function DomainBlock({ domain, selected, isLocked, scale = 1, animating, 
             <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded-full flex items-center gap-0.5" title={domain.owns_schemas.join(', ')}>
               <Database className="w-2.5 h-2.5" />
               {domain.owns_schemas.length}
+            </span>
+          )}
+          {domain.storeCount != null && domain.storeCount > 0 && (
+            <span className="text-[10px] bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded-full flex items-center gap-0.5" title={`${domain.storeCount} state store(s)`}>
+              <HardDrive className="w-2.5 h-2.5" />
+              {domain.storeCount}
             </span>
           )}
         </div>

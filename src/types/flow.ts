@@ -214,7 +214,8 @@ export interface AgentGroupSpec {
 
 export interface DataStoreSpec {
   store_type?: 'database' | 'filesystem' | 'memory';
-  operation?: 'create' | 'read' | 'update' | 'delete' | 'upsert' | 'create_many' | 'update_many' | 'delete_many';
+  operation?: 'create' | 'read' | 'update' | 'delete' | 'upsert' | 'create_many' | 'update_many' | 'delete_many'
+    | 'get' | 'set' | 'merge' | 'reset' | 'subscribe' | 'update_where';
   model?: string;
   data?: Record<string, string>;
   query?: Record<string, string>;
@@ -231,6 +232,9 @@ export interface DataStoreSpec {
   // memory fields (when store_type = 'memory')
   store?: string;
   selector?: string;
+  // memory update_where fields
+  predicate?: string;
+  patch?: Record<string, unknown>;
   // safety mode for null handling
   safety?: 'strict' | 'lenient';
   description?: string;
@@ -264,6 +268,7 @@ export interface IpcCallSpec {
   return_type?: string;
   timeout_ms?: number;
   bridge?: string;
+  result_condition?: string;
   description?: string;
   [key: string]: unknown;
 }
@@ -464,6 +469,7 @@ export interface FlowDocument {
     type: 'traditional' | 'agent';
     domain: string;
     description?: string;
+    keyboard_shortcut?: string;
     template?: boolean;
     parameters?: Record<string, { type: string; values?: string[] }>;
     contract?: {

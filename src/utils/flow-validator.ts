@@ -450,10 +450,18 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
       case 'data_store': {
         const spec = (node.spec ?? {}) as DataStoreSpec;
         const storeType = spec.store_type ?? 'database';
+        const memoryOps = new Set(['get', 'set', 'merge', 'reset', 'subscribe', 'update_where']);
         if (!spec.operation) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Data store "${node.label}" must have an operation set`,
             { nodeId: node.id, suggestion: 'Set the operation (create, read, update, or delete)' }
+          ));
+        }
+        // Warn if memory-only operations are used with non-memory store_type
+        if (spec.operation && memoryOps.has(spec.operation) && storeType !== 'memory') {
+          issues.push(issue('flow', 'warning', 'spec_completeness',
+            `Data store "${node.label}" uses memory operation "${spec.operation}" but store_type is "${storeType}"`,
+            { nodeId: node.id, suggestion: 'Set store_type to "memory" or use CRUD operations for database/filesystem' }
           ));
         }
         if (storeType === 'database') {
@@ -477,11 +485,26 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
               { nodeId: node.id, suggestion: 'Set the store name (e.g., project-store)' }
             ));
           }
-          if (!spec.selector || spec.selector.trim() === '') {
+          if (spec.operation !== 'reset' && (!spec.selector || spec.selector.trim() === '')) {
             issues.push(issue('flow', 'error', 'spec_completeness',
               `Memory data store "${node.label}" must have a selector`,
               { nodeId: node.id, suggestion: 'Set the state selector (e.g., domains, currentFlow.nodes)' }
             ));
+          }
+          // update_where requires predicate + patch
+          if (spec.operation === 'update_where') {
+            if (!spec.predicate || spec.predicate.trim() === '') {
+              issues.push(issue('flow', 'error', 'spec_completeness',
+                `Memory data store "${node.label}" with update_where must have a predicate`,
+                { nodeId: node.id, suggestion: 'Set the predicate (e.g., $.id === targetId)' }
+              ));
+            }
+            if (!spec.patch || Object.keys(spec.patch).length === 0) {
+              issues.push(issue('flow', 'error', 'spec_completeness',
+                `Memory data store "${node.label}" with update_where must have a patch`,
+                { nodeId: node.id, suggestion: 'Set the patch object (e.g., { dismissed: true })' }
+              ));
+            }
           }
         }
         break;
@@ -925,6 +948,43 @@ function checkSchemaReferences(
   return issues;
 }
 
+function checkStoreReferences(
+  domainId: string,
+  flowDocs: FlowDocument[],
+  allDomainConfigs: Record<string, DomainConfig>
+): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+
+  // Collect all declared store names across all domains
+  const allStores = new Set<string>();
+  for (const config of Object.values(allDomainConfigs)) {
+    const stores = Array.isArray(config.stores) ? config.stores : [];
+    for (const s of stores) {
+      if (s.name) allStores.add(s.name);
+    }
+  }
+
+  if (allStores.size === 0) return issues;
+
+  for (const flow of flowDocs) {
+    const allNodes = getAllNodes(flow);
+    for (const node of allNodes) {
+      if (node.type !== 'data_store') continue;
+      const spec = (node.spec ?? {}) as DataStoreSpec;
+      if ((spec.store_type ?? 'database') !== 'memory') continue;
+      if (!spec.store || spec.store.trim() === '') continue;
+      if (!allStores.has(spec.store)) {
+        issues.push(issue('domain', 'warning', 'reference_integrity',
+          `Memory data store "${node.label}" references store "${spec.store}" which is not declared in any domain's stores`,
+          { domainId, nodeId: node.id, flowId: flow.flow?.id }
+        ));
+      }
+    }
+  }
+
+  return issues;
+}
+
 // --- Public: Domain validation ---
 
 export function validateDomain(
@@ -964,6 +1024,7 @@ export function validateDomain(
   if (flowDocs && flowDocs.length > 0) {
     issues.push(...checkDuplicateHttpPaths(domainId, flowDocs));
     issues.push(...checkSchemaReferences(domainId, flowDocs, _allDomainConfigs));
+    issues.push(...checkStoreReferences(domainId, flowDocs, _allDomainConfigs));
   }
 
   // Tag all issues

@@ -50,6 +50,7 @@ export function buildSystemMapData(
     // Detect human touchpoints: domain has flows with HTTP triggers (not cron/event)
     const hasHumanTouchpoint = config.role === 'interface' ||
       config.flows.some((f) => f.tags?.includes('http') || f.tags?.includes('api'));
+    const storeCount = Array.isArray(config.stores) ? config.stores.length : 0;
     return {
       id,
       name: config.name,
@@ -59,6 +60,7 @@ export function buildSystemMapData(
       role: config.role,
       hasHumanTouchpoint: hasHumanTouchpoint || undefined,
       owns_schemas: config.owns_schemas,
+      storeCount: storeCount || undefined,
     };
   });
 
@@ -152,6 +154,7 @@ export function buildDomainMapData(
       position,
       tags: f.tags,
       group: f.group,
+      keyboard_shortcut: f.keyboard_shortcut,
     };
   });
 

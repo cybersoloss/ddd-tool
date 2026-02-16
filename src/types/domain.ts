@@ -7,6 +7,7 @@ export interface DomainFlowEntry {
   type?: 'traditional' | 'agent';
   tags?: string[];
   group?: string;
+  keyboard_shortcut?: string;
 }
 
 export interface EventWiring {
@@ -29,11 +30,26 @@ export interface FlowGroup {
   flow_ids: string[];
 }
 
+export interface StoreDefinition {
+  name: string;
+  shape?: Record<string, string>;
+  initial_state?: Record<string, unknown>;
+  selectors?: string[];
+  access_pattern?: 'read_write' | 'read_only';
+}
+
+export interface DomainOnError {
+  emit_event?: string;
+  description?: string;
+}
+
 export interface DomainConfig {
   name: string;
   description?: string;
   role?: 'entity' | 'process' | 'interface' | 'orchestration';
   owns_schemas?: string[];
+  stores?: StoreDefinition[];
+  on_error?: DomainOnError;
   groups?: FlowGroup[];
   flows: DomainFlowEntry[];
   publishes_events: EventWiring[];
@@ -64,6 +80,7 @@ export interface SystemMapDomain {
   role?: 'entity' | 'process' | 'interface' | 'orchestration';
   hasHumanTouchpoint?: boolean;
   owns_schemas?: string[];
+  storeCount?: number;
 }
 
 export interface SystemMapArrow {
@@ -108,6 +125,7 @@ export interface DomainMapFlow {
   type: 'traditional' | 'agent';
   position: Position;
   tags?: string[];
+  keyboard_shortcut?: string;
   group?: string;
   schedule?: string;
 }

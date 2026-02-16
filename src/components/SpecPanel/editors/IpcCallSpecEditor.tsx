@@ -62,6 +62,16 @@ export function IpcCallSpecEditor({ spec, onChange }: Props) {
         />
       </div>
       <div>
+        <label className="label">Result Condition</label>
+        <input
+          className="input font-mono text-xs"
+          value={spec.result_condition ?? ''}
+          onChange={(e) => onChange({ ...spec, result_condition: e.target.value || undefined })}
+          placeholder="e.g. $.result === true"
+        />
+        <p className="text-[10px] text-text-muted mt-0.5">Maps return values to success/error handles</p>
+      </div>
+      <div>
         <label className="label">Description</label>
         <textarea
           className="input min-h-[80px] resize-y"

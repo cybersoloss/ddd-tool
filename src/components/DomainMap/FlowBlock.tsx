@@ -1,5 +1,5 @@
 import { useRef, useCallback, useState, useEffect } from 'react';
-import { GitBranch, GripVertical, Bot, Trash2, AlertTriangle, Clock, Globe, Zap } from 'lucide-react';
+import { GitBranch, GripVertical, Bot, Trash2, AlertTriangle, Clock, Globe, Zap, Keyboard } from 'lucide-react';
 import { useValidationStore } from '../../stores/validation-store';
 import type { DomainMapFlow } from '../../types/domain';
 import type { Position } from '../../types/sheet';
@@ -224,6 +224,12 @@ export function FlowBlock({ flow, domainId, selected, isStale, isLocked, scale =
             <span className="text-[10px] bg-bg-tertiary text-text-muted px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
               <Clock className="w-2.5 h-2.5" />
               {flow.schedule}
+            </span>
+          )}
+          {flow.keyboard_shortcut && (
+            <span className="text-[10px] bg-purple-500/10 text-purple-400 px-1.5 py-0.5 rounded-full flex items-center gap-0.5" title={`Keyboard shortcut: ${flow.keyboard_shortcut}`}>
+              <Keyboard className="w-2.5 h-2.5" />
+              {flow.keyboard_shortcut}
             </span>
           )}
         </div>
