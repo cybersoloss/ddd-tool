@@ -1,9 +1,22 @@
 # DDD Tool — Development Context
 
 ## Spec Reference
-- Full specification: ~/code/DDD/ddd-specification-complete.md
-- Implementation guide: ~/code/DDD/ddd-implementation-guide.md
-- Templates: ~/code/DDD/templates/
+- Full specification: /Users/mhc/dev/DDD/ddd-specification-complete.md
+- Implementation guide: /Users/mhc/dev/DDD/ddd-implementation-guide.md
+- Templates: /Users/mhc/dev/DDD/templates/
+
+## Git Remotes (Dual Remote Setup)
+- `origin` → github.com/mhcandan/ddd-tool (private, master repo)
+- `public` → github.com/cybersoloss/ddd-tool (public mirror)
+
+**Push to both:** `git push-all` (alias for `git push origin main && git push public main`)
+
+**Handle community PRs:**
+```bash
+gh pr checkout <PR#> --repo cybersoloss/ddd-tool
+# review and test locally
+git push-all
+```
 
 ## Tech Stack
 - **Framework:** Tauri 2.0 (Rust backend, React frontend)
