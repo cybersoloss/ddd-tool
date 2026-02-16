@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { X, Zap, FormInput, Cog, GitFork, Square, RotateCw, Shield, Hand, Network, GitBranch, ArrowLeftRight, Box, Database, ExternalLink, Repeat, Columns, GitMerge, BrainCircuit, Clock, HardDrive, Shuffle, Filter, FileText, Lock, Layers, ShieldCheck } from 'lucide-react';
+import { X, Zap, FormInput, Cog, GitFork, Square, RotateCw, Shield, Hand, Network, GitBranch, ArrowLeftRight, Box, Database, ExternalLink, Repeat, Columns, GitMerge, BrainCircuit, Clock, HardDrive, Shuffle, Filter, FileText, Lock, Layers, ShieldCheck, Terminal } from 'lucide-react';
 import { useFlowStore } from '../../stores/flow-store';
 import { specEditors } from './editors';
 import { CrossCuttingEditor } from './editors/CrossCuttingEditor';
@@ -14,6 +14,7 @@ const nodeIcons: Record<DddNodeType, { icon: React.ElementType; color: string }>
   terminal: { icon: Square, color: 'text-red-400' },
   data_store: { icon: Database, color: 'text-emerald-400' },
   service_call: { icon: ExternalLink, color: 'text-orange-400' },
+  ipc_call: { icon: Terminal, color: 'text-cyan-400' },
   event: { icon: Zap, color: 'text-purple-400' },
   loop: { icon: Repeat, color: 'text-teal-400' },
   parallel: { icon: Columns, color: 'text-pink-400' },

@@ -10,6 +10,7 @@ import type {
   NodeSpec,
   DataStoreSpec,
   ServiceCallSpec,
+  IpcCallSpec,
   EventNodeSpec,
   LoopSpec,
   ParallelSpec,
@@ -281,6 +282,15 @@ function defaultSpec(type: DddNodeType): NodeSpec {
         rollback_on_error: true,
         description: '',
       } satisfies TransactionSpec;
+    case 'ipc_call':
+      return {
+        command: '',
+        args: {},
+        return_type: '',
+        description: '',
+      } satisfies IpcCallSpec;
+    default:
+      return { description: '' };
   }
 }
 
@@ -340,6 +350,8 @@ function defaultLabel(type: DddNodeType): string {
       return 'Batch';
     case 'transaction':
       return 'Transaction';
+    case 'ipc_call':
+      return 'IPC Call';
   }
 }
 

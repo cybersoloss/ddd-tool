@@ -9,6 +9,7 @@ export type DddNodeType =
   | 'data_store' | 'service_call' | 'event' | 'loop' | 'parallel' | 'sub_flow' | 'llm_call'
   | 'delay' | 'cache' | 'transform'
   | 'collection' | 'parse' | 'crypto' | 'batch' | 'transaction'
+  | 'ipc_call'
   | 'agent_loop' | 'guardrail' | 'human_gate'
   | 'orchestrator' | 'smart_router' | 'handoff' | 'agent_group';
 
@@ -18,6 +19,7 @@ export interface TriggerSpec {
   event?: string | string[];
   source?: string;
   filter?: Record<string, unknown>;
+  debounce_ms?: number;
   description?: string;
   [key: string]: unknown;
 }
@@ -211,6 +213,7 @@ export interface AgentGroupSpec {
 // --- Extended traditional node spec shapes ---
 
 export interface DataStoreSpec {
+  store_type?: 'database' | 'filesystem' | 'memory';
   operation?: 'create' | 'read' | 'update' | 'delete' | 'upsert' | 'create_many' | 'update_many' | 'delete_many';
   model?: string;
   data?: Record<string, string>;
@@ -221,6 +224,15 @@ export interface DataStoreSpec {
   upsert_key?: string[];
   include?: Record<string, unknown>;
   returning?: boolean;
+  // filesystem fields (when store_type = 'filesystem')
+  path?: string;
+  content?: string;
+  create_parents?: boolean;
+  // memory fields (when store_type = 'memory')
+  store?: string;
+  selector?: string;
+  // safety mode for null handling
+  safety?: 'strict' | 'lenient';
   description?: string;
   [key: string]: unknown;
 }
@@ -242,6 +254,16 @@ export interface ServiceCallSpec {
     fallback?: 'headless_browser' | 'none';
   };
   integration?: string;
+  description?: string;
+  [key: string]: unknown;
+}
+
+export interface IpcCallSpec {
+  command?: string;
+  args?: Record<string, unknown>;
+  return_type?: string;
+  timeout_ms?: number;
+  bridge?: string;
   description?: string;
   [key: string]: unknown;
 }
@@ -390,6 +412,7 @@ export type NodeSpec =
   | TerminalSpec
   | DataStoreSpec
   | ServiceCallSpec
+  | IpcCallSpec
   | EventNodeSpec
   | LoopSpec
   | ParallelSpec

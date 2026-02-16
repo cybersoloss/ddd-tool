@@ -13,6 +13,7 @@ import type {
   ProcessSpec,
   DataStoreSpec,
   ServiceCallSpec,
+  IpcCallSpec,
   EventNodeSpec,
   LoopSpec,
   ParallelSpec,
@@ -448,17 +449,40 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
     switch (node.type) {
       case 'data_store': {
         const spec = (node.spec ?? {}) as DataStoreSpec;
+        const storeType = spec.store_type ?? 'database';
         if (!spec.operation) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Data store "${node.label}" must have an operation set`,
             { nodeId: node.id, suggestion: 'Set the operation (create, read, update, or delete)' }
           ));
         }
-        if (!spec.model || spec.model.trim() === '') {
-          issues.push(issue('flow', 'error', 'spec_completeness',
-            `Data store "${node.label}" must have a model defined`,
-            { nodeId: node.id, suggestion: 'Set the model name (e.g., User, Order)' }
-          ));
+        if (storeType === 'database') {
+          if (!spec.model || spec.model.trim() === '') {
+            issues.push(issue('flow', 'error', 'spec_completeness',
+              `Data store "${node.label}" must have a model defined`,
+              { nodeId: node.id, suggestion: 'Set the model name (e.g., User, Order)' }
+            ));
+          }
+        } else if (storeType === 'filesystem') {
+          if (!spec.path || spec.path.trim() === '') {
+            issues.push(issue('flow', 'error', 'spec_completeness',
+              `Filesystem data store "${node.label}" must have a path defined`,
+              { nodeId: node.id, suggestion: 'Set the file path (e.g., $.project_path/specs/system.yaml)' }
+            ));
+          }
+        } else if (storeType === 'memory') {
+          if (!spec.store || spec.store.trim() === '') {
+            issues.push(issue('flow', 'error', 'spec_completeness',
+              `Memory data store "${node.label}" must have a store name`,
+              { nodeId: node.id, suggestion: 'Set the store name (e.g., project-store)' }
+            ));
+          }
+          if (!spec.selector || spec.selector.trim() === '') {
+            issues.push(issue('flow', 'error', 'spec_completeness',
+              `Memory data store "${node.label}" must have a selector`,
+              { nodeId: node.id, suggestion: 'Set the state selector (e.g., domains, currentFlow.nodes)' }
+            ));
+          }
         }
         break;
       }
@@ -476,6 +500,16 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Service call "${node.label}" must have a URL or integration defined`,
             { nodeId: node.id, suggestion: 'Set the service URL or reference an integration' }
+          ));
+        }
+        break;
+      }
+      case 'ipc_call': {
+        const spec = (node.spec ?? {}) as IpcCallSpec;
+        if (!spec.command || spec.command.trim() === '') {
+          issues.push(issue('flow', 'error', 'spec_completeness',
+            `IPC call "${node.label}" must have a command name`,
+            { nodeId: node.id, suggestion: 'Set the command name (e.g., git_status, compute_file_hash)' }
           ));
         }
         break;
@@ -877,6 +911,7 @@ function checkSchemaReferences(
     for (const node of allNodes) {
       if (node.type !== 'data_store') continue;
       const spec = (node.spec ?? {}) as DataStoreSpec;
+      if ((spec.store_type ?? 'database') !== 'database') continue;
       if (!spec.model || spec.model.trim() === '') continue;
       if (!allSchemas.has(spec.model)) {
         issues.push(issue('domain', 'warning', 'reference_integrity',

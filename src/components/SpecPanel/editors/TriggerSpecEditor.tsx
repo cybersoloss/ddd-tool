@@ -69,6 +69,16 @@ export function TriggerSpecEditor({ spec, onChange }: Props) {
         />
       </div>
       <div>
+        <label className="label">Debounce (ms)</label>
+        <input
+          type="number"
+          className="input"
+          value={spec.debounce_ms ?? ''}
+          onChange={(e) => onChange({ ...spec, debounce_ms: e.target.value ? Number(e.target.value) : undefined })}
+          placeholder="e.g. 300"
+        />
+      </div>
+      <div>
         <label className="label">Description</label>
         <textarea
           className="input min-h-[80px] resize-y"

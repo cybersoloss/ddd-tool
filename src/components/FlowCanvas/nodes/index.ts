@@ -26,6 +26,7 @@ import { ParseNode } from './ParseNode';
 import { CryptoNode } from './CryptoNode';
 import { BatchNode } from './BatchNode';
 import { TransactionNode } from './TransactionNode';
+import { IpcCallNode } from './IpcCallNode';
 
 export const nodeTypes: NodeTypes = {
   trigger: TriggerNode,
@@ -55,4 +56,5 @@ export const nodeTypes: NodeTypes = {
   crypto: CryptoNode,
   batch: BatchNode,
   transaction: TransactionNode,
+  ipc_call: IpcCallNode,
 };

@@ -1,26 +1,18 @@
 import { memo } from 'react';
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
-import { Database, HardDrive, MemoryStick } from 'lucide-react';
+import { Terminal } from 'lucide-react';
 import type { DddNodeData } from '../../../types/flow';
 import { NodeValidationDot } from './NodeValidationDot';
 
-type DataStoreNodeType = Node<DddNodeData, 'data_store'>;
+type IpcCallNodeType = Node<DddNodeData, 'ipc_call'>;
 
-const storeTypeConfig = {
-  database: { icon: Database, color: 'text-emerald-400', border: 'border-l-emerald-500' },
-  filesystem: { icon: HardDrive, color: 'text-amber-400', border: 'border-l-amber-500' },
-  memory: { icon: MemoryStick, color: 'text-blue-400', border: 'border-l-blue-500' },
-} as const;
-
-function DataStoreNodeComponent({ data, selected }: NodeProps<DataStoreNodeType>) {
-  const operation = (data.spec as any)?.operation;
-  const storeType = ((data.spec as any)?.store_type as string) || 'database';
-  const config = storeTypeConfig[storeType as keyof typeof storeTypeConfig] ?? storeTypeConfig.database;
-  const Icon = config.icon;
+function IpcCallNodeComponent({ data, selected }: NodeProps<IpcCallNodeType>) {
+  const command = (data.spec as any)?.command;
+  const bridge = (data.spec as any)?.bridge;
 
   return (
     <div
-      className={`relative min-w-[160px] max-w-[240px] bg-bg-secondary border-l-4 ${config.border} border border-border rounded-lg shadow-lg px-3 py-2 ${
+      className={`relative min-w-[160px] max-w-[240px] bg-bg-secondary border-l-4 border-l-cyan-500 border border-border rounded-lg shadow-lg px-3 py-2 ${
         selected ? 'ring-2 ring-accent' : ''
       }`}
     >
@@ -31,14 +23,14 @@ function DataStoreNodeComponent({ data, selected }: NodeProps<DataStoreNodeType>
         className="!w-3 !h-3 !bg-text-muted !border-2 !border-bg-secondary"
       />
       <div className="flex items-center gap-2">
-        <Icon className={`w-4 h-4 ${config.color}`} />
+        <Terminal className="w-4 h-4 text-cyan-400" />
         <span className="text-sm font-medium text-text-primary">
           {data.label}
         </span>
       </div>
-      {operation && (
+      {command && (
         <span className="text-[10px] text-text-muted mt-0.5 block truncate max-w-[140px]">
-          {storeType !== 'database' ? `${storeType}: ` : ''}{operation}
+          {bridge ? `${bridge}: ` : ''}{command}
         </span>
       )}
       <div className="flex justify-between text-[10px] text-text-muted mt-1 px-1">
@@ -63,4 +55,4 @@ function DataStoreNodeComponent({ data, selected }: NodeProps<DataStoreNodeType>
   );
 }
 
-export const DataStoreNode = memo(DataStoreNodeComponent);
+export const IpcCallNode = memo(IpcCallNodeComponent);

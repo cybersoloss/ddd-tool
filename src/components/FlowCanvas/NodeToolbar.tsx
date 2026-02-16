@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useReactFlow } from '@xyflow/react';
-import { FormInput, Cog, GitFork, Square, RotateCw, Shield, Hand, Network, GitBranch, ArrowLeftRight, Box, Undo2, Redo2, Database, ExternalLink, Zap, Repeat, Columns, GitMerge, BrainCircuit, Copy, Check, RotateCcw, Clock, HardDrive, Shuffle, Filter, FileText, Lock, Layers, ShieldCheck, LayoutGrid, Settings } from 'lucide-react';
+import { FormInput, Cog, GitFork, Square, RotateCw, Shield, Hand, Network, GitBranch, ArrowLeftRight, Box, Undo2, Redo2, Database, ExternalLink, Zap, Repeat, Columns, GitMerge, BrainCircuit, Copy, Check, RotateCcw, Clock, HardDrive, Shuffle, Filter, FileText, Lock, Layers, ShieldCheck, LayoutGrid, Settings, Terminal } from 'lucide-react';
 import type { DddNodeType } from '../../types/flow';
 import { useSheetStore } from '../../stores/sheet-store';
 import { useUndoStore } from '../../stores/undo-store';
@@ -22,6 +22,7 @@ const TRADITIONAL_ITEMS: ToolbarItem[] = [
   { type: 'decision', label: 'Decision', icon: GitFork, borderColor: 'border-l-yellow-500', iconColor: 'text-yellow-400' },
   { type: 'data_store', label: 'Data Store', icon: Database, borderColor: 'border-l-emerald-500', iconColor: 'text-emerald-400' },
   { type: 'service_call', label: 'Service Call', icon: ExternalLink, borderColor: 'border-l-orange-500', iconColor: 'text-orange-400' },
+  { type: 'ipc_call', label: 'IPC Call', icon: Terminal, borderColor: 'border-l-cyan-500', iconColor: 'text-cyan-400' },
   { type: 'event', label: 'Event', icon: Zap, borderColor: 'border-l-purple-500', iconColor: 'text-purple-400' },
   { type: 'loop', label: 'Loop', icon: Repeat, borderColor: 'border-l-teal-500', iconColor: 'text-teal-400' },
   { type: 'parallel', label: 'Parallel', icon: Columns, borderColor: 'border-l-pink-500', iconColor: 'text-pink-400' },
