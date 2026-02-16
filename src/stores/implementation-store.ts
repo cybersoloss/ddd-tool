@@ -10,6 +10,7 @@ import type {
   ReconciliationEntry,
   ReconciliationReport,
   SyncScore,
+  AnnotationFile,
 } from '../types/implementation';
 
 interface ImplementationState {
@@ -17,8 +18,10 @@ interface ImplementationState {
   driftItems: DriftInfo[];
   syncScore: SyncScore | null;
   ignoredDrifts: Set<string>;
+  annotations: Record<string, AnnotationFile>;
 
   loadMappings: () => Promise<void>;
+  loadAnnotations: () => Promise<void>;
   saveMappings: () => Promise<void>;
   detectDrift: () => Promise<void>;
   computeSyncScore: () => SyncScore;
@@ -33,6 +36,7 @@ export const useImplementationStore = create<ImplementationState>((set, get) => 
   driftItems: [],
   syncScore: null,
   ignoredDrifts: new Set<string>(),
+  annotations: {},
 
   loadMappings: async () => {
     const projectPath = useProjectStore.getState().projectPath;
@@ -49,8 +53,37 @@ export const useImplementationStore = create<ImplementationState>((set, get) => 
       set({ mappings: {} });
     }
 
+    // Load annotations after mappings
+    await get().loadAnnotations();
+
     // Auto-detect drift after loading mappings
     get().detectDrift();
+  },
+
+  loadAnnotations: async () => {
+    const projectPath = useProjectStore.getState().projectPath;
+    if (!projectPath) return;
+
+    const annotations: Record<string, AnnotationFile> = {};
+    const domainConfigs = useProjectStore.getState().domainConfigs;
+
+    for (const domainId of Object.keys(domainConfigs)) {
+      const domainFlows = domainConfigs[domainId]?.flows ?? [];
+      for (const flow of domainFlows) {
+        const annotationPath = `${projectPath}/.ddd/annotations/${domainId}/${flow.id}.yaml`;
+        try {
+          const content: string = await invoke('read_file', { path: annotationPath });
+          const parsed = parse(content) as AnnotationFile;
+          if (parsed?.flow) {
+            annotations[`${domainId}/${flow.id}`] = parsed;
+          }
+        } catch {
+          // No annotation file for this flow — that's fine
+        }
+      }
+    }
+
+    set({ annotations });
   },
 
   saveMappings: async () => {
@@ -99,7 +132,47 @@ export const useImplementationStore = create<ImplementationState>((set, get) => 
           continue;
         }
 
-        if (currentSpecHash && currentSpecHash !== mapping.specHash) {
+        // Check for reverse drift (implementation files changed)
+        let hasReverseDrift = false;
+        if (mapping.fileHashes && Object.keys(mapping.fileHashes).length > 0) {
+          for (const [file, storedHash] of Object.entries(mapping.fileHashes)) {
+            let currentFileHash = '';
+            try {
+              currentFileHash = await invoke<string>('compute_file_hash', {
+                path: `${projectPath}/${file}`,
+              });
+            } catch {
+              continue;
+            }
+            if (currentFileHash && currentFileHash !== storedHash) {
+              hasReverseDrift = true;
+              break;
+            }
+          }
+        }
+
+        const hasForwardDrift = currentSpecHash !== '' && currentSpecHash !== mapping.specHash;
+
+        // Classify sync state and drift type
+        if (hasForwardDrift && hasReverseDrift) {
+          // Both spec and code changed — diverged
+          driftItems.push({
+            flowKey,
+            flowName: flow.name,
+            domainId,
+            specPath: mapping.spec,
+            previousHash: mapping.specHash,
+            currentHash: currentSpecHash,
+            implementedAt: mapping.implementedAt,
+            detectedAt: now,
+            direction: 'forward',
+            driftType: 'new_logic',
+          });
+          // Update syncState on mapping
+          const updatedMapping = { ...mapping, syncState: 'diverged' as const };
+          set((s) => ({ mappings: { ...s.mappings, [flowKey]: updatedMapping } }));
+        } else if (hasForwardDrift) {
+          // Only spec changed — spec_ahead
           driftItems.push({
             flowKey,
             flowName: flow.name,
@@ -111,35 +184,29 @@ export const useImplementationStore = create<ImplementationState>((set, get) => 
             detectedAt: now,
             direction: 'forward',
           });
-          continue; // Don't check reverse if forward drift already detected
-        }
-
-        // Reverse drift: implementation files changed since last implementation
-        if (mapping.fileHashes && Object.keys(mapping.fileHashes).length > 0) {
-          for (const [file, storedHash] of Object.entries(mapping.fileHashes)) {
-            let currentFileHash = '';
-            try {
-              currentFileHash = await invoke<string>('compute_file_hash', {
-                path: `${projectPath}/${file}`,
-              });
-            } catch {
-              continue;
-            }
-
-            if (currentFileHash && currentFileHash !== storedHash) {
-              driftItems.push({
-                flowKey,
-                flowName: flow.name,
-                domainId,
-                specPath: mapping.spec,
-                previousHash: storedHash,
-                currentHash: currentFileHash,
-                implementedAt: mapping.implementedAt,
-                detectedAt: now,
-                direction: 'reverse',
-              });
-              break; // One changed file is enough to flag the flow
-            }
+          const updatedMapping = { ...mapping, syncState: 'spec_ahead' as const };
+          set((s) => ({ mappings: { ...s.mappings, [flowKey]: updatedMapping } }));
+        } else if (hasReverseDrift) {
+          // Only code changed — code_ahead
+          driftItems.push({
+            flowKey,
+            flowName: flow.name,
+            domainId,
+            specPath: mapping.spec,
+            previousHash: mapping.specHash,
+            currentHash: currentSpecHash || mapping.specHash,
+            implementedAt: mapping.implementedAt,
+            detectedAt: now,
+            direction: 'reverse',
+            driftType: 'code_ahead',
+          });
+          const updatedMapping = { ...mapping, syncState: 'code_ahead' as const };
+          set((s) => ({ mappings: { ...s.mappings, [flowKey]: updatedMapping } }));
+        } else {
+          // No drift — synced
+          if (mapping.syncState !== 'synced') {
+            const updatedMapping = { ...mapping, syncState: 'synced' as const };
+            set((s) => ({ mappings: { ...s.mappings, [flowKey]: updatedMapping } }));
           }
         }
       }
@@ -151,7 +218,7 @@ export const useImplementationStore = create<ImplementationState>((set, get) => 
   },
 
   computeSyncScore: () => {
-    const { mappings, driftItems } = get();
+    const { mappings, driftItems, annotations } = get();
     const domainConfigs = useProjectStore.getState().domainConfigs;
 
     let total = 0;
@@ -165,7 +232,18 @@ export const useImplementationStore = create<ImplementationState>((set, get) => 
     const pending = total - implementedCount - stale;
     const score = total > 0 ? Math.round((implementedCount / total) * 100) : 0;
 
-    return { total, implemented: implementedCount, stale, pending, score };
+    // Count flows with pending annotations (candidate or approved status)
+    let annotated = 0;
+    for (const annotationFile of Object.values(annotations)) {
+      const pendingPatterns = annotationFile.patterns?.filter(
+        (p) => p.status === 'candidate' || p.status === 'approved'
+      );
+      if (pendingPatterns && pendingPatterns.length > 0) {
+        annotated++;
+      }
+    }
+
+    return { total, implemented: implementedCount, stale, pending, score, annotated };
   },
 
   resolveFlow: async (flowKey, action) => {
@@ -335,6 +413,7 @@ export const useImplementationStore = create<ImplementationState>((set, get) => 
       driftItems: [],
       syncScore: null,
       ignoredDrifts: new Set<string>(),
+      annotations: {},
     });
   },
 }));

@@ -1,10 +1,11 @@
 import { useEffect, useMemo } from 'react';
-import { ChevronRight, ArrowLeft, GitBranch, Map, Lock, Unlock, Search } from 'lucide-react';
+import { ChevronRight, ArrowLeft, GitBranch, Map, Lock, Unlock, Search, MessageSquare } from 'lucide-react';
 import { useSheetStore } from '../../stores/sheet-store';
 import { useProjectStore } from '../../stores/project-store';
 import { useAppStore } from '../../stores/app-store';
 import { useGitStore } from '../../stores/git-store';
 import { useValidationStore } from '../../stores/validation-store';
+import { useImplementationStore } from '../../stores/implementation-store';
 import { useUndoStore } from '../../stores/undo-store';
 import { useFlowStore } from '../../stores/flow-store';
 import { useUiStore } from '../../stores/ui-store';
@@ -28,6 +29,8 @@ export function Breadcrumb() {
   const isLocked = useUiStore((s) => s.isLocked);
   const toggleLock = useUiStore((s) => s.toggleLock);
   const syncFlash = useUiStore((s) => s.syncFlash);
+  const syncScore = useImplementationStore((s) => s.syncScore);
+  const pendingAnnotations = syncScore?.annotated ?? 0;
   const totalChanges = gitStaged.length + gitUnstaged.length + gitUntracked.length;
 
   const segments = useMemo(() => {
@@ -177,6 +180,13 @@ export function Breadcrumb() {
         <span className="flex items-center gap-1 text-xs text-green-400 animate-pulse">
           <span className="w-2 h-2 rounded-full bg-green-400" />
           Synced
+        </span>
+      )}
+
+      {pendingAnnotations > 0 && (
+        <span className="flex items-center gap-1 text-xs text-blue-400 bg-blue-500/15 px-2 py-0.5 rounded-full">
+          <MessageSquare className="w-3 h-3" />
+          {pendingAnnotations} annotation{pendingAnnotations !== 1 ? 's' : ''}
         </span>
       )}
 

@@ -1,14 +1,17 @@
 import { useRef, useCallback, useState, useEffect } from 'react';
-import { GitBranch, GripVertical, Bot, Trash2, AlertTriangle, Clock, Globe, Zap, Keyboard } from 'lucide-react';
+import { GitBranch, GripVertical, Bot, Trash2, AlertTriangle, ArrowUpCircle, AlertOctagon, Clock, Globe, Zap, Keyboard, MessageSquare } from 'lucide-react';
 import { useValidationStore } from '../../stores/validation-store';
 import type { DomainMapFlow } from '../../types/domain';
 import type { Position } from '../../types/sheet';
+import type { SyncState } from '../../types/implementation';
 
 interface Props {
   flow: DomainMapFlow;
   domainId?: string;
   selected: boolean;
   isStale?: boolean;
+  syncState?: SyncState;
+  annotationCount?: number;
   isLocked?: boolean;
   scale?: number;
   animating?: boolean;
@@ -22,7 +25,7 @@ interface Props {
   editingExternal?: boolean;
 }
 
-export function FlowBlock({ flow, domainId, selected, isStale, isLocked, scale = 1, animating, onSelect, onPositionChange, onDoubleClick, onDelete, onRename, onContextMenu, onStartConnect, editingExternal }: Props) {
+export function FlowBlock({ flow, domainId, selected, isStale, syncState, annotationCount, isLocked, scale = 1, animating, onSelect, onPositionChange, onDoubleClick, onDelete, onRename, onContextMenu, onStartConnect, editingExternal }: Props) {
   const flowKey = domainId ? `${domainId}/${flow.id}` : null;
   const flowValidation = useValidationStore((s) => flowKey ? s.flowResults[flowKey] ?? null : null);
   const dragging = useRef(false);
@@ -177,9 +180,25 @@ export function FlowBlock({ flow, domainId, selected, isStale, isLocked, scale =
               {flow.name}
             </span>
           )}
-          {isStale && (
+          {isStale && syncState === 'code_ahead' && (
+            <span title="Code has changes not in spec">
+              <ArrowUpCircle className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+            </span>
+          )}
+          {isStale && syncState === 'diverged' && (
+            <span title="Both spec and code changed">
+              <AlertOctagon className="w-3.5 h-3.5 text-red-400 shrink-0" />
+            </span>
+          )}
+          {isStale && syncState !== 'code_ahead' && syncState !== 'diverged' && (
             <span title="Spec changed since last implementation">
               <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            </span>
+          )}
+          {(annotationCount ?? 0) > 0 && (
+            <span className="flex items-center gap-0.5 text-[10px] text-blue-400 bg-blue-500/15 px-1.5 py-0.5 rounded-full shrink-0" title={`${annotationCount} annotation(s) pending`}>
+              <MessageSquare className="w-2.5 h-2.5" />
+              {annotationCount}
             </span>
           )}
           {flowValidation && (
