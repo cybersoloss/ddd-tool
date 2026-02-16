@@ -55,7 +55,7 @@ export function DomainMap() {
   const [animating, setAnimating] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
 
-  const { transform, transformStyle, screenToCanvas, fitView, zoomIn, zoomOut, handleCanvasMouseDown } = useCanvasTransform(canvasRef);
+  const { transform, transformStyle, screenToCanvas, fitView, zoomIn, zoomOut, handleCanvasMouseDown } = useCanvasTransform(canvasRef, domainId ? `domain:${domainId}` : undefined);
 
   const isLocked = useUiStore((s) => s.isLocked);
   const driftItems = useImplementationStore((s) => s.driftItems);

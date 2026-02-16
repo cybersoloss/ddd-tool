@@ -47,7 +47,7 @@ export function SystemMap() {
   const [claudeMdGenerated, setClaudeMdGenerated] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
 
-  const { transform, transformStyle, screenToCanvas, fitView, zoomIn, zoomOut, handleCanvasMouseDown } = useCanvasTransform(canvasRef);
+  const { transform, transformStyle, screenToCanvas, fitView, zoomIn, zoomOut, handleCanvasMouseDown } = useCanvasTransform(canvasRef, 'system');
 
   const validateAllDomains = useValidationStore((s) => s.validateAllDomains);
 

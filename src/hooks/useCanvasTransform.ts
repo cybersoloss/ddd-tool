@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo, type RefObject, type CSSProperties } from 'react';
+import { useUiStore } from '../stores/ui-store';
 
 const MIN_SCALE = 0.1;
 const MAX_SCALE = 3.0;
@@ -23,10 +24,31 @@ interface CanvasTransformResult {
   handleCanvasMouseDown: (e: React.MouseEvent) => void;
 }
 
-export function useCanvasTransform(containerRef: RefObject<HTMLDivElement | null>): CanvasTransformResult {
-  const [transform, setTransform] = useState<Transform>({ scale: 1, tx: 0, ty: 0 });
+export function useCanvasTransform(containerRef: RefObject<HTMLDivElement | null>, persistKey?: string): CanvasTransformResult {
+  const [transform, setTransform] = useState<Transform>(() => {
+    if (persistKey) {
+      const saved = useUiStore.getState().getViewport(persistKey);
+      if (saved) return { scale: saved.zoom, tx: saved.x, ty: saved.y };
+    }
+    return { scale: 1, tx: 0, ty: 0 };
+  });
   const transformRef = useRef(transform);
   transformRef.current = transform;
+
+  // Debounce-save transform to ui-store
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => {
+    if (!persistKey) return;
+    clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      useUiStore.getState().setViewport(persistKey, {
+        x: transform.tx,
+        y: transform.ty,
+        zoom: transform.scale,
+      });
+    }, 200);
+    return () => clearTimeout(saveTimerRef.current);
+  }, [persistKey, transform]);
 
   // Wheel handler: Ctrl/Cmd+scroll = zoom, plain scroll = pan
   useEffect(() => {

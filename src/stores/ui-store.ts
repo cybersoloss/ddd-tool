@@ -1,5 +1,11 @@
 import { create } from 'zustand';
 
+interface Viewport {
+  x: number;
+  y: number;
+  zoom: number;
+}
+
 interface UiState {
   minimapVisible: boolean;
   toggleMinimap: () => void;
@@ -10,9 +16,12 @@ interface UiState {
   closeSearch: () => void;
   syncFlash: boolean;
   flashSync: () => void;
+  viewports: Record<string, Viewport>;
+  setViewport: (key: string, vp: Viewport) => void;
+  getViewport: (key: string) => Viewport | undefined;
 }
 
-export const useUiStore = create<UiState>((set) => ({
+export const useUiStore = create<UiState>((set, get) => ({
   minimapVisible: true,
   toggleMinimap: () => set((s) => ({ minimapVisible: !s.minimapVisible })),
   isLocked: false,
@@ -25,4 +34,8 @@ export const useUiStore = create<UiState>((set) => ({
     set({ syncFlash: true });
     setTimeout(() => set({ syncFlash: false }), 2000);
   },
+  viewports: {},
+  setViewport: (key, vp) =>
+    set((s) => ({ viewports: { ...s.viewports, [key]: vp } })),
+  getViewport: (key) => get().viewports[key],
 }));

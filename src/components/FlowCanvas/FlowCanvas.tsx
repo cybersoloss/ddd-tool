@@ -15,6 +15,7 @@ import {
   type Connection,
   type OnNodesDelete,
   type OnEdgesDelete,
+  type Viewport,
   BackgroundVariant,
   MarkerType,
 } from '@xyflow/react';
@@ -152,7 +153,7 @@ function FlowCanvasInner() {
   const minimapVisible = useUiStore((s) => s.minimapVisible);
   const isLocked = useUiStore((s) => s.isLocked);
 
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, fitView } = useReactFlow();
   const loadedRef = useRef<string | null>(null);
   const [pendingNodeType, setPendingNodeType] = useState<DddNodeType | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<{ sourceId: string; targetId: string; sourceHandle?: string } | null>(null);
@@ -164,6 +165,43 @@ function FlowCanvasInner() {
 
   const domainId = current.domainId;
   const flowId = current.flowId;
+
+  // Viewport persistence
+  const viewportKey = domainId && flowId ? `flow:${domainId}/${flowId}` : null;
+  const savedViewport = useMemo(
+    () => (viewportKey ? useUiStore.getState().getViewport(viewportKey) : undefined),
+    [viewportKey]
+  );
+  const didFitViewRef = useRef(false);
+  const vpSaveTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // Fit view once on first load only when no saved viewport
+  useEffect(() => {
+    if (didFitViewRef.current || savedViewport) return;
+    if (rfNodes.length > 0) {
+      didFitViewRef.current = true;
+      setTimeout(() => fitView(), 50);
+    }
+  }, [rfNodes.length, savedViewport, fitView]);
+
+  // Reset fit-view flag when flow changes
+  useEffect(() => {
+    didFitViewRef.current = false;
+  }, [viewportKey]);
+
+  const onViewportChange = useCallback(
+    (vp: Viewport) => {
+      if (!viewportKey) return;
+      clearTimeout(vpSaveTimerRef.current);
+      vpSaveTimerRef.current = setTimeout(() => {
+        useUiStore.getState().setViewport(viewportKey, vp);
+      }, 200);
+    },
+    [viewportKey]
+  );
+
+  // Cleanup save timer on unmount
+  useEffect(() => () => clearTimeout(vpSaveTimerRef.current), []);
 
   // Determine flow type from domain config
   const domainConfigs = useProjectStore((s) => s.domainConfigs);
@@ -376,7 +414,8 @@ function FlowCanvasInner() {
           colorMode="dark"
           snapToGrid
           snapGrid={[20, 20]}
-          fitView
+          defaultViewport={savedViewport ?? { x: 0, y: 0, zoom: 1 }}
+          onViewportChange={onViewportChange}
           deleteKeyCode={isLocked ? [] : ['Backspace', 'Delete']}
           proOptions={{ hideAttribution: true }}
           className={pendingNodeType ? 'cursor-crosshair' : ''}
