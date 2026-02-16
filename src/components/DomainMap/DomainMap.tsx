@@ -4,16 +4,23 @@ import { useSheetStore } from '../../stores/sheet-store';
 import { useProjectStore } from '../../stores/project-store';
 import { useImplementationStore } from '../../stores/implementation-store';
 import { useUiStore } from '../../stores/ui-store';
-import { buildDomainMapData } from '../../utils/domain-parser';
+import { useValidationStore } from '../../stores/validation-store';
+import { buildDomainMapData, extractOrchestrationData } from '../../utils/domain-parser';
 import { useCanvasTransform } from '../../hooks/useCanvasTransform';
 import { FlowBlock } from './FlowBlock';
 import { PortalNode } from './PortalNode';
 import { DomainEventArrow } from './DomainEventArrow';
+import { SupervisorArrow } from './SupervisorArrow';
+import { HandoffArrow } from './HandoffArrow';
+import { AgentGroupBoundary } from './AgentGroupBoundary';
 import { AddFlowDialog } from './AddFlowDialog';
 import { FlowContextMenu } from './FlowContextMenu';
+import { MoveFlowDialog } from './MoveFlowDialog';
+import { ChangeFlowTypeDialog } from './ChangeFlowTypeDialog';
 import { NewFlowEventDialog } from './NewFlowEventDialog';
 import { ZoomControls } from '../shared/ZoomControls';
 import type { Position } from '../../types/sheet';
+import type { DomainOrchestration } from '../../types/domain';
 
 const FLOW_WIDTH = 180;
 const FLOW_HEIGHT = 80;
@@ -29,6 +36,9 @@ export function DomainMap() {
   const addFlow = useProjectStore((s) => s.addFlow);
   const deleteFlow = useProjectStore((s) => s.deleteFlow);
   const renameFlow = useProjectStore((s) => s.renameFlow);
+  const duplicateFlow = useProjectStore((s) => s.duplicateFlow);
+  const moveFlowAction = useProjectStore((s) => s.moveFlow);
+  const changeFlowType = useProjectStore((s) => s.changeFlowType);
   const reloadProject = useProjectStore((s) => s.reloadProject);
   const autoLayoutFlows = useProjectStore((s) => s.autoLayoutFlows);
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -40,6 +50,8 @@ export function DomainMap() {
   const [renamingFlowId, setRenamingFlowId] = useState<string | null>(null);
   const [connecting, setConnecting] = useState<{ sourceFlowId: string; currentX: number; currentY: number } | null>(null);
   const [newEventDialog, setNewEventDialog] = useState<{ sourceFlowId: string; targetFlowId: string } | null>(null);
+  const [moveFlowId, setMoveFlowId] = useState<string | null>(null);
+  const [changeTypeFlowId, setChangeTypeFlowId] = useState<string | null>(null);
   const [animating, setAnimating] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
 
@@ -55,6 +67,46 @@ export function DomainMap() {
     }
     return keys;
   }, [driftItems]);
+
+  const validateDomainFlows = useValidationStore((s) => s.validateDomainFlows);
+
+  // Validate flows in this domain on mount and when domain changes (debounced)
+  useEffect(() => {
+    if (!domainId) return;
+    const timer = setTimeout(() => {
+      validateDomainFlows(domainId);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [domainId, domainConfigs, validateDomainFlows]);
+
+  const [orchestration, setOrchestration] = useState<DomainOrchestration | null>(null);
+  const projectPath = useProjectStore((s) => s.projectPath);
+
+  // Load orchestration data for agent domains
+  useEffect(() => {
+    if (!domainId || !projectPath) {
+      setOrchestration(null);
+      return;
+    }
+    const config = domainConfigs[domainId];
+    if (!config) return;
+
+    // Only extract if domain has agent flows
+    const hasAgentFlows = config.flows.some((f) => f.type === 'agent');
+    if (!hasAgentFlows) {
+      setOrchestration(null);
+      return;
+    }
+
+    let cancelled = false;
+    extractOrchestrationData(domainId, config, projectPath).then((data) => {
+      if (!cancelled) setOrchestration(data);
+    }).catch(() => {
+      if (!cancelled) setOrchestration(null);
+    });
+
+    return () => { cancelled = true; };
+  }, [domainId, domainConfigs, projectPath]);
 
   const domainConfig = domainId ? domainConfigs[domainId] : null;
 
@@ -173,6 +225,44 @@ export function DomainMap() {
     []
   );
 
+  const handleDuplicateFlow = useCallback(
+    async (flowId: string) => {
+      if (!domainId || isLocked) return;
+      try {
+        await duplicateFlow(domainId, flowId);
+      } catch {
+        // Silent
+      }
+    },
+    [domainId, duplicateFlow, isLocked]
+  );
+
+  const handleMoveFlow = useCallback(
+    async (flowId: string, targetDomainId: string) => {
+      if (!domainId || isLocked) return;
+      try {
+        await moveFlowAction(domainId, flowId, targetDomainId);
+        setMoveFlowId(null);
+      } catch {
+        // Silent
+      }
+    },
+    [domainId, moveFlowAction, isLocked]
+  );
+
+  const handleChangeFlowType = useCallback(
+    async (flowId: string, newType: 'traditional' | 'agent') => {
+      if (!domainId || isLocked) return;
+      try {
+        await changeFlowType(domainId, flowId, newType);
+        setChangeTypeFlowId(null);
+      } catch {
+        // Silent
+      }
+    },
+    [domainId, changeFlowType, isLocked]
+  );
+
   const handleStartConnect = useCallback(
     (flowId: string, clientX: number, clientY: number) => {
       if (isLocked || !domainId) return;
@@ -289,6 +379,45 @@ export function DomainMap() {
                 fill="var(--color-text-muted)"
               />
             </marker>
+            <marker
+              id="supervisor-arrowhead"
+              markerWidth="10"
+              markerHeight="7"
+              refX="10"
+              refY="3.5"
+              orient="auto"
+            >
+              <polygon
+                points="0 0, 10 3.5, 0 7"
+                fill="var(--color-accent)"
+              />
+            </marker>
+            <marker
+              id="handoff-arrowhead"
+              markerWidth="10"
+              markerHeight="7"
+              refX="10"
+              refY="3.5"
+              orient="auto"
+            >
+              <polygon
+                points="0 0, 10 3.5, 0 7"
+                fill="#a78bfa"
+              />
+            </marker>
+            <marker
+              id="handoff-arrowhead-reverse"
+              markerWidth="10"
+              markerHeight="7"
+              refX="0"
+              refY="3.5"
+              orient="auto-start-reverse"
+            >
+              <polygon
+                points="0 0, 10 3.5, 0 7"
+                fill="#a78bfa"
+              />
+            </marker>
           </defs>
           {mapData.eventArrows.map((arrow) => (
             <DomainEventArrow
@@ -298,6 +427,31 @@ export function DomainMap() {
               portals={mapData.portals}
             />
           ))}
+          {/* Orchestration: supervisor arrows */}
+          {orchestration?.relationships
+            .filter((r) => r.type === 'supervisor')
+            .map((r) => (
+              <SupervisorArrow
+                key={`sup-${r.sourceFlowId}-${r.targetFlowId}`}
+                sourceFlowId={r.sourceFlowId}
+                targetFlowId={r.targetFlowId}
+                flows={mapData.flows}
+                flowWidth={FLOW_WIDTH}
+                flowHeight={FLOW_HEIGHT}
+              />
+            ))}
+          {/* Orchestration: handoff arrows */}
+          {orchestration?.relationships
+            .filter((r) => r.type === 'handoff')
+            .map((r) => (
+              <HandoffArrow
+                key={`hoff-${r.sourceFlowId}-${r.targetFlowId}`}
+                relationship={r}
+                flows={mapData.flows}
+                flowWidth={FLOW_WIDTH}
+                flowHeight={FLOW_HEIGHT}
+              />
+            ))}
           {connecting && (() => {
             const sourceFlow = mapData.flows.find((f) => f.id === connecting.sourceFlowId);
             if (!sourceFlow) return null;
@@ -321,6 +475,7 @@ export function DomainMap() {
           <FlowBlock
             key={flow.id}
             flow={flow}
+            domainId={domainId ?? undefined}
             selected={selectedFlowId === flow.id}
             isStale={domainId ? staleFlowKeys.has(`${domainId}/${flow.id}`) : false}
             isLocked={isLocked}
@@ -346,6 +501,17 @@ export function DomainMap() {
             animating={animating}
             onPositionChange={handlePortalPositionChange}
             onDoubleClick={handlePortalDoubleClick}
+          />
+        ))}
+
+        {/* Orchestration: agent group boundaries */}
+        {orchestration?.agentGroups.map((group) => (
+          <AgentGroupBoundary
+            key={group.id}
+            group={group}
+            flows={mapData.flows}
+            flowWidth={FLOW_WIDTH}
+            flowHeight={FLOW_HEIGHT}
           />
         ))}
 
@@ -469,6 +635,9 @@ export function DomainMap() {
           onRename={() => setRenamingFlowId(contextMenu.flowId)}
           onDelete={() => setPendingDelete(contextMenu.flowId)}
           onStartConnect={() => handleStartConnect(contextMenu.flowId, contextMenu.x, contextMenu.y)}
+          onDuplicate={() => handleDuplicateFlow(contextMenu.flowId)}
+          onMove={() => setMoveFlowId(contextMenu.flowId)}
+          onChangeType={() => setChangeTypeFlowId(contextMenu.flowId)}
         />
       )}
 
@@ -480,6 +649,28 @@ export function DomainMap() {
           onClose={() => setNewEventDialog(null)}
         />
       )}
+
+      {moveFlowId && domainId && (
+        <MoveFlowDialog
+          flowId={moveFlowId}
+          currentDomainId={domainId}
+          onClose={() => setMoveFlowId(null)}
+          onMove={(targetDomainId) => handleMoveFlow(moveFlowId, targetDomainId)}
+        />
+      )}
+
+      {changeTypeFlowId && domainId && (() => {
+        const entry = domainConfig?.flows.find((f) => f.id === changeTypeFlowId);
+        const currentType = (entry?.type ?? 'traditional') as 'traditional' | 'agent';
+        return (
+          <ChangeFlowTypeDialog
+            flowId={changeTypeFlowId}
+            currentType={currentType}
+            onClose={() => setChangeTypeFlowId(null)}
+            onConfirm={(newType) => handleChangeFlowType(changeTypeFlowId, newType)}
+          />
+        );
+      })()}
     </div>
   );
 }

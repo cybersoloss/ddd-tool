@@ -1,3 +1,5 @@
+import { invoke } from '@tauri-apps/api/core';
+import { parse } from 'yaml';
 import type {
   DomainConfig,
   SystemLayout,
@@ -9,7 +11,11 @@ import type {
   DomainMapPortal,
   DomainMapArrow,
   SystemZone,
+  DomainOrchestration,
+  OrchestrationRelationship,
+  AgentGroupVisual,
 } from '../types/domain';
+import type { OrchestratorSpec, HandoffSpec, AgentGroupSpec } from '../types/flow';
 import type { Position } from '../types/sheet';
 
 const GRID_COLS = 3;
@@ -291,4 +297,93 @@ export function buildDomainMapData(
     portals,
     eventArrows: Array.from(arrowMap.values()),
   };
+}
+
+// --- Orchestration data extraction ---
+
+export async function extractOrchestrationData(
+  domainId: string,
+  domainConfig: DomainConfig,
+  projectPath: string
+): Promise<DomainOrchestration> {
+  const relationships: OrchestrationRelationship[] = [];
+  const agentGroups: AgentGroupVisual[] = [];
+
+  for (const flowEntry of domainConfig.flows) {
+    if (flowEntry.type !== 'agent') continue;
+
+    try {
+      const flowPath = `${projectPath}/specs/domains/${domainId}/flows/${flowEntry.id}.yaml`;
+      const content: string = await invoke('read_file', { path: flowPath });
+      const raw = parse(content) as Record<string, unknown>;
+
+      // Get nodes array (handle both normalized and raw formats)
+      const nodes = Array.isArray(raw.nodes) ? raw.nodes : [];
+
+      for (const node of nodes) {
+        if (!node || typeof node !== 'object') continue;
+        const n = node as Record<string, unknown>;
+        const nodeType = n.type as string;
+        const spec = (n.spec ?? n.config ?? {}) as Record<string, unknown>;
+
+        if (nodeType === 'orchestrator') {
+          const orchSpec = spec as OrchestratorSpec;
+          const agents = Array.isArray(orchSpec.agents) ? orchSpec.agents : [];
+          for (const agent of agents) {
+            if (!agent.flow) continue;
+            // Agent flow reference can be "domain/flow" or just "flow" (same domain)
+            const targetFlowId = agent.flow.includes('/') ? agent.flow.split('/')[1] : agent.flow;
+            // Only add if target flow exists in this domain
+            if (domainConfig.flows.some((f) => f.id === targetFlowId)) {
+              relationships.push({
+                type: 'supervisor',
+                sourceFlowId: flowEntry.id,
+                targetFlowId,
+              });
+            }
+          }
+        }
+
+        if (nodeType === 'handoff') {
+          const handoffSpec = spec as HandoffSpec;
+          const targetFlow = handoffSpec.target?.flow;
+          if (targetFlow) {
+            const targetFlowId = targetFlow.includes('/') ? targetFlow.split('/')[1] : targetFlow;
+            if (domainConfig.flows.some((f) => f.id === targetFlowId)) {
+              relationships.push({
+                type: 'handoff',
+                sourceFlowId: flowEntry.id,
+                targetFlowId,
+                mode: handoffSpec.mode,
+              });
+            }
+          }
+        }
+
+        if (nodeType === 'agent_group') {
+          const groupSpec = spec as AgentGroupSpec;
+          const members = Array.isArray(groupSpec.members) ? groupSpec.members : [];
+          const memberFlowIds: string[] = [];
+          for (const member of members) {
+            if (!member.flow) continue;
+            const memberId = member.flow.includes('/') ? member.flow.split('/')[1] : member.flow;
+            if (domainConfig.flows.some((f) => f.id === memberId)) {
+              memberFlowIds.push(memberId);
+            }
+          }
+          if (memberFlowIds.length > 0) {
+            agentGroups.push({
+              id: `group-${flowEntry.id}-${String(n.id ?? '')}`,
+              name: groupSpec.name ?? 'Agent Group',
+              flowIds: memberFlowIds,
+            });
+          }
+        }
+      }
+    } catch {
+      // Silently skip unreadable flows
+    }
+  }
+
+  return { relationships, agentGroups };
 }

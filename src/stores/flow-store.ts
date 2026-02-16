@@ -392,7 +392,7 @@ function createDefaultFlow(domainId: string, flowId: string, flowName: string, f
  *   - trigger embedded inside `nodes:` array (older format)
  *   - `properties:` used instead of `spec:` (older format)
  */
-function normalizeFlowDocument(raw: Record<string, unknown>, domainId: string, flowId: string, flowType?: string): FlowDocument {
+export function normalizeFlowDocument(raw: Record<string, unknown>, domainId: string, flowId: string, flowType?: string): FlowDocument {
   const doc = raw as unknown as FlowDocument;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -30,6 +30,9 @@ interface ProjectState {
   updateEventWiring: (domainId: string, type: 'publish' | 'consume', index: number, wiring: EventWiring) => Promise<void>;
   removeEventWiring: (domainId: string, type: 'publish' | 'consume', index: number) => Promise<void>;
   addEventArrow: (sourceDomainId: string, targetDomainId: string, eventName: string, fromFlow?: string, handledByFlow?: string, description?: string) => Promise<void>;
+  duplicateFlow: (domainId: string, flowId: string) => Promise<string>;
+  moveFlow: (sourceDomainId: string, flowId: string, targetDomainId: string) => Promise<void>;
+  changeFlowType: (domainId: string, flowId: string, newType: 'traditional' | 'agent') => Promise<void>;
   autoLayoutDomains: () => void;
   autoLayoutFlows: (domainId: string) => void;
   reloadProject: () => Promise<void>;
@@ -639,6 +642,280 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       event: eventName,
       handled_by_flow: handledByFlow,
       description,
+    });
+  },
+
+  duplicateFlow: async (domainId, flowId) => {
+    const { projectPath, domainConfigs } = get();
+    if (!projectPath) throw new Error('No project loaded');
+
+    const domain = domainConfigs[domainId];
+    if (!domain) throw new Error(`Domain ${domainId} not found`);
+
+    const flowEntry = domain.flows.find((f) => f.id === flowId);
+    if (!flowEntry) throw new Error(`Flow ${flowId} not found`);
+
+    // Read the original flow YAML
+    const flowPath = `${projectPath}/specs/domains/${domainId}/flows/${flowId}.yaml`;
+    const content: string = await invoke('read_file', { path: flowPath });
+    const flowDoc = parse(content) as FlowDocument;
+
+    // Generate new ID
+    const newFlowId = `${flowId}-copy`;
+    const newName = `${flowEntry.name} (Copy)`;
+
+    // Remap all node IDs
+    const idMap = new Map<string, string>();
+    if (flowDoc.trigger) {
+      const newId = `trigger-${nanoid(8)}`;
+      idMap.set(flowDoc.trigger.id, newId);
+      flowDoc.trigger.id = newId;
+    }
+    const nodes = Array.isArray(flowDoc.nodes) ? flowDoc.nodes : [];
+    for (const node of nodes) {
+      const newId = `${node.type}-${nanoid(8)}`;
+      idMap.set(node.id, newId);
+      node.id = newId;
+    }
+
+    // Update connection references
+    const remapConns = (conns: Array<{ targetNodeId: string; sourceHandle?: string; targetHandle?: string; label?: string }>) => {
+      for (const conn of conns) {
+        const mapped = idMap.get(conn.targetNodeId);
+        if (mapped) conn.targetNodeId = mapped;
+      }
+    };
+    if (flowDoc.trigger?.connections) remapConns(flowDoc.trigger.connections);
+    for (const node of nodes) {
+      if (node.connections) remapConns(node.connections);
+      if (node.parentId) {
+        const mapped = idMap.get(node.parentId);
+        if (mapped) node.parentId = mapped;
+      }
+    }
+
+    // Update flow metadata
+    if (flowDoc.flow) {
+      flowDoc.flow.id = newFlowId;
+      flowDoc.flow.name = newName;
+    }
+    flowDoc.nodes = nodes;
+
+    // Add entry to domain config
+    const newEntry: DomainFlowEntry = {
+      id: newFlowId,
+      name: newName,
+      description: flowEntry.description,
+      type: flowEntry.type,
+      tags: flowEntry.tags,
+      group: flowEntry.group,
+    };
+    const updatedDomain: DomainConfig = {
+      ...domain,
+      flows: [...domain.flows, newEntry],
+    };
+    const updatedConfigs = { ...domainConfigs, [domainId]: updatedDomain };
+    set({ domainConfigs: updatedConfigs });
+
+    // Write files
+    markWriting();
+    await invoke('write_file', {
+      path: `${projectPath}/specs/domains/${domainId}/domain.yaml`,
+      contents: stringify(updatedDomain),
+    });
+    markWriting();
+    await invoke('write_file', {
+      path: `${projectPath}/specs/domains/${domainId}/flows/${newFlowId}.yaml`,
+      contents: stringify(flowDoc),
+    });
+
+    return newFlowId;
+  },
+
+  moveFlow: async (sourceDomainId, flowId, targetDomainId) => {
+    const { projectPath, domainConfigs } = get();
+    if (!projectPath) throw new Error('No project loaded');
+
+    const sourceDomain = domainConfigs[sourceDomainId];
+    const targetDomain = domainConfigs[targetDomainId];
+    if (!sourceDomain) throw new Error(`Source domain ${sourceDomainId} not found`);
+    if (!targetDomain) throw new Error(`Target domain ${targetDomainId} not found`);
+
+    const flowEntry = sourceDomain.flows.find((f) => f.id === flowId);
+    if (!flowEntry) throw new Error(`Flow ${flowId} not found`);
+
+    // Read flow YAML
+    const srcPath = `${projectPath}/specs/domains/${sourceDomainId}/flows/${flowId}.yaml`;
+    const content: string = await invoke('read_file', { path: srcPath });
+    const flowDoc = parse(content) as FlowDocument;
+
+    // Update domain reference
+    if (flowDoc.flow) {
+      flowDoc.flow.domain = targetDomainId;
+    }
+
+    // Remove from source domain config
+    const { [flowId]: _, ...srcFlowPositions } = sourceDomain.layout?.flows ?? {};
+    const updatedSource: DomainConfig = {
+      ...sourceDomain,
+      flows: sourceDomain.flows.filter((f) => f.id !== flowId),
+      layout: { ...(sourceDomain.layout ?? { portals: {} }), flows: srcFlowPositions },
+    };
+
+    // Add to target domain config
+    const updatedTarget: DomainConfig = {
+      ...targetDomain,
+      flows: [...targetDomain.flows, flowEntry],
+    };
+
+    // Move event wiring entries that reference this flow from source to target domain
+    const movedPublishes: EventWiring[] = [];
+    const keptPublishes: EventWiring[] = [];
+    for (const e of updatedSource.publishes_events) {
+      if (e.from_flow === flowId) {
+        movedPublishes.push(e);
+      } else {
+        keptPublishes.push(e);
+      }
+    }
+    updatedSource.publishes_events = keptPublishes;
+    updatedTarget.publishes_events = [...updatedTarget.publishes_events, ...movedPublishes];
+
+    const movedConsumes: EventWiring[] = [];
+    const keptConsumes: EventWiring[] = [];
+    for (const e of updatedSource.consumes_events) {
+      if (e.handled_by_flow === flowId) {
+        movedConsumes.push(e);
+      } else {
+        keptConsumes.push(e);
+      }
+    }
+    updatedSource.consumes_events = keptConsumes;
+    updatedTarget.consumes_events = [...updatedTarget.consumes_events, ...movedConsumes];
+
+    const updatedConfigs = {
+      ...domainConfigs,
+      [sourceDomainId]: updatedSource,
+      [targetDomainId]: updatedTarget,
+    };
+    set({ domainConfigs: updatedConfigs });
+
+    // Write target flow file
+    markWriting();
+    await invoke('write_file', {
+      path: `${projectPath}/specs/domains/${targetDomainId}/flows/${flowId}.yaml`,
+      contents: stringify(flowDoc),
+    });
+
+    // Write updated domain configs
+    markWriting();
+    await invoke('write_file', {
+      path: `${projectPath}/specs/domains/${sourceDomainId}/domain.yaml`,
+      contents: stringify(updatedSource),
+    });
+    markWriting();
+    await invoke('write_file', {
+      path: `${projectPath}/specs/domains/${targetDomainId}/domain.yaml`,
+      contents: stringify(updatedTarget),
+    });
+
+    // Delete source flow file
+    try {
+      await invoke('delete_file', { path: srcPath });
+    } catch {
+      // Silent
+    }
+  },
+
+  changeFlowType: async (domainId, flowId, newType) => {
+    const { projectPath, domainConfigs } = get();
+    if (!projectPath) throw new Error('No project loaded');
+
+    const domain = domainConfigs[domainId];
+    if (!domain) throw new Error(`Domain ${domainId} not found`);
+
+    // Read flow YAML
+    const flowPath = `${projectPath}/specs/domains/${domainId}/flows/${flowId}.yaml`;
+    const content: string = await invoke('read_file', { path: flowPath });
+    const flowDoc = parse(content) as FlowDocument;
+
+    if (flowDoc.flow) {
+      flowDoc.flow.type = newType;
+    }
+
+    const nodes = Array.isArray(flowDoc.nodes) ? flowDoc.nodes : [];
+
+    if (newType === 'agent') {
+      // Add agent_loop node if not present
+      const hasAgentLoop = nodes.some((n) => n.type === 'agent_loop');
+      if (!hasAgentLoop) {
+        const agentNodeId = 'agent_loop-' + nanoid(8);
+        nodes.push({
+          id: agentNodeId,
+          type: 'agent_loop',
+          position: { x: 200, y: 200 },
+          connections: [],
+          spec: {
+            model: 'claude-sonnet',
+            system_prompt: '',
+            max_iterations: 10,
+            temperature: 0.7,
+            stop_conditions: [],
+            tools: [],
+            memory: [],
+            on_max_iterations: 'respond',
+          },
+          label: 'Agent Loop',
+        });
+        if (flowDoc.trigger && !flowDoc.trigger.connections?.some((c) => c.targetNodeId === agentNodeId)) {
+          flowDoc.trigger.connections = [...(flowDoc.trigger.connections ?? []), { targetNodeId: agentNodeId }];
+        }
+      }
+    } else {
+      // Remove agent-specific nodes
+      const agentTypes = new Set(['agent_loop', 'guardrail', 'human_gate']);
+      const removedIds = new Set(nodes.filter((n) => agentTypes.has(n.type)).map((n) => n.id));
+      flowDoc.nodes = nodes.filter((n) => !agentTypes.has(n.type));
+
+      // Remove connections to removed nodes
+      if (flowDoc.trigger) {
+        flowDoc.trigger.connections = (flowDoc.trigger.connections ?? []).filter(
+          (c) => !removedIds.has(c.targetNodeId)
+        );
+      }
+      for (const node of flowDoc.nodes) {
+        node.connections = (node.connections ?? []).filter(
+          (c) => !removedIds.has(c.targetNodeId)
+        );
+      }
+    }
+
+    if (newType !== 'agent') {
+      flowDoc.nodes = flowDoc.nodes ?? [];
+    } else {
+      flowDoc.nodes = nodes;
+    }
+
+    // Update domain config
+    const updatedDomain: DomainConfig = {
+      ...domain,
+      flows: domain.flows.map((f) =>
+        f.id === flowId ? { ...f, type: newType } : f
+      ),
+    };
+    const updatedConfigs = { ...domainConfigs, [domainId]: updatedDomain };
+    set({ domainConfigs: updatedConfigs });
+
+    // Write files
+    markWriting();
+    await invoke('write_file', {
+      path: flowPath,
+      contents: stringify(flowDoc),
+    });
+    markWriting();
+    await invoke('write_file', {
+      path: `${projectPath}/specs/domains/${domainId}/domain.yaml`,
+      contents: stringify(updatedDomain),
     });
   },
 

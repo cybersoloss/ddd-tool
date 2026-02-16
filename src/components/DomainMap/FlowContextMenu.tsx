@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { PenLine, Trash2, Cable, ArrowRight } from 'lucide-react';
+import { PenLine, Trash2, Cable, ArrowRight, Copy, FolderInput, RefreshCw } from 'lucide-react';
 
 interface FlowContextMenuProps {
   x: number;
@@ -11,6 +11,9 @@ interface FlowContextMenuProps {
   onRename: () => void;
   onDelete: () => void;
   onStartConnect: () => void;
+  onDuplicate?: () => void;
+  onMove?: () => void;
+  onChangeType?: () => void;
 }
 
 export function FlowContextMenu({
@@ -23,6 +26,9 @@ export function FlowContextMenu({
   onRename,
   onDelete,
   onStartConnect,
+  onDuplicate,
+  onMove,
+  onChangeType,
 }: FlowContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -73,9 +79,48 @@ export function FlowContextMenu({
           Rename
         </button>
 
+        {onDuplicate && (
+          <button
+            className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors text-left ${
+              isLocked ? 'text-text-muted opacity-50 pointer-events-none' : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+            }`}
+            onClick={() => { onClose(); onDuplicate(); }}
+            disabled={isLocked}
+          >
+            <Copy className="w-3.5 h-3.5 shrink-0" />
+            Duplicate
+          </button>
+        )}
+
+        {onMove && (
+          <button
+            className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors text-left ${
+              isLocked ? 'text-text-muted opacity-50 pointer-events-none' : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+            }`}
+            onClick={() => { onClose(); onMove(); }}
+            disabled={isLocked}
+          >
+            <FolderInput className="w-3.5 h-3.5 shrink-0" />
+            Move to Domain...
+          </button>
+        )}
+
+        {onChangeType && (
+          <button
+            className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors text-left ${
+              isLocked ? 'text-text-muted opacity-50 pointer-events-none' : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+            }`}
+            onClick={() => { onClose(); onChangeType(); }}
+            disabled={isLocked}
+          >
+            <RefreshCw className="w-3.5 h-3.5 shrink-0" />
+            Change Flow Type...
+          </button>
+        )}
+
         <button
           className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors text-left ${
-            isLocked ? 'text-text-muted opacity-50 pointer-events-none' : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+            isLocked ? 'text-text-muted opacity-50 pointer-events-none' : 'text-danger hover:text-danger hover:bg-bg-hover'
           }`}
           onClick={() => { onClose(); onDelete(); }}
           disabled={isLocked}

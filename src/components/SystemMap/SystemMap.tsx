@@ -1,8 +1,11 @@
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
-import { Plus, RotateCcw, Copy, Check, LayoutGrid } from 'lucide-react';
+import { Plus, RotateCcw, Copy, Check, LayoutGrid, FileText } from 'lucide-react';
+import { invoke } from '@tauri-apps/api/core';
 import { useProjectStore } from '../../stores/project-store';
 import { useSheetStore } from '../../stores/sheet-store';
 import { useUiStore } from '../../stores/ui-store';
+import { useValidationStore } from '../../stores/validation-store';
+import { generateClaudeMd } from '../../utils/claude-md-generator';
 import { buildSystemMapData } from '../../utils/domain-parser';
 import { useCanvasTransform } from '../../hooks/useCanvasTransform';
 import { DomainBlock } from './DomainBlock';
@@ -41,9 +44,20 @@ export function SystemMap() {
   const [connecting, setConnecting] = useState<{ sourceDomainId: string; currentX: number; currentY: number } | null>(null);
   const [newEventDialog, setNewEventDialog] = useState<{ sourceDomainId: string; targetDomainId: string } | null>(null);
   const [animating, setAnimating] = useState(false);
+  const [claudeMdGenerated, setClaudeMdGenerated] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
 
   const { transform, transformStyle, screenToCanvas, fitView, zoomIn, zoomOut, handleCanvasMouseDown } = useCanvasTransform(canvasRef);
+
+  const validateAllDomains = useValidationStore((s) => s.validateAllDomains);
+
+  // Validate all domains on mount and when domainConfigs change (debounced)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      validateAllDomains();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [domainConfigs, validateAllDomains]);
 
   const mapData = useMemo(
     () => buildSystemMapData(domainConfigs, systemLayout),
@@ -96,11 +110,36 @@ export function SystemMap() {
     }
   }, [reloadProject]);
 
+  const projectPath = useProjectStore((s) => s.projectPath);
+
   const handleCopyImplement = useCallback(() => {
     navigator.clipboard.writeText('/ddd-implement --all');
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }, []);
+
+  const handleGenerateClaudeMd = useCallback(async () => {
+    if (!projectPath) return;
+    try {
+      // Read existing CLAUDE.md to preserve custom section
+      let existingContent: string | undefined;
+      try {
+        const exists: boolean = await invoke('path_exists', { path: `${projectPath}/CLAUDE.md` });
+        if (exists) {
+          existingContent = await invoke('read_file', { path: `${projectPath}/CLAUDE.md` });
+        }
+      } catch {
+        // No existing file
+      }
+
+      const content = generateClaudeMd(domainConfigs, existingContent);
+      await invoke('write_file', { path: `${projectPath}/CLAUDE.md`, contents: content });
+      setClaudeMdGenerated(true);
+      setTimeout(() => setClaudeMdGenerated(false), 2000);
+    } catch {
+      // Silent
+    }
+  }, [projectPath, domainConfigs]);
 
   // Backspace/Delete to prompt delete confirmation for selected domain
   useEffect(() => {
@@ -352,6 +391,14 @@ export function SystemMap() {
             Auto Layout
           </button>
         )}
+        <button
+          className="btn-secondary rounded-lg px-3 py-2 shadow-lg flex items-center gap-1.5 text-xs"
+          onClick={handleGenerateClaudeMd}
+          title="Generate CLAUDE.md from project specs"
+        >
+          {claudeMdGenerated ? <Check className="w-3.5 h-3.5 text-green-400" /> : <FileText className="w-3.5 h-3.5" />}
+          {claudeMdGenerated ? 'Generated!' : 'CLAUDE.md'}
+        </button>
       </div>
 
       {/* Add Domain button */}

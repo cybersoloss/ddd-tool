@@ -6,7 +6,8 @@ export type ValidationCategory =
   | 'agent_validation'
   | 'orchestration_validation'
   | 'domain_consistency'
-  | 'event_wiring';
+  | 'event_wiring'
+  | 'reference_integrity';
 
 export interface ValidationIssue {
   id: string;

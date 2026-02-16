@@ -703,9 +703,89 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
   return issues;
 }
 
+// --- Reference integrity checks ---
+
+function checkInputBranches(flow: FlowDocument): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  const allNodes = getAllNodes(flow);
+
+  for (const node of allNodes) {
+    if (node.type !== 'input') continue;
+    const spec = (node.spec ?? {}) as InputSpec;
+    const validation = spec.validation;
+    if (!validation) continue;
+
+    // Input with validation should have valid/invalid branch connections
+    const handles = new Set((node.connections ?? []).map((c) => c.sourceHandle));
+    if (!handles.has('valid') && !handles.has('invalid')) {
+      issues.push(issue('flow', 'warning', 'reference_integrity',
+        `Input "${node.label}" has validation but no valid/invalid branch connections`,
+        { nodeId: node.id, suggestion: 'Connect the "valid" and "invalid" handles to downstream nodes' }
+      ));
+    }
+  }
+
+  return issues;
+}
+
+function checkHttpTriggerFields(flow: FlowDocument): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  if (!flow.trigger) return issues;
+
+  const spec = (flow.trigger.spec ?? {}) as TriggerSpec;
+  const event = typeof spec.event === 'string' ? spec.event : '';
+  const isHttp = event === 'http_request' || event === 'HTTP' || event === 'api' ||
+    spec.source === 'http' || spec.source === 'api';
+
+  if (isHttp) {
+    if (!spec.method || (typeof spec.method === 'string' && spec.method.trim() === '')) {
+      issues.push(issue('flow', 'error', 'reference_integrity',
+        'HTTP trigger must have a method defined (GET, POST, PUT, PATCH, DELETE)',
+        { nodeId: flow.trigger.id, suggestion: 'Set the HTTP method in the trigger spec' }
+      ));
+    }
+    if (!spec.path || (typeof spec.path === 'string' && spec.path.trim() === '')) {
+      issues.push(issue('flow', 'error', 'reference_integrity',
+        'HTTP trigger must have a path defined',
+        { nodeId: flow.trigger.id, suggestion: 'Set the path (e.g., /api/users) in the trigger spec' }
+      ));
+    }
+  }
+
+  return issues;
+}
+
+function checkSubFlowReferenceExists(flow: FlowDocument, domainConfigs?: Record<string, DomainConfig>): ValidationIssue[] {
+  if (!domainConfigs) return [];
+  const issues: ValidationIssue[] = [];
+  const allNodes = getAllNodes(flow);
+
+  for (const node of allNodes) {
+    if (node.type !== 'sub_flow') continue;
+    const spec = (node.spec ?? {}) as SubFlowSpec;
+    if (!spec.flow_ref || !spec.flow_ref.includes('/')) continue;
+
+    const [refDomain, refFlow] = spec.flow_ref.split('/');
+    const domain = domainConfigs[refDomain];
+    if (!domain) {
+      issues.push(issue('flow', 'error', 'reference_integrity',
+        `Sub-flow "${node.label}" references domain "${refDomain}" which does not exist`,
+        { nodeId: node.id, suggestion: 'Check the flow_ref domain name' }
+      ));
+    } else if (!domain.flows.some((f) => f.id === refFlow)) {
+      issues.push(issue('flow', 'error', 'reference_integrity',
+        `Sub-flow "${node.label}" references flow "${refFlow}" which does not exist in domain "${refDomain}"`,
+        { nodeId: node.id, suggestion: 'Check the flow_ref flow ID' }
+      ));
+    }
+  }
+
+  return issues;
+}
+
 // --- Public: Flow validation ---
 
-export function validateFlow(flow: FlowDocument): ValidationResult {
+export function validateFlow(flow: FlowDocument, domainConfigs?: Record<string, DomainConfig>): ValidationResult {
   const flowMeta = flow.flow ?? { id: 'unknown', domain: 'unknown', name: 'unknown', type: 'traditional' as const };
   const flowId = `${flowMeta.domain}/${flowMeta.id}`;
 
@@ -730,6 +810,9 @@ export function validateFlow(flow: FlowDocument): ValidationResult {
     ...checkAgentFlow(flow),
     ...checkOrchestrationNodes(flow),
     ...checkExtendedNodes(flow),
+    ...checkInputBranches(flow),
+    ...checkHttpTriggerFields(flow),
+    ...checkSubFlowReferenceExists(flow, domainConfigs),
   ];
 
   // Tag all issues with flowId
@@ -741,12 +824,79 @@ export function validateFlow(flow: FlowDocument): ValidationResult {
   return buildResult('flow', flowId, issues);
 }
 
+// --- Domain-scope reference integrity checks ---
+
+function checkDuplicateHttpPaths(
+  domainId: string,
+  flowDocs: FlowDocument[]
+): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  const seen = new Map<string, string>(); // "METHOD /path" → flowId
+
+  for (const flow of flowDocs) {
+    if (!flow.trigger) continue;
+    const spec = (flow.trigger.spec ?? {}) as TriggerSpec;
+    const event = typeof spec.event === 'string' ? spec.event : '';
+    const isHttp = event === 'http_request' || event === 'HTTP' || event === 'api' ||
+      spec.source === 'http' || spec.source === 'api';
+    if (!isHttp || !spec.method || !spec.path) continue;
+
+    const key = `${String(spec.method).toUpperCase()} ${spec.path}`;
+    const existing = seen.get(key);
+    if (existing) {
+      issues.push(issue('domain', 'error', 'reference_integrity',
+        `Duplicate HTTP endpoint "${key}" in flows "${existing}" and "${flow.flow?.id ?? 'unknown'}"`,
+        { domainId }
+      ));
+    } else {
+      seen.set(key, flow.flow?.id ?? 'unknown');
+    }
+  }
+
+  return issues;
+}
+
+function checkSchemaReferences(
+  domainId: string,
+  flowDocs: FlowDocument[],
+  allDomainConfigs: Record<string, DomainConfig>
+): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+
+  // Collect all schemas owned across all domains
+  const allSchemas = new Set<string>();
+  for (const config of Object.values(allDomainConfigs)) {
+    const schemas = Array.isArray(config.owns_schemas) ? config.owns_schemas : [];
+    for (const s of schemas) allSchemas.add(s);
+  }
+
+  if (allSchemas.size === 0) return issues;
+
+  for (const flow of flowDocs) {
+    const allNodes = getAllNodes(flow);
+    for (const node of allNodes) {
+      if (node.type !== 'data_store') continue;
+      const spec = (node.spec ?? {}) as DataStoreSpec;
+      if (!spec.model || spec.model.trim() === '') continue;
+      if (!allSchemas.has(spec.model)) {
+        issues.push(issue('domain', 'warning', 'reference_integrity',
+          `Data store "${node.label}" references model "${spec.model}" which is not in any domain's owns_schemas`,
+          { domainId, nodeId: node.id, flowId: flow.flow?.id }
+        ));
+      }
+    }
+  }
+
+  return issues;
+}
+
 // --- Public: Domain validation ---
 
 export function validateDomain(
   domainId: string,
   domainConfig: DomainConfig,
-  _allDomainConfigs: Record<string, DomainConfig>
+  _allDomainConfigs: Record<string, DomainConfig>,
+  flowDocs?: FlowDocument[]
 ): ValidationResult {
   const issues: ValidationIssue[] = [];
 
@@ -775,12 +925,78 @@ export function validateDomain(
     }
   }
 
+  // Flow-doc-based domain checks (only if flowDocs provided)
+  if (flowDocs && flowDocs.length > 0) {
+    issues.push(...checkDuplicateHttpPaths(domainId, flowDocs));
+    issues.push(...checkSchemaReferences(domainId, flowDocs, _allDomainConfigs));
+  }
+
   // Tag all issues
   for (const i of issues) {
     i.domainId = domainId;
   }
 
   return buildResult('domain', domainId, issues);
+}
+
+// --- System-scope reference integrity checks ---
+
+function checkPortalTargetsExist(domainConfigs: Record<string, DomainConfig>): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  const domainIds = new Set(Object.keys(domainConfigs));
+
+  for (const [domainId, config] of Object.entries(domainConfigs)) {
+    // Check consumed events reference existing domains via from_flow cross-refs
+    for (const con of config.consumes_events) {
+      // If the consumed event has a schema like "domain.event", extract domain
+      const parts = con.event.split('.');
+      if (parts.length >= 2) {
+        const refDomain = parts[0];
+        if (!domainIds.has(refDomain) && refDomain !== domainId) {
+          // Only flag if the prefix looks like a domain reference
+          // This is heuristic — skip if not a known convention
+        }
+      }
+    }
+
+    // Check portal targets in layout
+    const portalKeys = Object.keys(config.layout?.portals ?? {});
+    for (const portalId of portalKeys) {
+      if (!domainIds.has(portalId)) {
+        issues.push(issue('system', 'error', 'reference_integrity',
+          `Domain "${config.name}" has a portal to "${portalId}" which does not exist`,
+          { domainId, suggestion: 'Remove the portal or create the target domain' }
+        ));
+      }
+    }
+  }
+
+  return issues;
+}
+
+function checkSchemaOwnershipConflicts(domainConfigs: Record<string, DomainConfig>): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  const schemaOwners = new Map<string, string[]>(); // schema → domainIds
+
+  for (const [domainId, config] of Object.entries(domainConfigs)) {
+    const schemas = Array.isArray(config.owns_schemas) ? config.owns_schemas : [];
+    for (const schema of schemas) {
+      const owners = schemaOwners.get(schema) ?? [];
+      owners.push(domainId);
+      schemaOwners.set(schema, owners);
+    }
+  }
+
+  for (const [schema, owners] of schemaOwners) {
+    if (owners.length > 1) {
+      issues.push(issue('system', 'warning', 'reference_integrity',
+        `Schema "${schema}" is owned by multiple domains: ${owners.join(', ')}`,
+        { suggestion: 'Each schema should have a single owning domain' }
+      ));
+    }
+  }
+
+  return issues;
 }
 
 // --- Public: System validation ---
@@ -837,6 +1053,10 @@ export function validateSystem(domainConfigs: Record<string, DomainConfig>): Val
       ));
     }
   }
+
+  // Reference integrity checks
+  issues.push(...checkPortalTargetsExist(domainConfigs));
+  issues.push(...checkSchemaOwnershipConflicts(domainConfigs));
 
   return buildResult('system', 'system', issues);
 }

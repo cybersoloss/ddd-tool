@@ -28,6 +28,7 @@ import { useImplementationStore } from '../../stores/implementation-store';
 import { useUiStore } from '../../stores/ui-store';
 import { nodeTypes } from './nodes';
 import { CircuitBreakerEdge } from './edges/CircuitBreakerEdge';
+import { BehaviorEdge } from './edges/BehaviorEdge';
 import { NodeToolbar } from './NodeToolbar';
 import { SpecPanel } from '../SpecPanel/SpecPanel';
 import { ConnectionEditor } from '../SpecPanel/ConnectionEditor';
@@ -38,6 +39,7 @@ import type { DddNodeData, DddNodeType, SmartRouterSpec } from '../../types/flow
 
 const edgeTypes = {
   circuit_breaker: CircuitBreakerEdge,
+  behavior: BehaviorEdge,
 };
 
 const defaultEdgeOptions = {
@@ -102,13 +104,19 @@ function buildEdges(flow: ReturnType<typeof useFlowStore.getState>['currentFlow'
         label: conn.label,
       };
 
-      // Circuit breaker edge for smart_router nodes
+      // Circuit breaker edge for smart_router nodes (takes precedence)
       if (node.type === 'smart_router') {
         const spec = (node.spec ?? {}) as SmartRouterSpec;
         if (spec.policies?.circuit_breaker?.enabled) {
           edge.type = 'circuit_breaker';
           edge.data = { cbState: spec.policies.circuit_breaker.runtime_state ?? 'closed' };
         }
+      }
+
+      // Behavior/data edge visualization (only if not already circuit_breaker)
+      if (!edge.type && (conn.behavior || (Array.isArray(conn.data) && conn.data.length > 0))) {
+        edge.type = 'behavior';
+        edge.data = { behavior: conn.behavior, dataFields: conn.data };
       }
 
       result.push(edge);

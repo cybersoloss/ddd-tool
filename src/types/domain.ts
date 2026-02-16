@@ -79,6 +79,26 @@ export interface SystemMapData {
   zones?: SystemZone[];
 }
 
+// L2 Orchestration visuals
+
+export interface OrchestrationRelationship {
+  type: 'supervisor' | 'handoff';
+  sourceFlowId: string;
+  targetFlowId: string;
+  mode?: 'transfer' | 'consult' | 'collaborate';
+}
+
+export interface AgentGroupVisual {
+  id: string;
+  name: string;
+  flowIds: string[];
+}
+
+export interface DomainOrchestration {
+  relationships: OrchestrationRelationship[];
+  agentGroups: AgentGroupVisual[];
+}
+
 // L2 Domain Map view models
 
 export interface DomainMapFlow {

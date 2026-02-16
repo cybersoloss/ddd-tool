@@ -1,5 +1,6 @@
 import { useRef, useCallback, useState, useEffect } from 'react';
 import { Layers, GripVertical, User, Database, Cog, Globe } from 'lucide-react';
+import { useValidationStore } from '../../stores/validation-store';
 import type { SystemMapDomain } from '../../types/domain';
 import type { Position } from '../../types/sheet';
 
@@ -19,6 +20,8 @@ interface Props {
 }
 
 export function DomainBlock({ domain, selected, isLocked, scale = 1, animating, onSelect, onPositionChange, onDoubleClick, onRename, onContextMenu, onStartConnect, editingExternal }: Props) {
+  const domainResult = useValidationStore((s) => s.domainResults[domain.id]);
+
   const dragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const posStart = useRef({ x: 0, y: 0 });
@@ -169,8 +172,15 @@ export function DomainBlock({ domain, selected, isLocked, scale = 1, animating, 
 
         {/* Badges */}
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-xs bg-bg-tertiary text-text-secondary px-2 py-0.5 rounded-full">
+          <span className="text-xs bg-bg-tertiary text-text-secondary px-2 py-0.5 rounded-full flex items-center gap-1">
             {domain.flowCount} {domain.flowCount === 1 ? 'flow' : 'flows'}
+            {domainResult && (
+              domainResult.errorCount > 0
+                ? <span className="w-2 h-2 rounded-full bg-red-500 inline-block" title={`${domainResult.errorCount} error(s)`} />
+                : domainResult.warningCount > 0
+                  ? <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" title={`${domainResult.warningCount} warning(s)`} />
+                  : <span className="w-2 h-2 rounded-full bg-green-500 inline-block" title="All valid" />
+            )}
           </span>
           {domain.role && (
             <span className={`text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5 ${

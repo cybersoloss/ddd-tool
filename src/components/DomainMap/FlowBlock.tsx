@@ -1,10 +1,12 @@
 import { useRef, useCallback, useState, useEffect } from 'react';
 import { GitBranch, GripVertical, Bot, Trash2, AlertTriangle, Clock, Globe, Zap } from 'lucide-react';
+import { useValidationStore } from '../../stores/validation-store';
 import type { DomainMapFlow } from '../../types/domain';
 import type { Position } from '../../types/sheet';
 
 interface Props {
   flow: DomainMapFlow;
+  domainId?: string;
   selected: boolean;
   isStale?: boolean;
   isLocked?: boolean;
@@ -20,7 +22,9 @@ interface Props {
   editingExternal?: boolean;
 }
 
-export function FlowBlock({ flow, selected, isStale, isLocked, scale = 1, animating, onSelect, onPositionChange, onDoubleClick, onDelete, onRename, onContextMenu, onStartConnect, editingExternal }: Props) {
+export function FlowBlock({ flow, domainId, selected, isStale, isLocked, scale = 1, animating, onSelect, onPositionChange, onDoubleClick, onDelete, onRename, onContextMenu, onStartConnect, editingExternal }: Props) {
+  const flowKey = domainId ? `${domainId}/${flow.id}` : null;
+  const flowValidation = useValidationStore((s) => flowKey ? s.flowResults[flowKey] ?? null : null);
   const dragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const posStart = useRef({ x: 0, y: 0 });
@@ -177,6 +181,13 @@ export function FlowBlock({ flow, selected, isStale, isLocked, scale = 1, animat
             <span title="Spec changed since last implementation">
               <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
             </span>
+          )}
+          {flowValidation && (
+            flowValidation.errorCount > 0
+              ? <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" title={`${flowValidation.errorCount} error(s)`} />
+              : flowValidation.warningCount > 0
+                ? <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" title={`${flowValidation.warningCount} warning(s)`} />
+                : <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" title="All valid" />
           )}
         </div>
 
