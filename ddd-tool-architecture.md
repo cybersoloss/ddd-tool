@@ -70,7 +70,7 @@ Levels 1 and 2 are derived views. Users can reposition blocks but cannot add/rem
 
 ## Node Output Handles (sourceHandle Routing)
 
-Nodes with multiple output paths use named `sourceHandle` values for connection routing. Single-output node types (trigger, process, terminal, sub_flow, event, llm_call, agent_loop, guardrail, human_gate, orchestrator, handoff, agent_group) use the default unnamed handle and are not listed here.
+Nodes with multiple output paths use named `sourceHandle` values for connection routing. Single-output node types (trigger, process, terminal, sub_flow, event, guardrail, human_gate, orchestrator, handoff, agent_group) use the default unnamed handle and are not listed here.
 
 | Node Type | Output Handles | Visual | Color |
 |-----------|---------------|--------|-------|
@@ -78,6 +78,8 @@ Nodes with multiple output paths use named `sourceHandle` values for connection 
 | Decision | `true` / `false` | Yes / No | Green / Red |
 | Data Store | `success` / `error` | Ok / Err | Green / Red |
 | Service Call | `success` / `error` | Ok / Err | Green / Red |
+| LLM Call | `success` / `error` (hidden) | — | — (invisible alias handles for external YAML compat) |
+| Agent Loop | `done` / `error` | Done / Error | Green / Red |
 | Loop | `body` / `done` | Body / Done | Teal / Muted |
 | Parallel | `branch-0`, `branch-1`, ... / `done` | Dynamic | Pink / Muted |
 | Smart Router | Dynamic route names | Route labels | Pink |

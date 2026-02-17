@@ -256,6 +256,20 @@ Public marketplace:
 
 ---
 
+## Nested Container Layout (Loop/Parallel)
+
+The Usage Guide documents a `body_start` field on loop nodes and `parentId` on child nodes for nested layout — child nodes render visually inside the loop/parallel container on the canvas.
+
+**What's needed:**
+- Add `body_start` to `LoopSpec` interface and KNOWN_KEYS
+- Add `parentId` support to `DddFlowNode` rendering (nodes with `parentId` render inside their parent container)
+- Canvas components for loop/parallel that act as expandable containers
+- `normalizeFlowDocument()` support for `body_start` field
+
+**Current state:** The `[key: string]: unknown` catch-all preserves `body_start` in spec data, but no UI or canvas rendering exists for it.
+
+---
+
 ## Layer Visibility
 
 Cross-cutting concern layers shown as toggleable overlays on the canvas (from DDD Usage Guide Part D).
