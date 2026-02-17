@@ -64,13 +64,13 @@ Levels 1 and 2 are derived views. Users can reposition blocks but cannot add/rem
 
 ### Level 3 — Flow Sheet
 
-**Canvas Background:** Right-click is captured but context menu actions (rename flow, clear canvas, import template) are not yet implemented — currently only prevents default browser menu.
+**Canvas Background:** Right-click is captured but context menu actions (rename flow, clear canvas, import template) are not yet implemented — currently only prevents default browser menu. Flow templates are available via the toolbar "Add from Template" button, not the context menu.
 
 ---
 
 ## Node Output Handles (sourceHandle Routing)
 
-Nodes with multiple output paths use named `sourceHandle` values for connection routing.
+Nodes with multiple output paths use named `sourceHandle` values for connection routing. Single-output node types (trigger, process, terminal, sub_flow, event, llm_call, agent_loop, guardrail, human_gate, orchestrator, handoff, agent_group) use the default unnamed handle and are not listed here.
 
 | Node Type | Output Handles | Visual | Color |
 |-----------|---------------|--------|-------|
@@ -621,6 +621,15 @@ Bridges external YAML formats (from `/ddd-create`) with internal `FlowDocument` 
 | `smart_router` | Routing function | Confidence scorer |
 | `handoff` | Context transfer + agent call | — |
 | `agent_group` | Parallel/sequential agent runner | — |
+| `ipc_call` | Inter-process/service call | Retry config, circuit breaker |
+| `delay` | Sleep / timer / throttle | — |
+| `cache` | Cache client call | Cache config |
+| `transform` | Field mapper / data transformer | — |
+| `collection` | Collection operation (filter, sort, group, etc.) | — |
+| `parse` | Structured parser (JSON, XML, CSV, etc.) | — |
+| `crypto` | Encrypt / decrypt / hash / sign | Key management |
+| `batch` | Batch operation runner | Concurrency config |
+| `transaction` | Atomic DB transaction block | Rollback handler |
 
 ### Service Layer Pattern
 
