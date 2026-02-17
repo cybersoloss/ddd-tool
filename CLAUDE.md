@@ -1,8 +1,8 @@
 # DDD Tool — Development Context
 
-## Spec Reference
-- Full specification: `ddd-specification-complete.md` (this repo)
-- Implementation guide: `ddd-implementation-guide.md` (this repo)
+## Reference Docs
+- Architecture notes: `ddd-tool-architecture.md` (this repo) — UI/UX, canvas behavior, stores, validation rules, design decisions
+- Future plan: `ddd-tool-future-plan.md` (this repo) — unimplemented features, planned sessions
 - Usage Guide (YAML format reference): `~/dev/DDD/DDD-USAGE-GUIDE.md`
 - Templates: `~/dev/DDD/templates/`
 
@@ -103,7 +103,8 @@ npm run tauri dev
 - All types in `src/types/`
 - All utilities in `src/utils/`
 - Component folders match feature area (Canvas/, SpecPanel/, FlowCanvas/, etc.)
-- Specification + Implementation Guide (this repo) = source of truth for building the DDD Tool
+- Architecture notes (`ddd-tool-architecture.md`) + source code = source of truth for building the DDD Tool
+- Future plan (`ddd-tool-future-plan.md`) = roadmap for unimplemented features
 - Usage Guide (`~/dev/DDD/DDD-USAGE-GUIDE.md`) = source of truth for YAML formats and designing DDD projects
 
 ## Lessons Learned
