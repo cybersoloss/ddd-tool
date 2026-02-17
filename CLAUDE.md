@@ -1,9 +1,10 @@
 # DDD Tool — Development Context
 
 ## Spec Reference
-- Full specification: /Users/mhc/dev/DDD/ddd-specification-complete.md
-- Implementation guide: /Users/mhc/dev/DDD/ddd-implementation-guide.md
-- Templates: /Users/mhc/dev/DDD/templates/
+- Full specification: `ddd-specification-complete.md` (this repo)
+- Implementation guide: `ddd-implementation-guide.md` (this repo)
+- Usage Guide (YAML format reference): `~/dev/DDD/DDD-USAGE-GUIDE.md`
+- Templates: `~/dev/DDD/templates/`
 
 ## Git Remotes (Dual Remote Setup)
 - `origin` → github.com/mhcandan/ddd-tool (private, master repo)
@@ -102,7 +103,8 @@ npm run tauri dev
 - All types in `src/types/`
 - All utilities in `src/utils/`
 - Component folders match feature area (Canvas/, SpecPanel/, FlowCanvas/, etc.)
-- Spec is source of truth — read from ~/code/DDD/ when needed
+- Specification + Implementation Guide (this repo) = source of truth for building the DDD Tool
+- Usage Guide (`~/dev/DDD/DDD-USAGE-GUIDE.md`) = source of truth for YAML formats and designing DDD projects
 
 ## Lessons Learned
 
