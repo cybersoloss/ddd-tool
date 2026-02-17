@@ -280,6 +280,7 @@ current:   FlowSnapshot      ← the live state
 - Loop: collection + iterator required
 - Parallel: 2+ branches required
 - Sub-flow: flow_ref required
+- IPC Call: command required
 - LLM Call: model required
 - Cache: key + store required
 - Transform: input_schema + output_schema required
