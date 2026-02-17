@@ -64,13 +64,7 @@ Levels 1 and 2 are derived views. Users can reposition blocks but cannot add/rem
 
 ### Level 3 — Flow Sheet
 
-**Canvas Background:**
-
-| Action | What happens |
-|--------|-------------|
-| Rename flow | Inline edit, updates flow.id and filename |
-| Clear canvas | Confirmation, removes all nodes except trigger |
-| Import from template | Select template, merges nodes into current flow |
+**Canvas Background:** Right-click is captured but context menu actions (rename flow, clear canvas, import template) are not yet implemented — currently only prevents default browser menu.
 
 ---
 
@@ -431,8 +425,10 @@ Generates project-level CLAUDE.md from specs.
 | `Cmd+Z` | Undo | Canvas (per-flow) |
 | `Cmd+Shift+Z` | Redo | Canvas (per-flow) |
 | `Cmd+Y` | Redo (alternative) | Canvas (per-flow) |
-| `Cmd+,` | Open Settings | App-level |
+| `Cmd+K` | Open search palette | App-level |
+| `Cmd+R` | Reload project from disk | App-level |
 | `Cmd+Shift+M` | Toggle minimap | Canvas (L3 only) |
+| `Cmd+Shift+L` | Toggle project lock | App-level |
 | `Enter` | Confirm inline edit | Node name editing |
 | `Esc` | Cancel inline edit | Node name editing |
 | Double-click | Navigate into entity | Domain/flow blocks, portals, sub-flows |
@@ -461,19 +457,22 @@ Pre-built flow templates creating fully wired node graphs.
 
 | Template | Nodes | Description |
 |----------|-------|-------------|
-| REST API Endpoint | 5 | Trigger → Input → Process → Terminal (success) + Terminal (error) |
+| REST API Endpoint | 5 | Trigger → Input → Process → Terminal (success/error) |
 | CRUD Entity | 6 | Trigger → Input → Decision → Data Store → Terminal |
 | Webhook Handler | 5 | Trigger → Input → Process → Service Call → Terminal |
 | Event Processor | 5 | Trigger → Event (consume) → Process → Event (emit) → Terminal |
+| Cached API Call | 7 | Trigger → Input → Cache (hit→Transform→Terminal, miss→Service Call→Terminal) |
+| Collection Processing | 5 | Trigger → Loop → Collection (filter) → Event (emit) → Terminal |
+| Data Import with Parsing | 6 | Trigger → Service Call → Parse → Collection (deduplicate) → Data Store → Terminal |
 
 **Agent:**
 
 | Template | Nodes | Description |
 |----------|-------|-------------|
-| RAG Agent | 5 | Guardrail (input) → Agent Loop → Guardrail (output) → Terminal |
-| Customer Support Agent | 5 | Guardrail → Agent Loop → Human Gate → Terminal |
-| Code Review Agent | 3 | Trigger → Agent Loop → Terminal |
-| Data Pipeline Agent | 3 | Trigger → Agent Loop → Terminal |
+| RAG Agent | 5 | Guardrail → Agent Loop (retrieval + answer) → Guardrail → Terminal |
+| Customer Support Agent | 5 | Guardrail → Agent Loop (ticket tools) → Human Gate → Terminal |
+| Code Review Agent | 3 | Trigger → Agent Loop (code analysis + diff) → Terminal |
+| Data Pipeline Agent | 3 | Trigger → Agent Loop (transform tools) → Terminal |
 
 Each template uses `{type}-{nanoid(8)}` ID convention.
 
@@ -506,8 +505,14 @@ Bridges external YAML formats (from `/ddd-create`) with internal `FlowDocument` 
 | `sourceHandle: "default"` | `undefined` (stripped) | Default handle = unnamed |
 | `name` on node | `label` | Rename for consistency |
 | `routes[].id` (smart_router) | `rules[].route` | Rename for clarity |
+| `entity` or `schema` (data_store) | `model` | Unified model field |
+| `event_type` (event) | `event_name` | Renamed for consistency |
+| `endpoint` (service_call) | `url` | Renamed for consistency |
+| `flow` (sub_flow) | `flow_ref` | Renamed for consistency |
+| `prompt` (llm_call) | `prompt_template` | Renamed for consistency |
 | Inlined spec fields at top level | Extracted into `spec` object | Deep nest into spec |
 | Trigger node inside `nodes[]` | Extracted to top-level `trigger` | Trigger elevated to root |
+| Trigger label inferred from spec | `label` set from event/method/path | Auto-generates readable label |
 | `branches: 3` (number on parallel) | `branches: ["Branch 0", "Branch 1", "Branch 2"]` | Count → array |
 | Missing node `id` | Auto-generated via `nanoid(8)` | Always ensure ID exists |
 | Missing node `type` | Defaults to `'process'` | Fallback type |
