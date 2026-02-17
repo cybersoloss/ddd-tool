@@ -410,6 +410,14 @@ function checkOrchestrationNodes(flow: FlowDocument): ValidationIssue[] {
             { nodeId: node.id, suggestion: 'Add routing rules or enable LLM routing' }
           ));
         }
+        // Warn if no fallback chain and no LLM routing — routing may fail silently
+        const fallbackChain = Array.isArray(spec.fallback_chain) ? spec.fallback_chain : [];
+        if (fallbackChain.length === 0 && !spec.llm_routing?.enabled) {
+          issues.push(issue('flow', 'warning', 'orchestration_validation',
+            `Smart router "${node.label}" has no fallback chain and no LLM routing — unmatched requests may fail silently`,
+            { nodeId: node.id, suggestion: 'Add a fallback_chain or enable LLM routing for resilience' }
+          ));
+        }
         break;
       }
       case 'handoff': {
@@ -598,6 +606,32 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
             `Sub-flow "${node.label}" flow_ref should be in domain/flow-id format`,
             { nodeId: node.id, suggestion: 'Use the format domain/flow-id for the flow reference' }
           ));
+        }
+        // Validate input_mapping/output_mapping keys against target flow's contract
+        const inputMapping = (spec as Record<string, unknown>).input_mapping as Record<string, unknown> | undefined;
+        const outputMapping = (spec as Record<string, unknown>).output_mapping as Record<string, unknown> | undefined;
+        const contract = (spec as Record<string, unknown>).contract as { inputs?: Array<{ name: string }>; outputs?: Array<{ name: string }> } | undefined;
+        if (contract && inputMapping) {
+          const contractInputNames = new Set((contract.inputs ?? []).map((i) => i.name));
+          for (const key of Object.keys(inputMapping)) {
+            if (contractInputNames.size > 0 && !contractInputNames.has(key)) {
+              issues.push(issue('flow', 'warning', 'reference_integrity',
+                `Sub-flow "${node.label}" input_mapping key "${key}" is not in the target flow's contract inputs`,
+                { nodeId: node.id, suggestion: `Expected contract inputs: ${[...contractInputNames].join(', ')}` }
+              ));
+            }
+          }
+        }
+        if (contract && outputMapping) {
+          const contractOutputNames = new Set((contract.outputs ?? []).map((o) => o.name));
+          for (const key of Object.keys(outputMapping)) {
+            if (contractOutputNames.size > 0 && !contractOutputNames.has(key)) {
+              issues.push(issue('flow', 'warning', 'reference_integrity',
+                `Sub-flow "${node.label}" output_mapping key "${key}" is not in the target flow's contract outputs`,
+                { nodeId: node.id, suggestion: `Expected contract outputs: ${[...contractOutputNames].join(', ')}` }
+              ));
+            }
+          }
         }
         break;
       }
@@ -1147,6 +1181,42 @@ export function validateSystem(domainConfigs: Record<string, DomainConfig>): Val
         `Inconsistent event naming: ${dotNotation.length} use dot notation, ${camelCase.length} use camelCase`,
         { suggestion: 'Standardize event naming across domains (prefer dot notation: domain.event.action)' }
       ));
+    }
+  }
+
+  // Event payload schema matching — check that published and consumed events agree on payload fields
+  for (const [event, publishers] of allPublished) {
+    const consumers = allConsumed.get(event);
+    if (!consumers) continue;
+    // Collect payload fields from publishers and consumers
+    const publisherPayloads = new Set<string>();
+    const consumerPayloads = new Set<string>();
+    for (const pubDomainId of publishers) {
+      const config = domainConfigs[pubDomainId];
+      for (const e of config.publishes_events) {
+        if (e.event === event && e.payload) {
+          for (const field of Object.keys(e.payload)) publisherPayloads.add(field);
+        }
+      }
+    }
+    for (const conDomainId of consumers) {
+      const config = domainConfigs[conDomainId];
+      for (const e of config.consumes_events) {
+        if (e.event === event && e.payload) {
+          for (const field of Object.keys(e.payload)) consumerPayloads.add(field);
+        }
+      }
+    }
+    // If both sides declare payload fields, check for mismatches
+    if (publisherPayloads.size > 0 && consumerPayloads.size > 0) {
+      for (const field of consumerPayloads) {
+        if (!publisherPayloads.has(field)) {
+          issues.push(issue('system', 'warning', 'event_wiring',
+            `Event "${event}" consumer expects payload field "${field}" but no publisher provides it`,
+            { suggestion: `Add "${field}" to the publisher's payload or remove it from the consumer` }
+          ));
+        }
+      }
     }
   }
 

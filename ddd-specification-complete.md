@@ -457,7 +457,7 @@ When implementing a flow, Claude Code uses `sourceHandle` values to determine co
 
 ## Node Type Spec Fields
 
-This section defines the `spec` fields for each of the 27 node types. For connection patterns (sourceHandle values), see "Node Output Handles" above.
+This section defines the `spec` fields for each of the 28 node types. For connection patterns (sourceHandle values), see "Node Output Handles" above.
 
 ### Traditional Node Specs
 
@@ -3387,7 +3387,7 @@ Every node has:
 | Field | Type | Description |
 |-------|------|-------------|
 | `id` | string | Unique node ID |
-| `type` | DddNodeType | One of the 27 node types |
+| `type` | DddNodeType | One of the 28 node types |
 | `position` | `{ x, y }` | Canvas position |
 | `connections` | Array | List of `{ targetNodeId, sourceHandle?, targetHandle?, data?, behavior? }` |
 | `spec` | object | Type-specific configuration |

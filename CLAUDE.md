@@ -129,11 +129,6 @@ _(none yet)_
 
 ## Deferred Features (Guide fields not yet in Tool UI)
 
-These fields exist in the DDD Usage Guide but don't have dedicated UI controls in the DDD Tool yet. Users can still set them via the "Custom Fields" editor on any node. Planned for future sessions.
+These fields exist in the DDD Usage Guide but don't have dedicated UI controls in the DDD Tool yet. Planned for future sessions.
 
-- **trigger**: `job_config` (queue, concurrency, timeout, retry, dead_letter), `pattern` (event pattern matching)
-- **event**: `target_queue`, `priority`, `delay_ms`, `dedup_key` (job queue fields)
-- **service_call**: `request_config` (user_agent, delay, cookie_jar, proxy, tls_fingerprint, fallback), `integration` ref
-- **Connections**: `data` (field-level data flow documentation), `behavior` (error handling: continue/stop/retry/circuit_break)
-- **Flow metadata**: `template` (boolean), `parameters` (parameterized flows), `contract` (sub-flow input/output contract)
-- **Layer visibility** (Part D): cross-cutting concern layers shown on canvas
+- **Layer visibility** (Part D): cross-cutting concern layers shown as toggleable overlays on the canvas

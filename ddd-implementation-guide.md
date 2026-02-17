@@ -16,7 +16,7 @@ You are building **DDD (Design Driven Development)** — a desktop app for visua
 - **Breadcrumb navigation** between sheet levels
 - **Auto-generated** System Map (L1) and Domain Map (L2) from specs
 - **Portal nodes** for cross-domain navigation
-- Canvas with 5 basic node types (trigger, input, process, decision, terminal) — extended to 19 traditional + 4 agent + 4 orchestration = 27 total in later sessions
+- Canvas with 5 basic node types (trigger, input, process, decision, terminal) — extended to 21 traditional + 3 agent + 4 orchestration = 28 total in later sessions
 - Right panel for editing node specs
 - Save/load YAML files
 - Basic Git status display
@@ -402,11 +402,11 @@ export interface DuplicateFlowPayload {
 import type { Position } from './sheet';
 import type { ValidationIssue } from './validation';
 
-// --- Node types (all 27) ---
+// --- Node types (all 28) ---
 
 export type DddNodeType =
   | 'trigger' | 'input' | 'process' | 'decision' | 'terminal'
-  | 'data_store' | 'service_call' | 'event' | 'loop' | 'parallel' | 'sub_flow' | 'llm_call'
+  | 'data_store' | 'service_call' | 'ipc_call' | 'event' | 'loop' | 'parallel' | 'sub_flow' | 'llm_call'
   | 'delay' | 'cache' | 'transform'
   | 'collection' | 'parse' | 'crypto' | 'batch' | 'transaction'
   | 'agent_loop' | 'guardrail' | 'human_gate'
@@ -562,9 +562,9 @@ export interface LlmCallSpec {
   [key: string]: unknown;
 }
 
-// Union of all spec types (27 total)
+// Union of all spec types (28 total)
 export type NodeSpec = TriggerSpec | InputSpec | ProcessSpec | DecisionSpec | TerminalSpec
-  | DataStoreSpec | ServiceCallSpec | EventNodeSpec | LoopSpec | ParallelSpec
+  | DataStoreSpec | ServiceCallSpec | IpcCallSpec | EventNodeSpec | LoopSpec | ParallelSpec
   | SubFlowSpec | LlmCallSpec
   | DelaySpec | CacheSpec | TransformSpec
   | CollectionSpec | ParseSpec | CryptoSpec | BatchSpec | TransactionSpec
@@ -8628,8 +8628,8 @@ Add 6 traditional flow node types toward the spec's full set of 19:
 | `parallel` | ═ | Concurrent execution branches | branches (list of node chains), join strategy (all/any/n-of), timeout |
 | `sub_flow` | ⊞ | Call another flow as subroutine | flow_ref (domain/flow-id), input mapping, output mapping |
 
-**Types** — See the consolidated `src/types/flow.ts` section in Phase 3 (Day 1-2). All 27 node types and their spec interfaces are defined there, including:
-- `DddNodeType` union with all 27 types (19 traditional + 4 agent + 4 orchestration)
+**Types** — See the consolidated `src/types/flow.ts` section in Phase 3 (Day 1-2). All 28 node types and their spec interfaces are defined there, including:
+- `DddNodeType` union with all 28 types (21 traditional + 3 agent + 4 orchestration)
 - `DataStoreSpec` with `pagination` and `sort` fields (for read operations)
 - `ServiceCallSpec` with `error_mapping` for HTTP status → error code mapping
 - `TerminalSpec` with `status` (HTTP code) and `body` (response body) fields
@@ -8825,7 +8825,7 @@ Toggled with `Cmd+Shift+M` keyboard shortcut.
 
 ## Session 18: Extended Node Types + Field Extensions
 
-Session 18 adds 8 more traditional node types (completing the full set of 19 traditional + 4 agent + 4 orchestration = 27 total) and extends 7 existing node spec interfaces with additional fields from the DDD Usage Guide.
+Session 18 adds 8 more traditional node types (completing the full set of 21 traditional + 3 agent + 4 orchestration = 28 total) and extends 7 existing node spec interfaces with additional fields from the DDD Usage Guide.
 
 ### New Node Types (8)
 
@@ -8938,11 +8938,11 @@ Added to `checkExtendedNodes()` in `src/utils/flow-validator.ts`:
 
 ### Updated Registrations
 
-- `nodes/index.ts`: 27 entries in `nodeTypes` object
-- `editors/index.ts`: 27 entries in `specEditors` object
-- `ExtraFieldsEditor.tsx`: 27 entries in `KNOWN_KEYS` map (existing entries extended with new field names)
+- `nodes/index.ts`: 28 entries in `nodeTypes` object
+- `editors/index.ts`: 28 entries in `specEditors` object
+- `ExtraFieldsEditor.tsx`: 28 entries in `KNOWN_KEYS` map (existing entries extended with new field names)
 - `NodeToolbar.tsx`: 8 new items in `TRADITIONAL_ITEMS` palette
-- `flow-store.ts`: `defaultSpec()` and `defaultLabel()` handle all 27 types
+- `flow-store.ts`: `defaultSpec()` and `defaultLabel()` handle all 28 types
 
 ---
 
