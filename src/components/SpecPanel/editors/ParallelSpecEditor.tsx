@@ -20,6 +20,16 @@ export function ParallelSpecEditor({ spec, onChange }: Props) {
     onChange({ ...spec, branches: branches.filter((_, idx) => idx !== i) });
   const updateBranch = (i: number, val: string) =>
     onChange({ ...spec, branches: branches.map((b, idx) => (idx === i ? val : b)) });
+  const updateBranchField = (i: number, field: 'label' | 'condition' | 'id', val: string) =>
+    onChange({
+      ...spec,
+      branches: branches.map((b, idx) => {
+        if (idx !== i) return b;
+        const obj = typeof b === 'string' ? { label: b } : { ...b };
+        (obj as Record<string, string>)[field] = val;
+        return obj;
+      }),
+    });
 
   return (
     <div className="space-y-3">
@@ -36,20 +46,42 @@ export function ParallelSpecEditor({ spec, onChange }: Props) {
         </div>
         <div className="space-y-1.5">
           {branches.map((branch, i) => (
-            <div key={i} className="flex items-center gap-1.5 group">
-              <input
-                className="input flex-1 text-xs"
-                value={typeof branch === 'string' ? branch : branch.label}
-                onChange={(e) => updateBranch(i, e.target.value)}
-                placeholder={`Branch ${i + 1}`}
-              />
-              <button
-                className="btn-icon !p-0.5 opacity-0 group-hover:opacity-100 transition-opacity text-danger"
-                onClick={() => removeBranch(i)}
-                title="Remove branch"
-              >
-                <Trash2 className="w-3 h-3" />
-              </button>
+            <div key={i} className="group">
+              <div className="flex items-center gap-1.5">
+                <input
+                  className="input flex-1 text-xs"
+                  value={typeof branch === 'string' ? branch : branch.label}
+                  onChange={(e) =>
+                    typeof branch === 'string'
+                      ? updateBranch(i, e.target.value)
+                      : updateBranchField(i, 'label', e.target.value)
+                  }
+                  placeholder={`Branch ${i + 1}`}
+                />
+                <button
+                  className="btn-icon !p-0.5 opacity-0 group-hover:opacity-100 transition-opacity text-danger"
+                  onClick={() => removeBranch(i)}
+                  title="Remove branch"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+              {typeof branch === 'object' && (
+                <div className="grid grid-cols-2 gap-1.5 mt-1 ml-2">
+                  <input
+                    className="input text-xs"
+                    value={branch.condition ?? ''}
+                    onChange={(e) => updateBranchField(i, 'condition', e.target.value)}
+                    placeholder="Condition"
+                  />
+                  <input
+                    className="input text-xs"
+                    value={branch.id ?? ''}
+                    onChange={(e) => updateBranchField(i, 'id', e.target.value)}
+                    placeholder="ID"
+                  />
+                </div>
+              )}
             </div>
           ))}
           {branches.length === 0 && (

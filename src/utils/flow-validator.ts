@@ -7,6 +7,7 @@ import type {
   SmartRouterSpec,
   HandoffSpec,
   AgentGroupSpec,
+  HumanGateSpec,
   TriggerSpec,
   InputSpec,
   DecisionSpec,
@@ -83,6 +84,10 @@ function buildAdjacencyMap(flow: FlowDocument): Map<string, string[]> {
     adj.set(node.id, targets);
   }
   return adj;
+}
+
+function nodeTypeLabel(type: string): string {
+  return type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 // --- Graph completeness checks ---
@@ -366,7 +371,7 @@ function checkAgentFlow(flow: FlowDocument): ValidationIssue[] {
     }
 
     if (!spec.model || spec.model.trim() === '') {
-      issues.push(issue('flow', 'warning', 'agent_validation',
+      issues.push(issue('flow', 'error', 'agent_validation',
         `Agent loop "${agentLoop.label}" has no LLM model specified`,
         { nodeId: agentLoop.id, suggestion: 'Set the model (e.g., claude-sonnet) in the spec panel' }
       ));
@@ -809,7 +814,7 @@ function checkInputBranches(flow: FlowDocument): ValidationIssue[] {
     // Input with validation should have valid/invalid branch connections
     const handles = new Set((node.connections ?? []).map((c) => c.sourceHandle));
     if (!handles.has('valid') && !handles.has('invalid')) {
-      issues.push(issue('flow', 'warning', 'reference_integrity',
+      issues.push(issue('flow', 'error', 'graph_completeness',
         `Input "${node.label}" has validation but no valid/invalid branch connections`,
         { nodeId: node.id, suggestion: 'Connect the "valid" and "invalid" handles to downstream nodes' }
       ));
@@ -874,6 +879,203 @@ function checkSubFlowReferenceExists(flow: FlowDocument, domainConfigs?: Record<
   return issues;
 }
 
+// --- Branching completeness checks ---
+
+function checkBranchingCompleteness(flow: FlowDocument): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  const allNodes = getAllNodes(flow);
+
+  for (const node of allNodes) {
+    const handles = new Set((node.connections ?? []).map((c) => c.sourceHandle));
+    const label = node.label;
+    const typeLabel = nodeTypeLabel(node.type);
+
+    switch (node.type) {
+      // Static dual-handle: success / error
+      case 'data_store':
+      case 'service_call':
+      case 'ipc_call':
+      case 'parse':
+      case 'crypto': {
+        if (!handles.has('success')) {
+          issues.push(issue('flow', 'error', 'graph_completeness',
+            `${typeLabel} "${label}" is missing a "success" branch connection`,
+            { nodeId: node.id, suggestion: 'Connect the "success" handle to a downstream node' }
+          ));
+        }
+        if (!handles.has('error')) {
+          issues.push(issue('flow', 'error', 'graph_completeness',
+            `${typeLabel} "${label}" is missing an "error" branch connection`,
+            { nodeId: node.id, suggestion: 'Connect the "error" handle to a downstream node' }
+          ));
+        }
+        break;
+      }
+      // Static dual-handle: done / error
+      case 'batch':
+      case 'agent_loop': {
+        if (!handles.has('done')) {
+          issues.push(issue('flow', 'error', 'graph_completeness',
+            `${typeLabel} "${label}" is missing a "done" branch connection`,
+            { nodeId: node.id, suggestion: 'Connect the "done" handle to a downstream node' }
+          ));
+        }
+        if (!handles.has('error')) {
+          issues.push(issue('flow', 'error', 'graph_completeness',
+            `${typeLabel} "${label}" is missing an "error" branch connection`,
+            { nodeId: node.id, suggestion: 'Connect the "error" handle to a downstream node' }
+          ));
+        }
+        break;
+      }
+      // Static dual-handle: committed / rolled_back
+      case 'transaction': {
+        if (!handles.has('committed')) {
+          issues.push(issue('flow', 'error', 'graph_completeness',
+            `${typeLabel} "${label}" is missing a "committed" branch connection`,
+            { nodeId: node.id, suggestion: 'Connect the "committed" handle to a downstream node' }
+          ));
+        }
+        if (!handles.has('rolled_back')) {
+          issues.push(issue('flow', 'error', 'graph_completeness',
+            `${typeLabel} "${label}" is missing a "rolled_back" branch connection`,
+            { nodeId: node.id, suggestion: 'Connect the "rolled_back" handle to a downstream node' }
+          ));
+        }
+        break;
+      }
+      // Static dual-handle: body / done
+      case 'loop': {
+        if (!handles.has('body')) {
+          issues.push(issue('flow', 'error', 'graph_completeness',
+            `${typeLabel} "${label}" is missing a "body" branch connection`,
+            { nodeId: node.id, suggestion: 'Connect the "body" handle to a downstream node' }
+          ));
+        }
+        if (!handles.has('done')) {
+          issues.push(issue('flow', 'error', 'graph_completeness',
+            `${typeLabel} "${label}" is missing a "done" branch connection`,
+            { nodeId: node.id, suggestion: 'Connect the "done" handle to a downstream node' }
+          ));
+        }
+        break;
+      }
+      // Static dual-handle: hit / miss
+      case 'cache': {
+        if (!handles.has('hit')) {
+          issues.push(issue('flow', 'error', 'graph_completeness',
+            `${typeLabel} "${label}" is missing a "hit" branch connection`,
+            { nodeId: node.id, suggestion: 'Connect the "hit" handle to a downstream node' }
+          ));
+        }
+        if (!handles.has('miss')) {
+          issues.push(issue('flow', 'error', 'graph_completeness',
+            `${typeLabel} "${label}" is missing a "miss" branch connection`,
+            { nodeId: node.id, suggestion: 'Connect the "miss" handle to a downstream node' }
+          ));
+        }
+        break;
+      }
+      // Static dual-handle: result / empty
+      case 'collection': {
+        if (!handles.has('result')) {
+          issues.push(issue('flow', 'error', 'graph_completeness',
+            `${typeLabel} "${label}" is missing a "result" branch connection`,
+            { nodeId: node.id, suggestion: 'Connect the "result" handle to a downstream node' }
+          ));
+        }
+        if (!handles.has('empty')) {
+          issues.push(issue('flow', 'error', 'graph_completeness',
+            `${typeLabel} "${label}" is missing an "empty" branch connection`,
+            { nodeId: node.id, suggestion: 'Connect the "empty" handle to a downstream node' }
+          ));
+        }
+        break;
+      }
+      // Static dual-handle: pass|valid / block|invalid
+      case 'guardrail': {
+        const hasPass = handles.has('pass') || handles.has('valid');
+        const hasBlock = handles.has('block') || handles.has('invalid');
+        if (!hasPass) {
+          issues.push(issue('flow', 'error', 'graph_completeness',
+            `${typeLabel} "${label}" is missing a "pass" branch connection`,
+            { nodeId: node.id, suggestion: 'Connect the "pass" (or "valid") handle to a downstream node' }
+          ));
+        }
+        if (!hasBlock) {
+          issues.push(issue('flow', 'error', 'graph_completeness',
+            `${typeLabel} "${label}" is missing a "block" branch connection`,
+            { nodeId: node.id, suggestion: 'Connect the "block" (or "invalid") handle to a downstream node' }
+          ));
+        }
+        break;
+      }
+      // Dynamic: parallel branches + done
+      case 'parallel': {
+        const spec = (node.spec ?? {}) as ParallelSpec;
+        const branches = Array.isArray(spec.branches) ? spec.branches : [];
+        for (let idx = 0; idx < branches.length; idx++) {
+          const handleId = `branch-${idx}`;
+          if (!handles.has(handleId)) {
+            const branchItem = branches[idx];
+            const branchLabel = typeof branchItem === 'string' ? branchItem : branchItem.label;
+            issues.push(issue('flow', 'error', 'graph_completeness',
+              `Parallel "${label}" is missing a connection for branch "${branchLabel || idx}"`,
+              { nodeId: node.id, suggestion: `Connect the "${handleId}" handle to a downstream node` }
+            ));
+          }
+        }
+        if (!handles.has('done')) {
+          issues.push(issue('flow', 'error', 'graph_completeness',
+            `Parallel "${label}" is missing a "done" branch connection`,
+            { nodeId: node.id, suggestion: 'Connect the "done" handle to a downstream node' }
+          ));
+        }
+        break;
+      }
+      // Dynamic: smart_router routes
+      case 'smart_router': {
+        const spec = (node.spec ?? {}) as SmartRouterSpec;
+        const rules = Array.isArray(spec.rules) ? spec.rules : [];
+        for (const rule of rules) {
+          if (rule.route && !handles.has(rule.route)) {
+            issues.push(issue('flow', 'warning', 'graph_completeness',
+              `Smart Router "${label}" is missing a connection for route "${rule.route}"`,
+              { nodeId: node.id, suggestion: `Connect the "${rule.route}" handle to a downstream node` }
+            ));
+          }
+        }
+        const llmRoutes = spec.llm_routing?.routes ?? {};
+        for (const routeKey of Object.keys(llmRoutes)) {
+          if (!handles.has(routeKey)) {
+            issues.push(issue('flow', 'warning', 'graph_completeness',
+              `Smart Router "${label}" is missing a connection for LLM route "${routeKey}"`,
+              { nodeId: node.id, suggestion: `Connect the "${routeKey}" handle to a downstream node` }
+            ));
+          }
+        }
+        break;
+      }
+      // Dynamic: human_gate approval options
+      case 'human_gate': {
+        const spec = (node.spec ?? {}) as HumanGateSpec;
+        const options = Array.isArray(spec.approval_options) ? spec.approval_options : [];
+        for (const opt of options) {
+          if (opt.id && !handles.has(opt.id)) {
+            issues.push(issue('flow', 'warning', 'graph_completeness',
+              `Human Gate "${label}" is missing a connection for approval option "${opt.id}"`,
+              { nodeId: node.id, suggestion: `Connect the "${opt.id}" handle to a downstream node` }
+            ));
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  return issues;
+}
+
 // --- Public: Flow validation ---
 
 export function validateFlow(flow: FlowDocument, domainConfigs?: Record<string, DomainConfig>): ValidationResult {
@@ -902,6 +1104,7 @@ export function validateFlow(flow: FlowDocument, domainConfigs?: Record<string, 
     ...checkOrchestrationNodes(flow),
     ...checkExtendedNodes(flow),
     ...checkInputBranches(flow),
+    ...checkBranchingCompleteness(flow),
     ...checkHttpTriggerFields(flow),
     ...checkSubFlowReferenceExists(flow, domainConfigs),
   ];

@@ -113,6 +113,18 @@ export function LlmCallSpecEditor({ spec, onChange }: Props) {
         </div>
       </div>
       <div>
+        <label className="label">Retry Strategy</label>
+        <select
+          className="input"
+          value={spec.retry?.strategy ?? 'fixed'}
+          onChange={(e) => onChange({ ...spec, retry: { ...spec.retry, strategy: e.target.value as 'fixed' | 'linear' | 'exponential' } })}
+        >
+          <option value="fixed">Fixed</option>
+          <option value="linear">Linear</option>
+          <option value="exponential">Exponential</option>
+        </select>
+      </div>
+      <div>
         <label className="label">Description</label>
         <textarea
           className="input min-h-[80px] resize-y"

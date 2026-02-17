@@ -298,7 +298,7 @@ export interface LoopSpec {
 }
 
 export interface ParallelSpec {
-  branches?: (string | { label: string; condition?: string })[];
+  branches?: (string | { label: string; condition?: string; id?: string })[];
   join?: 'all' | 'any' | 'n_of';
   join_count?: number;
   timeout_ms?: number;
@@ -322,7 +322,7 @@ export interface LlmCallSpec {
   max_tokens?: number;
   structured_output?: Record<string, unknown>;
   context_sources?: Record<string, { from: string; transform?: string }>;
-  retry?: { max_attempts?: number; backoff_ms?: number };
+  retry?: { max_attempts?: number; backoff_ms?: number; strategy?: 'fixed' | 'linear' | 'exponential' };
   description?: string;
   [key: string]: unknown;
 }
