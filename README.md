@@ -75,6 +75,8 @@ Install [Microsoft Visual Studio C++ Build Tools](https://visualstudio.microsoft
 
 ## Getting Started
 
+> **No pre-built binaries yet.** This is alpha — you'll need to build from source. Packaged releases are planned.
+
 > **New here?** Read **[GETTING-STARTED.md](GETTING-STARTED.md)** for a complete walkthrough — navigation, adding nodes, connecting flows, keyboard shortcuts, and more.
 
 ```bash
