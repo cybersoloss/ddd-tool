@@ -24,7 +24,15 @@ How to use the Design Driven Development Tool to design software visually as flo
 
 When you launch DDD Tool, you're presented with the **Project Launcher**, which is the home screen for managing your projects.
 
-### Creating a New Project
+### Recommended: Initialize via CLI, Then Open Here
+
+The fastest way to start a DDD project is with the `/ddd-create` command in Claude Code. Describe your software in natural language and it generates the full spec structure — `ddd-project.json`, all domain files, flow skeletons, schemas, and configuration. Then open the project folder in DDD Tool using **Open Existing** to visualize and refine what was generated.
+
+This is the recommended workflow: let AI generate the specs, then use the visual tool to review and adjust.
+
+### Alternative: Create a Project in the Tool
+
+You can also create a project directly in DDD Tool, which gives you a minimal starting structure to build on manually:
 
 1. Click **New Project** button
 2. Complete the 3-step wizard:
@@ -297,8 +305,11 @@ When you select a node, the **Spec Panel** appears on the right showing:
   - Extra fields (custom metadata)
   - Cross-cutting concerns (observability, security)
 
-**Editing a node's spec:**
-- The changes are saved automatically
+**How editing works:** The Spec Panel is a structured form, not raw YAML. Each node type presents its own set of fields — you fill in values, select options, and toggle settings. The tool writes the corresponding YAML to the spec file automatically. You never need to type YAML directly in the tool.
+
+For example, selecting a **Decision** node shows fields for the condition expression, true/false branch labels, and description. Selecting an **LLM Call** node shows fields for model, system prompt, temperature, and input/output variable mappings. The visual form and the YAML spec file stay in sync — edits in either direction are reflected in the other.
+
+- Changes are saved automatically
 - Each node type has its own set of configuration options
 - Examples:
   - **Decision**: condition, true/false labels
@@ -330,9 +341,20 @@ Click the dot or use the **Validation Panel** to see issue details and suggestio
 - Drag nodes into an Agent Group to nest them
 - Groups help organize complex agent orchestration
 
+### Drift Detection
+
+When you use DDD Tool alongside Claude Code, the tool tracks whether your specs and code are in sync. Each flow can be in one of four drift states:
+
+- **synced** — specs and code match
+- **spec_ahead** — you've changed the spec on the canvas but haven't re-run `/ddd-implement` yet
+- **code_ahead** — the code has been modified since it was last generated from specs (run `/ddd-reflect` to capture what changed)
+- **diverged** — both spec and code have changed independently (run `/ddd-sync` to reconcile)
+
+This is the core feedback loop: edit specs visually → implement → code evolves → reflect wisdom back into specs. The drift state tells you where you are in that cycle.
+
 ### Tools & Shortcuts
 
-- **Copy Command**: Copy `/ddd-implement {domain}/{flow}` to clipboard
+- **Copy Command**: Copy `/ddd-implement {domain}/{flow}` to clipboard — use this to generate code from the flow you're currently editing
 - **Reload**: Reload from disk (**Cmd+R**)
 - **Auto Layout**: Arrange nodes top-to-bottom based on connection depth
 - **Flow Settings**: Click "Flow Settings" to configure:
