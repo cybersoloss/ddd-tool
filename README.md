@@ -6,7 +6,7 @@ The desktop application for **[Design Driven Development](https://github.com/cyb
 
 Built with Tauri 2.0 (Rust) + React 19 + TypeScript + Tailwind CSS v4.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Alpha](https://img.shields.io/badge/status-alpha-orange.svg)]() [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ## What It Does
 
@@ -19,6 +19,18 @@ The Design Driven Development Tool is a visual editor for designing software as 
 | **L1 — System Map** | Bird's-eye view | All domains as cards, inter-domain event wiring |
 | **L2 — Domain Map** | Domain detail | Flow blocks with drag positioning, connections, sync indicators |
 | **L3 — Flow Canvas** | Flow editor | Full node graph with 28 node types, connections, spec panel |
+
+**System Map** — domains and event wiring at a glance:
+
+![System Map](docs/screenshots/system-map.jpg)
+
+**Domain Map** — flows within a domain, with cross-domain references:
+
+![Domain Map](docs/screenshots/domain-map.jpg)
+
+**Flow Canvas** — full node graph editor with 28 node types:
+
+![Flow Canvas](docs/screenshots/flow-canvas.jpg)
 
 ## Features
 
@@ -63,6 +75,8 @@ Install [Microsoft Visual Studio C++ Build Tools](https://visualstudio.microsoft
 
 ## Getting Started
 
+> **New here?** Read **[GETTING-STARTED.md](GETTING-STARTED.md)** for a complete walkthrough — navigation, adding nodes, connecting flows, keyboard shortcuts, and more.
+
 ```bash
 git clone https://github.com/cybersoloss/ddd-tool.git
 cd ddd-tool
@@ -71,8 +85,6 @@ npm run tauri dev
 ```
 
 The app opens at 1280x800. On first launch, use the Project Launcher to open or create a Design Driven Development project directory.
-
-See **[GETTING-STARTED.md](GETTING-STARTED.md)** for a complete walkthrough of the interface — navigation, adding nodes, connecting flows, keyboard shortcuts, and more.
 
 ### Build for Production
 
