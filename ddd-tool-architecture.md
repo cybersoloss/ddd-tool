@@ -1,6 +1,6 @@
 # DDD Tool — Architecture Notes
 
-Unique UI/UX decisions, internal architecture, and implementation rules for the DDD Tool desktop app. For YAML spec formats and node type field references, see the [DDD Usage Guide](~/dev/DDD/DDD-USAGE-GUIDE.md).
+Unique UI/UX decisions, internal architecture, and implementation rules for the DDD Tool desktop app. For YAML spec formats and node type field references, see the [DDD Usage Guide](https://github.com/cybersoloss/DDD/blob/main/DDD-USAGE-GUIDE.md).
 
 ---
 
