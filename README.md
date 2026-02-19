@@ -72,6 +72,8 @@ npm run tauri dev
 
 The app opens at 1280x800. On first launch, use the Project Launcher to open or create a Design Driven Development project directory.
 
+See **[GETTING-STARTED.md](GETTING-STARTED.md)** for a complete walkthrough of the interface — navigation, adding nodes, connecting flows, keyboard shortcuts, and more.
+
 ### Build for Production
 
 ```bash
