@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs:*)",
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx --package=typescript tsc:*)",
+      "Bash(npx vite build:*)",
+      "Bash(npm run build:*)",
+      "Bash(node_modules/.bin/tsc:*)",
+      "Bash(node -e:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push-all:*)",
+      "Bash(tr:*)",
+      "Bash(npm run tauri:*)",
+      "Bash(npx tauri dev:*)",
+      "Bash(npm ls:*)",
+      "Bash(npm install)",
+      "Bash(git -C /Users/mhcandan/.claude status)",
+      "Bash(git push:*)",
+      "Bash(git fetch:*)",
+      "Bash(git log:*)"
+    ]
+  }
+}
