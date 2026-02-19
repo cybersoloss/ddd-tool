@@ -10,7 +10,7 @@
 - `origin` → github.com/mhcandan/ddd-tool (private, master repo)
 - `public` → github.com/cybersoloss/ddd-tool (public mirror)
 
-**Push to both:** `git push-all` — pushes to origin normally, then pushes to public with CLAUDE.md excluded (force-push). CLAUDE.md stays on mhcandan only, never on cybersoloss.
+**Push to both:** `git push-all` — pushes to origin normally, then pushes to public with `CLAUDE.md` and `.claude/` excluded (force-push). These stay on mhcandan only, never on cybersoloss.
 
 **GitHub accounts:** `mhcandan` (primary dev), `cybersoloss` (public). mhcandan is collaborator on cybersoloss repos — no account switching needed.
 
