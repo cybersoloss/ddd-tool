@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "DDD Tool — Design Driven Development desktop app for visual flow-based software design"
 authors = ["Murat Hüseyin Candan"]
 license = "MIT"
-repository = "https://github.com/mhcandan/ddd-tool"
+repository = "https://github.com/cybersoloss/ddd-tool"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

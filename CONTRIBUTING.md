@@ -1,12 +1,12 @@
-# Contributing to DDD Tool
+# Contributing to the Design Driven Development Tool
 
-Thanks for your interest in contributing to the DDD Tool!
+Thanks for your interest in contributing to the Design Driven Development Tool!
 
 ## How to Contribute
 
 ### Reporting Issues
 
-- Use [GitHub Issues](https://github.com/mhcandan/ddd-tool/issues) to report bugs or suggest features
+- Use [GitHub Issues](https://github.com/cybersoloss/ddd-tool/issues) to report bugs or suggest features
 - Include your OS, app version, and steps to reproduce for bug reports
 - Screenshots or screen recordings are very helpful for UI issues
 
@@ -27,7 +27,7 @@ Thanks for your interest in contributing to the DDD Tool!
 xcode-select --install
 
 # Clone and run
-git clone https://github.com/mhcandan/ddd-tool.git
+git clone https://github.com/cybersoloss/ddd-tool.git
 cd ddd-tool
 npm install
 npm run tauri dev
@@ -59,7 +59,7 @@ src-tauri/                    # Rust backend (Tauri)
 ### What We're Looking For
 
 - **Bug fixes** — especially platform-specific issues (Linux, Windows)
-- **Node type components** — new node types that match the [DDD Usage Guide](https://github.com/mhcandan/DDD/blob/main/DDD-USAGE-GUIDE.md) spec
+- **Node type components** — new node types that match the [DDD Usage Guide](https://github.com/cybersoloss/DDD/blob/main/DDD-USAGE-GUIDE.md) spec
 - **UI improvements** — accessibility, keyboard navigation, responsive layout
 - **Performance** — canvas rendering with large flow graphs
 - **Validation rules** — new checks for spec correctness
@@ -80,8 +80,8 @@ src-tauri/                    # Rust backend (Tauri)
 
 ### Related Repos
 
-- **[DDD](https://github.com/mhcandan/DDD)** — methodology docs, spec format reference, templates
-- **[claude-commands](https://github.com/mhcandan/claude-commands)** — Claude Code slash commands (`/ddd-create`, `/ddd-implement`, etc.)
+- **[Design Driven Development](https://github.com/cybersoloss/DDD)** — methodology docs, spec format reference, templates
+- **[claude-commands](https://github.com/cybersoloss/claude-commands)** — Claude Code slash commands (`/ddd-create`, `/ddd-implement`, etc.)
 
 ## Code of Conduct
 

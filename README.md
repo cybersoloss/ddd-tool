@@ -1,6 +1,8 @@
-# DDD Tool
+# Design Driven Development Tool
 
-The desktop application for **[Design Driven Development](https://github.com/mhcandan/DDD)** — design software visually as flow graphs, let AI implement from YAML specs.
+The desktop application for **[Design Driven Development](https://github.com/cybersoloss/DDD)** — design software visually as flow graphs, let AI implement from YAML specs.
+
+> **Note:** The abbreviation "DDD" is used in command names and directory references throughout this project for brevity. This is not related to Eric Evans' Domain-Driven Design, which is an entirely separate methodology.
 
 Built with Tauri 2.0 (Rust) + React 19 + TypeScript + Tailwind CSS v4.
 
@@ -8,7 +10,7 @@ Built with Tauri 2.0 (Rust) + React 19 + TypeScript + Tailwind CSS v4.
 
 ## What It Does
 
-DDD Tool is a visual editor for designing software as flow diagrams. You draw flows on a canvas, the tool outputs YAML specs, and Claude Code generates working code from those specs.
+The Design Driven Development Tool is a visual editor for designing software as flow diagrams. You draw flows on a canvas, the tool outputs YAML specs, and Claude Code generates working code from those specs.
 
 **Three-level canvas navigation:**
 
@@ -62,13 +64,13 @@ Install [Microsoft Visual Studio C++ Build Tools](https://visualstudio.microsoft
 ## Getting Started
 
 ```bash
-git clone https://github.com/mhcandan/ddd-tool.git
+git clone https://github.com/cybersoloss/ddd-tool.git
 cd ddd-tool
 npm install
 npm run tauri dev
 ```
 
-The app opens at 1280x800. On first launch, use the Project Launcher to open or create a DDD project directory.
+The app opens at 1280x800. On first launch, use the Project Launcher to open or create a Design Driven Development project directory.
 
 ### Build for Production
 
@@ -125,7 +127,7 @@ in DDD Tool          -->  YAML spec files    -->  and generates code
                           (/ddd-reflect)
 ```
 
-DDD Tool is Phase 2 (Design) of the [four-phase DDD lifecycle](https://github.com/mhcandan/DDD#how-it-works). The full workflow:
+The Design Driven Development Tool is Phase 2 (Design) of the [four-phase Design Driven Development lifecycle](https://github.com/cybersoloss/DDD#how-it-works). The full workflow:
 
 1. **Create** — `/ddd-create` generates specs from a description
 2. **Design** — Open specs in DDD Tool, visualize and refine on canvas
@@ -136,8 +138,8 @@ DDD Tool is Phase 2 (Design) of the [four-phase DDD lifecycle](https://github.co
 
 | Repo | What |
 |------|------|
-| [DDD](https://github.com/mhcandan/DDD) | Methodology docs, Usage Guide, spec format reference, templates |
-| [claude-commands](https://github.com/mhcandan/claude-commands) | Claude Code slash commands (`/ddd-create`, `/ddd-implement`, etc.) |
+| [Design Driven Development](https://github.com/cybersoloss/DDD) | Methodology docs, Usage Guide, spec format reference, templates |
+| [claude-commands](https://github.com/cybersoloss/claude-commands) | Claude Code slash commands (`/ddd-create`, `/ddd-implement`, etc.) |
 
 ## Contributing
 
