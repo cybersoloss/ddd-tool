@@ -1,5 +1,8 @@
 # DDD Tool — Development Context
 
+## Before Editing
+**Before editing node types, validators, spec editors, or YAML parsing**, read `~/dev/DDD/DDD-USAGE-GUIDE.md` — it is the source of truth for all YAML formats, node types, spec fields, sourceHandle values, and validation rules. The tool must stay in sync with it.
+
 ## Reference Docs
 - Architecture notes: `ddd-tool-architecture.md` (this repo) — UI/UX, canvas behavior, stores, validation rules, design decisions
 - Future plan: `ddd-tool-future-plan.md` (this repo) — unimplemented features, planned sessions
