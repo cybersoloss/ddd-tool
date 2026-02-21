@@ -1049,10 +1049,10 @@ function checkBranchingCompleteness(flow: FlowDocument): ValidationIssue[] {
         const spec = (node.spec ?? {}) as SmartRouterSpec;
         const rules = Array.isArray(spec.rules) ? spec.rules : [];
         for (const rule of rules) {
-          if (rule.route && !handles.has(rule.route)) {
+          if (rule.id && !handles.has(rule.id)) {
             issues.push(issue('flow', 'warning', 'graph_completeness',
-              `Smart Router "${label}" is missing a connection for route "${rule.route}"`,
-              { nodeId: node.id, suggestion: `Connect the "${rule.route}" handle to a downstream node` }
+              `Smart Router "${label}" is missing a connection for route "${rule.id}"`,
+              { nodeId: node.id, suggestion: `Connect the "${rule.id}" handle to a downstream node` }
             ));
           }
         }
