@@ -1,7 +1,7 @@
 {
   "name": "ddd-tool",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "DDD Tool — Design Driven Development desktop app for visual flow-based software design",
   "author": "Murat Hüseyin Candan",
   "license": "MIT",

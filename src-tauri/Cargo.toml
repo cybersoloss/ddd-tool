@@ -1,6 +1,6 @@
 [package]
 name = "ddd-tool"
-version = "0.1.0"
+version = "0.2.0"
 description = "DDD Tool — Design Driven Development desktop app for visual flow-based software design"
 authors = ["Murat Hüseyin Candan"]
 license = "MIT"
