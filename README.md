@@ -128,7 +128,27 @@ src/                              # React frontend
   utils/                          # Validators, auto-layout, helpers
 src-tauri/                        # Rust backend
   src/lib.rs                      # Tauri commands: file I/O, git ops, file hashing, directory watching
+tests/
+  e2e/
+    auto-test-runner.ts           # CLI runner: validates a DDD project, produces two YAML reports
 ```
+
+## Testing
+
+The tool includes a standalone CLI runner that validates a DDD project using the same TypeScript validation logic as the app — no Tauri required.
+
+```bash
+npm run test:specs -- /path/to/ddd-project
+```
+
+Produces two YAML reports in `<project>/.ddd/reports/`:
+
+| Report | What it catches |
+|--------|----------------|
+| `tool-compatibility-report.yaml` | YAML parse failures, unknown node types, normalization crashes — "the tool broke" |
+| `spec-quality-report.yaml` | Validation errors, broken references, event wiring issues, feature coverage — "the specs are wrong" |
+
+The runner is part of the [DDD e2e test infrastructure](https://github.com/cybersoloss/DDD/tree/main/tests/e2e). The DDD repo maintains a purpose-built test project (Nexus) that exercises all 28 node types, 13 trigger types, and all other DDD features — run `test:specs` against it to verify tool compatibility after any framework change.
 
 ## How It Fits Together
 
