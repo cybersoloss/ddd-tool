@@ -148,7 +148,13 @@ Produces two YAML reports in `<project>/.ddd/reports/`:
 | `tool-compatibility-report.yaml` | YAML parse failures, unknown node types, normalization crashes — "the tool broke" |
 | `spec-quality-report.yaml` | Validation errors, broken references, event wiring issues, feature coverage — "the specs are wrong" |
 
-The runner is part of the [DDD e2e test infrastructure](https://github.com/cybersoloss/DDD/tree/main/tests/e2e). The DDD repo maintains a purpose-built test project (Nexus) that exercises all 28 node types, 13 trigger types, and all other DDD features — run `test:specs` against it to verify tool compatibility after any framework change.
+The runner is part of the [DDD e2e test infrastructure](https://github.com/cybersoloss/DDD/tree/main/tests/e2e). The DDD repo ships a purpose-built example project ([Nexus](https://github.com/cybersoloss/DDD/tree/main/examples/nexus)) that exercises all 28 node types, 13 trigger types, and all other DDD features. After cloning the DDD repo, run:
+
+```bash
+npm run test:specs -- ~/dev/DDD/examples/nexus
+```
+
+Expected: `FULLY_COMPATIBLE`, 0 errors, 90+ quality score. Any regression here means a framework change broke the tool.
 
 ## How It Fits Together
 
