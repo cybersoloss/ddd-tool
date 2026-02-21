@@ -331,13 +331,19 @@ function checkAgentFlow(flow: FlowDocument): ValidationIssue[] {
   const allNodes = getAllNodes(flow);
   const agentLoops = allNodes.filter((n) => n.type === 'agent_loop');
 
-  if (agentLoops.length === 0) {
+  // agent_group and orchestrator are valid top-level coordination nodes for agent flows;
+  // agent_loop is only required when neither of those is present.
+  const hasAgentGroup = allNodes.some((n) => n.type === 'agent_group');
+  const hasOrchestrator = allNodes.some((n) => n.type === 'orchestrator');
+  if (agentLoops.length === 0 && !hasAgentGroup && !hasOrchestrator) {
     issues.push(issue('flow', 'error', 'agent_validation',
-      'Agent flow must have exactly one agent_loop node',
-      { suggestion: 'Add an agent_loop node from the toolbar' }
+      'Agent flow must have an agent_loop, agent_group, or orchestrator node',
+      { suggestion: 'Add an agent_loop, agent_group, or orchestrator node from the toolbar' }
     ));
     return issues;
   }
+  // If coordinated by agent_group or orchestrator without agent_loop, skip agent_loop-specific checks
+  if (agentLoops.length === 0) return issues;
 
   if (agentLoops.length > 1) {
     issues.push(issue('flow', 'warning', 'agent_validation',
@@ -717,7 +723,10 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
             { nodeId: node.id, suggestion: 'Set the algorithm (e.g., aes-256-gcm, sha256)' }
           ));
         }
-        if (!spec.key_source || (!spec.key_source.env && !spec.key_source.vault)) {
+        // key_source is only required for operations that use a stored key.
+        // hash, generate_key, and verify (bcrypt) do not need an external key.
+        const keySourceRequired = spec.operation && ['encrypt', 'decrypt', 'sign'].includes(spec.operation);
+        if (keySourceRequired && (!spec.key_source || (!spec.key_source.env && !spec.key_source.vault))) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Crypto "${node.label}" must have a key source defined`,
             { nodeId: node.id, suggestion: 'Set the key source (env variable or vault path)' }
