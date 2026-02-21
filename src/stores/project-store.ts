@@ -8,6 +8,7 @@ import type { FlowDocument } from '../types/flow';
 import { generateAutoLayout, generateFlowAutoLayout } from '../utils/domain-parser';
 import { FLOW_TEMPLATES } from '../utils/flow-templates';
 import { markWriting } from './write-guard';
+import { useSpecsStore } from './specs-store';
 
 interface ProjectState {
   projectPath: string | null;
@@ -138,6 +139,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         systemLayout,
         loading: false,
         loaded: true,
+      });
+
+      // Load supplementary specs (schemas, UI pages, infrastructure)
+      useSpecsStore.getState().loadAll(path).catch(() => {
+        // Silent — supplementary specs are optional
       });
     } catch (e) {
       set({ loading: false, loaded: false });
@@ -1009,5 +1015,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       loading: false,
       loaded: false,
     });
+    useSpecsStore.getState().reset();
   },
 }));

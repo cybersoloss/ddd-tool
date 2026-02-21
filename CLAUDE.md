@@ -59,6 +59,7 @@ npm run tauri dev
 - **Session 14:** Drift Detection — drift detection via hash comparison, stale banners on FlowBlock (L2) and FlowCanvas (L3), reconciliation reports to .ddd/reconciliations/
 - **Session 16:** First-Run, Settings, Polish — FirstRunWizard (2-step Claude Code/start), undo/redo store with Cmd+Z/Cmd+Shift+Z, auto-save to .ddd/autosave/, crash recovery dialog, GitSettings commit/branch templates, error toast recovery actions, recent projects pruning, auto-dismiss fix
 - **Session 17:** Extended Nodes + Enhancements — 6 new node types (data_store, service_call, event, loop, parallel, sub_flow) with spec editors and validation, validation presets for InputNode, Mermaid diagram generator, flow templates (REST API, CRUD, Webhook, Event Processor), minimap toggle (Cmd+Shift+M), ui-store
+- **Session 18:** Four Pillars Support — Left sidebar "Project Specs" panel with 3 tabs (Data, Interface, Infrastructure), specs-store for loading/saving schemas/UI/infra YAML, SchemaEditor with fields/relationships/indexes/transitions/seed, UIPageEditor with sections/forms/state, InfrastructureEditor with services/startup/deployment, cross-pillar validation, file watcher integration
 
 ### Session Plan
 
@@ -78,17 +79,19 @@ npm run tauri dev
 | 14 | **Drift Detection** | Stale banners, drift detection via hash comparison, reconciliation reports | Done |
 | 16 | **First-Run, Settings, Polish** | First-run wizard, settings persistence, error toasts, undo/redo, final bug fixes | Done |
 | 17 | **Extended Nodes + Enhancements** | 6 new node types (data_store, service_call, event, loop, parallel, sub_flow), validation presets, Mermaid export, minimap toggle, flow templates | Done |
+| 18 | **Four Pillars Support** | Left sidebar "Project Specs" panel with Data/Interface/Infrastructure tabs, schema/UI/infra editors, cross-pillar validation | Done |
 
 **Milestone A (Sessions 1-6):** Working flow editor that saves real YAML ✅
 **Milestone B (Sessions 7-8):** Agent and orchestration support ✅
 **Milestone C (Session 11):** Validation and quality gates ✅
 **Milestone D (Sessions 12-14):** Implementation, testing, reconciliation ✅
 **Milestone E (Sessions 16-17):** Polish and extended nodes ✅
+**Milestone F (Session 18):** Four Pillars — full spec viewing/editing ✅
 
 ### Future Sessions
 | # | Session | What You'll See When Done |
 |---|---------|--------------------------|
-| 18 | **Reverse-Engineer from Code** | "Import from Code" wizard: point at a codebase, auto-detect domains/flows/schemas, preview inferred structure, confirm/adjust, generate specs. Brings `/ddd-reverse` functionality into the GUI with interactive domain mapping and flow preview before committing. |
+| 19 | **Reverse-Engineer from Code** | "Import from Code" wizard: point at a codebase, auto-detect domains/flows/schemas, preview inferred structure, confirm/adjust, generate specs. Brings `/ddd-reverse` functionality into the GUI with interactive domain mapping and flow preview before committing. |
 
 ## Stores
 | Store | File | Owns |
@@ -96,7 +99,8 @@ npm run tauri dev
 | sheet | src/stores/sheet-store.ts | navigation, breadcrumbs, current level |
 | flow | src/stores/flow-store.ts | current flow nodes/connections |
 | project | src/stores/project-store.ts | domains, schemas, configs |
-| ui | src/stores/ui-store.ts | minimap visibility, lock state |
+| specs | src/stores/specs-store.ts | schemas, UI pages, infrastructure specs |
+| ui | src/stores/ui-store.ts | minimap visibility, lock state, specs panel |
 | git | src/stores/git-store.ts | git state |
 | implementation | src/stores/implementation-store.ts | drift detection, mapping persistence |
 | app | src/stores/app-store.ts | app view, recent projects, settings |

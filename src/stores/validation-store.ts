@@ -5,6 +5,7 @@ import { useFlowStore } from './flow-store';
 import { useProjectStore } from './project-store';
 import { useSheetStore } from './sheet-store';
 import { normalizeFlowDocument } from './flow-store';
+import { useSpecsStore } from './specs-store';
 import { validateFlow, validateDomain, validateSystem } from '../utils/flow-validator';
 import type { ValidationResult, ValidationScope, ValidationIssue, ImplementGateState } from '../types/validation';
 import type { FlowDocument } from '../types/flow';
@@ -68,7 +69,13 @@ export const useValidationStore = create<ValidationState>((set, get) => ({
 
   validateSystem: () => {
     const domainConfigs = useProjectStore.getState().domainConfigs;
-    const result = validateSystem(domainConfigs);
+    const specsState = useSpecsStore.getState();
+    const result = validateSystem(domainConfigs, {
+      schemas: specsState.schemas,
+      pagesConfig: specsState.pagesConfig,
+      pageSpecs: specsState.pageSpecs,
+      infrastructure: specsState.infrastructure,
+    });
     set({ systemResult: result });
   },
 

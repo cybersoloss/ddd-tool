@@ -85,6 +85,16 @@ export function LoopSpecEditor({ spec, onChange }: Props) {
         </div>
       </div>
       <div>
+        <label className="label">Body Start Node</label>
+        <input
+          className="input text-xs"
+          value={spec.body_start ?? ''}
+          onChange={(e) => onChange({ ...spec, body_start: e.target.value || undefined })}
+          placeholder="Node ID of first body node"
+        />
+        <p className="text-[10px] text-text-muted mt-0.5">For nested layout — child nodes use parentId</p>
+      </div>
+      <div>
         <label className="label">Description</label>
         <textarea
           className="input min-h-[80px] resize-y"

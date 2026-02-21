@@ -9,12 +9,14 @@ import { useGitStore } from './stores/git-store';
 import { useImplementationStore } from './stores/implementation-store';
 import { useUiStore } from './stores/ui-store';
 import { isOwnWrite } from './stores/write-guard';
+import { useSpecsStore } from './stores/specs-store';
 import { Breadcrumb } from './components/Navigation/Breadcrumb';
 import { SheetTabs } from './components/Navigation/SheetTabs';
 import { SystemMap } from './components/SystemMap/SystemMap';
 import { DomainMap } from './components/DomainMap/DomainMap';
 import { FlowCanvas } from './components/FlowCanvas/FlowCanvas';
 import { GitPanel } from './components/GitPanel/GitPanel';
+import { SpecsSidebar } from './components/SpecsSidebar/SpecsSidebar';
 import { CrashRecoveryDialog } from './components/shared/CrashRecoveryDialog';
 import { SearchPalette } from './components/shared/SearchPalette';
 
@@ -26,8 +28,15 @@ async function handleExternalChanges(changedPaths: string[], projectPath: string
     (p) => p.endsWith('domain.yaml') || p.endsWith('ddd-project.json') || p.endsWith('system-layout.yaml'),
   );
 
+  const hasSpecsChange = changedPaths.some(
+    (p) => p.includes('/specs/schemas/') || p.includes('/specs/ui/') || p.endsWith('infrastructure.yaml'),
+  );
+
   if (hasDomainOrProjectChange) {
     await useProjectStore.getState().reloadProject();
+    useUiStore.getState().flashSync();
+  } else if (hasSpecsChange && projectPath) {
+    await useSpecsStore.getState().loadAll(projectPath);
     useUiStore.getState().flashSync();
   }
 
@@ -58,6 +67,7 @@ export function AppShell() {
   const loaded = useProjectStore((s) => s.loaded);
   const level = useSheetStore((s) => s.current.level);
   const panelOpen = useGitStore((s) => s.panelOpen);
+  const specsPanelOpen = useUiStore((s) => s.specsPanelOpen);
   const searchOpen = useUiStore((s) => s.searchOpen);
   const loadedPathRef = useRef<string | null>(null);
 
@@ -157,6 +167,7 @@ export function AppShell() {
       <Breadcrumb />
       <SheetTabs />
       <div className="flex-1 flex flex-row overflow-hidden">
+        {specsPanelOpen && <SpecsSidebar />}
         <div className="flex-1 flex flex-col overflow-hidden">
           {level === 'system' && <SystemMap />}
           {level === 'domain' && <DomainMap />}

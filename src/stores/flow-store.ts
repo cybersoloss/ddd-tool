@@ -486,6 +486,15 @@ export function normalizeFlowDocument(raw: Record<string, unknown>, domainId: st
       spec.prompt_template = spec.prompt;
     }
 
+    // Normalize parallel: coerce numeric branches to ParallelBranch[]
+    if (n.type === 'parallel' && typeof spec.branches === 'number') {
+      const count = spec.branches as number;
+      spec.branches = Array.from({ length: count }, (_, i) => ({
+        id: `branch-${i}`,
+        label: `Branch ${i + 1}`,
+      }));
+    }
+
     // Normalize trigger: infer spec.event from label if missing
     if (n.type === 'trigger') {
       const event = spec.event;
@@ -545,13 +554,15 @@ export function normalizeFlowDocument(raw: Record<string, unknown>, domainId: st
     domain: (raw as Record<string, unknown>).domain as string ?? domainId,
     description: (raw as Record<string, unknown>).description as string,
   };
-  // Preserve template/parameters/contract if present
+  // Preserve template/parameters/contract/emits/listens_to if present
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rawFlow = doc.flow as any;
   if (rawFlow) {
     if (rawFlow.template !== undefined) flowObj.template = rawFlow.template;
     if (rawFlow.parameters !== undefined) flowObj.parameters = rawFlow.parameters;
     if (rawFlow.contract !== undefined) flowObj.contract = rawFlow.contract;
+    if (rawFlow.emits !== undefined) flowObj.emits = rawFlow.emits;
+    if (rawFlow.listens_to !== undefined) flowObj.listens_to = rawFlow.listens_to;
   }
 
   return {

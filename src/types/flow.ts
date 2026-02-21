@@ -15,12 +15,42 @@ export type DddNodeType =
 
 // --- Per-node spec shapes ---
 
+export interface JobRetryConfig {
+  max_attempts?: number;
+  backoff_ms?: number;
+  strategy?: 'fixed' | 'linear' | 'exponential';
+  jitter?: boolean;
+}
+
+export interface JobConfig {
+  queue?: string;
+  concurrency?: number;
+  timeout_ms?: number;
+  retry?: JobRetryConfig;
+  dead_letter?: boolean;
+  lock_ttl_ms?: number;
+  jitter_ms?: number;
+  priority?: number;
+  dedup_key?: string;
+}
+
+export interface TriggerPattern {
+  event?: string;
+  group_by?: string;
+  threshold?: number;
+  window?: string;
+}
+
 export interface TriggerSpec {
   event?: string | string[];
   source?: string;
   filter?: Record<string, unknown>;
   debounce_ms?: number;
   description?: string;
+  method?: string;
+  path?: string;
+  job_config?: JobConfig;
+  pattern?: TriggerPattern;
   [key: string]: unknown;
 }
 
@@ -293,6 +323,7 @@ export interface LoopSpec {
   break_condition?: string;
   on_error?: 'continue' | 'break' | 'fail';
   accumulate?: { field?: string; strategy?: 'append' | 'merge' | 'sum' | 'last'; output?: string };
+  body_start?: string;
   description?: string;
   [key: string]: unknown;
 }
@@ -322,7 +353,7 @@ export interface LlmCallSpec {
   max_tokens?: number;
   structured_output?: Record<string, unknown>;
   context_sources?: Record<string, { from: string; transform?: string }>;
-  retry?: { max_attempts?: number; backoff_ms?: number; strategy?: 'fixed' | 'linear' | 'exponential' };
+  retry?: { max_attempts?: number; backoff_ms?: number; strategy?: 'fixed' | 'linear' | 'exponential'; jitter?: boolean };
   description?: string;
   [key: string]: unknown;
 }
@@ -476,6 +507,8 @@ export interface FlowDocument {
       inputs?: Array<{ name: string; type: string; required?: boolean; ref?: string }>;
       outputs?: Array<{ name: string; type: string }>;
     };
+    emits?: string[];
+    listens_to?: string[];
   };
   trigger: DddFlowNode;
   nodes: DddFlowNode[];

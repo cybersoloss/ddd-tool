@@ -37,6 +37,7 @@ import type {
   ValidationSeverity,
   ValidationCategory,
 } from '../types/validation';
+import type { SchemaSpec, PagesConfig, UIPageSpec, InfrastructureSpec } from '../types/specs';
 
 // --- Helpers ---
 
@@ -895,6 +896,7 @@ function checkBranchingCompleteness(flow: FlowDocument): ValidationIssue[] {
       case 'data_store':
       case 'service_call':
       case 'ipc_call':
+      case 'llm_call':
       case 'parse':
       case 'crypto': {
         if (!handles.has('success')) {
@@ -1245,6 +1247,41 @@ export function validateDomain(
     seen.add(fid);
   }
 
+  // Check for duplicate event group names
+  const eventGroups = domainConfig.event_groups ?? [];
+  const seenGroupNames = new Set<string>();
+  for (const group of eventGroups) {
+    if (seenGroupNames.has(group.name)) {
+      issues.push(issue('domain', 'error', 'domain_consistency',
+        `Duplicate event group name "${group.name}" in domain "${domainConfig.name}"`,
+        { domainId }
+      ));
+    }
+    seenGroupNames.add(group.name);
+  }
+
+  // Check that trigger event_group:{name} references exist in domain event_groups
+  if (flowDocs) {
+    const groupNames = new Set(eventGroups.map((g) => g.name));
+    for (const flowDoc of flowDocs) {
+      const trigger = flowDoc.trigger;
+      if (!trigger?.spec) continue;
+      const event = (trigger.spec as TriggerSpec).event;
+      const events = Array.isArray(event) ? event : event ? [event] : [];
+      for (const ev of events) {
+        if (typeof ev === 'string' && ev.startsWith('event_group:')) {
+          const groupRef = ev.slice('event_group:'.length);
+          if (!groupNames.has(groupRef)) {
+            issues.push(issue('domain', 'error', 'reference_integrity',
+              `Trigger in flow "${flowDoc.flow?.id}" references event_group "${groupRef}" which is not defined in domain "${domainConfig.name}"`,
+              { domainId, flowId: flowDoc.flow?.id, suggestion: `Add event_group "${groupRef}" to domain.yaml event_groups` }
+            ));
+          }
+        }
+      }
+    }
+  }
+
   // Check internal event consumers matched
   const published = new Set(domainConfig.publishes_events.map((e) => e.event));
   const consumed = new Set(domainConfig.consumes_events.map((e) => e.event));
@@ -1332,9 +1369,130 @@ function checkSchemaOwnershipConflicts(domainConfigs: Record<string, DomainConfi
   return issues;
 }
 
+// --- Cross-pillar validation ---
+
+function checkDataSourceReferences(
+  pagesConfig: PagesConfig | null,
+  pageSpecs: Record<string, UIPageSpec>,
+  domainConfigs: Record<string, DomainConfig>
+): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  if (!pagesConfig) return issues;
+
+  // Collect all valid flow references (domain/flow-id)
+  const validFlowRefs = new Set<string>();
+  for (const [domainId, config] of Object.entries(domainConfigs)) {
+    for (const flow of config.flows) {
+      validFlowRefs.add(`${domainId}/${flow.id}`);
+    }
+  }
+
+  // Check page section data_source references
+  for (const [pageId, spec] of Object.entries(pageSpecs)) {
+    for (const section of spec.sections ?? []) {
+      if (section.data_source && section.data_source.includes('/')) {
+        if (!validFlowRefs.has(section.data_source)) {
+          issues.push(issue('system', 'warning', 'reference_integrity',
+            `Page "${pageId}" section "${section.id}" references data_source "${section.data_source}" which does not exist`,
+            { suggestion: 'Check the domain/flow-id reference in data_source' }
+          ));
+        }
+      }
+    }
+
+    // Check form submit flow references
+    for (const form of spec.forms ?? []) {
+      if (form.submit?.flow && form.submit.flow.includes('/')) {
+        if (!validFlowRefs.has(form.submit.flow)) {
+          issues.push(issue('system', 'warning', 'reference_integrity',
+            `Page "${pageId}" form "${form.id}" submit references flow "${form.submit.flow}" which does not exist`,
+            { suggestion: 'Check the domain/flow-id reference in form submit' }
+          ));
+        }
+      }
+    }
+
+    // Check state initial_fetch references
+    for (const fetchRef of spec.state?.initial_fetch ?? []) {
+      if (fetchRef.includes('/') && !validFlowRefs.has(fetchRef)) {
+        issues.push(issue('system', 'warning', 'reference_integrity',
+          `Page "${pageId}" initial_fetch references "${fetchRef}" which does not exist`,
+          { suggestion: 'Check the domain/flow-id reference in initial_fetch' }
+        ));
+      }
+    }
+  }
+
+  return issues;
+}
+
+function checkPageNavigationRefs(
+  pagesConfig: PagesConfig | null
+): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  if (!pagesConfig) return issues;
+
+  const pageIds = new Set(pagesConfig.pages.map((p) => p.id));
+
+  for (const item of pagesConfig.navigation?.items ?? []) {
+    if (item.page && !pageIds.has(item.page)) {
+      issues.push(issue('system', 'warning', 'reference_integrity',
+        `Navigation item "${item.label}" references page "${item.page}" which does not exist in pages.yaml`,
+        { suggestion: 'Add the page to pages.yaml or fix the navigation item reference' }
+      ));
+    }
+  }
+
+  return issues;
+}
+
+function checkSchemaFileReferences(
+  schemas: Record<string, SchemaSpec>,
+  _domainConfigs: Record<string, DomainConfig>,
+  flowDocs?: FlowDocument[]
+): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  const schemaNames = new Set(Object.keys(schemas));
+
+  if (schemaNames.size === 0 || !flowDocs) return issues;
+
+  // Check data_store nodes referencing models that don't have schema files
+  for (const flow of flowDocs) {
+    const allNodes = getAllNodes(flow);
+    for (const node of allNodes) {
+      if (node.type !== 'data_store') continue;
+      const spec = (node.spec ?? {}) as DataStoreSpec;
+      if ((spec.store_type ?? 'database') !== 'database') continue;
+      if (!spec.model || spec.model.trim() === '') continue;
+
+      // Check against schema file names (lowercase comparison)
+      const modelLower = spec.model.toLowerCase();
+      const hasSchemaFile = [...schemaNames].some((s) => s.toLowerCase() === modelLower);
+      if (!hasSchemaFile) {
+        issues.push(issue('system', 'info', 'reference_integrity',
+          `Data store "${node.label}" references model "${spec.model}" but no schema file exists in specs/schemas/`,
+          { nodeId: node.id, flowId: flow.flow?.id, domainId: flow.flow?.domain,
+            suggestion: 'Create a schema file or check the model name' }
+        ));
+      }
+    }
+  }
+
+  return issues;
+}
+
 // --- Public: System validation ---
 
-export function validateSystem(domainConfigs: Record<string, DomainConfig>): ValidationResult {
+export function validateSystem(
+  domainConfigs: Record<string, DomainConfig>,
+  specsContext?: {
+    schemas?: Record<string, SchemaSpec>;
+    pagesConfig?: PagesConfig | null;
+    pageSpecs?: Record<string, UIPageSpec>;
+    infrastructure?: InfrastructureSpec | null;
+    flowDocs?: FlowDocument[];
+  }
+): ValidationResult {
   const issues: ValidationIssue[] = [];
 
   // Collect all published and consumed events across domains
@@ -1426,6 +1584,21 @@ export function validateSystem(domainConfigs: Record<string, DomainConfig>): Val
   // Reference integrity checks
   issues.push(...checkPortalTargetsExist(domainConfigs));
   issues.push(...checkSchemaOwnershipConflicts(domainConfigs));
+
+  // Cross-pillar validation
+  if (specsContext) {
+    issues.push(...checkDataSourceReferences(
+      specsContext.pagesConfig ?? null,
+      specsContext.pageSpecs ?? {},
+      domainConfigs
+    ));
+    issues.push(...checkPageNavigationRefs(specsContext.pagesConfig ?? null));
+    issues.push(...checkSchemaFileReferences(
+      specsContext.schemas ?? {},
+      domainConfigs,
+      specsContext.flowDocs
+    ));
+  }
 
   return buildResult('system', 'system', issues);
 }

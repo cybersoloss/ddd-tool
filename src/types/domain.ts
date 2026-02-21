@@ -43,6 +43,12 @@ export interface DomainOnError {
   description?: string;
 }
 
+export interface EventGroup {
+  name: string;
+  description?: string;
+  events: string[];
+}
+
 export interface DomainConfig {
   name: string;
   description?: string;
@@ -50,6 +56,7 @@ export interface DomainConfig {
   owns_schemas?: string[];
   stores?: StoreDefinition[];
   on_error?: DomainOnError;
+  event_groups?: EventGroup[];
   groups?: FlowGroup[];
   flows: DomainFlowEntry[];
   publishes_events: EventWiring[];

@@ -14,6 +14,8 @@ interface UiState {
   searchOpen: boolean;
   openSearch: () => void;
   closeSearch: () => void;
+  specsPanelOpen: boolean;
+  toggleSpecsPanel: () => void;
   syncFlash: boolean;
   flashSync: () => void;
   viewports: Record<string, Viewport>;
@@ -29,6 +31,8 @@ export const useUiStore = create<UiState>((set, get) => ({
   searchOpen: false,
   openSearch: () => set({ searchOpen: true }),
   closeSearch: () => set({ searchOpen: false }),
+  specsPanelOpen: false,
+  toggleSpecsPanel: () => set((s) => ({ specsPanelOpen: !s.specsPanelOpen })),
   syncFlash: false,
   flashSync: () => {
     set({ syncFlash: true });

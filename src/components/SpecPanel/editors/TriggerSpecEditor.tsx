@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import type { TriggerSpec } from '../../../types/flow';
+import type { TriggerSpec, JobConfig, JobRetryConfig, TriggerPattern } from '../../../types/flow';
 import { ExtraFieldsEditor } from './ExtraFieldsEditor';
 
 interface Props {
@@ -12,37 +12,47 @@ export function TriggerSpecEditor({ spec, onChange }: Props) {
   const [jobConfigOpen, setJobConfigOpen] = useState(false);
   const [patternOpen, setPatternOpen] = useState(false);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const jobConfig = (spec as any).job_config ?? {};
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pattern = (spec as any).pattern ?? {};
+  const jobConfig = spec.job_config ?? {};
+  const pattern = spec.pattern ?? {};
   const jobRetry = jobConfig.retry ?? {};
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const updateJobConfig = (updates: Record<string, any>) => {
-    onChange({ ...spec, job_config: { ...jobConfig, ...updates } } as TriggerSpec);
+  const updateJobConfig = (updates: Partial<JobConfig>) => {
+    onChange({ ...spec, job_config: { ...jobConfig, ...updates } });
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const updateJobRetry = (updates: Record<string, any>) => {
+  const updateJobRetry = (updates: Partial<JobRetryConfig>) => {
     updateJobConfig({ retry: { ...jobRetry, ...updates } });
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const updatePattern = (updates: Record<string, any>) => {
-    onChange({ ...spec, pattern: { ...pattern, ...updates } } as TriggerSpec);
+  const updatePattern = (updates: Partial<TriggerPattern>) => {
+    onChange({ ...spec, pattern: { ...pattern, ...updates } });
+  };
+
+  // Handle event as string or string[]
+  const eventValue = Array.isArray(spec.event) ? spec.event.join(', ') : (spec.event ?? '');
+  const isMultiEvent = Array.isArray(spec.event) && spec.event.length > 1;
+
+  const handleEventChange = (raw: string) => {
+    // If user types commas, store as array; otherwise keep as string
+    if (raw.includes(',')) {
+      const parts = raw.split(',').map((s) => s.trim()).filter(Boolean);
+      onChange({ ...spec, event: parts.length > 1 ? parts : parts[0] ?? '' });
+    } else {
+      onChange({ ...spec, event: raw });
+    }
   };
 
   return (
     <div className="space-y-3">
       <div>
-        <label className="label">Event</label>
+        <label className="label">Event {isMultiEvent && <span className="text-accent text-[10px] ml-1">(multi)</span>}</label>
         <input
           className="input"
-          value={spec.event ?? ''}
-          onChange={(e) => onChange({ ...spec, event: e.target.value })}
-          placeholder="e.g. order.placed"
+          value={eventValue}
+          onChange={(e) => handleEventChange(e.target.value)}
+          placeholder='e.g. HTTP POST /api/users or "event:A, event:B"'
         />
+        <p className="text-[10px] text-text-muted mt-0.5">Separate multiple events with commas</p>
       </div>
       <div>
         <label className="label">Source</label>
@@ -194,13 +204,42 @@ export function TriggerSpecEditor({ spec, onChange }: Props) {
               <select
                 className="input"
                 value={jobRetry.strategy ?? ''}
-                onChange={(e) => updateJobRetry({ strategy: e.target.value || undefined })}
+                onChange={(e) => updateJobRetry({ strategy: (e.target.value || undefined) as JobRetryConfig['strategy'] })}
               >
                 <option value="">Default</option>
                 <option value="fixed">Fixed</option>
                 <option value="linear">Linear</option>
                 <option value="exponential">Exponential</option>
               </select>
+            </div>
+            <label className="flex items-center gap-1.5 text-xs text-text-secondary cursor-pointer">
+              <input
+                type="checkbox"
+                className="accent-accent"
+                checked={jobRetry.jitter ?? false}
+                onChange={(e) => updateJobRetry({ jitter: e.target.checked })}
+              />
+              Jitter
+            </label>
+            <div>
+              <label className="label">Lock TTL (ms)</label>
+              <input
+                type="number"
+                className="input"
+                value={jobConfig.lock_ttl_ms ?? ''}
+                onChange={(e) => updateJobConfig({ lock_ttl_ms: e.target.value ? Number(e.target.value) : undefined })}
+                placeholder="60000"
+              />
+            </div>
+            <div>
+              <label className="label">Jitter (ms)</label>
+              <input
+                type="number"
+                className="input"
+                value={jobConfig.jitter_ms ?? ''}
+                onChange={(e) => updateJobConfig({ jitter_ms: e.target.value ? Number(e.target.value) : undefined })}
+                placeholder="e.g. 5000"
+              />
             </div>
           </div>
         )}

@@ -639,3 +639,60 @@ Bridges external YAML formats (from `/ddd-create`) with internal `FlowDocument` 
 - Internal helpers stay private
 - Repository functions shared via `repositories/` directory
 - Multiple flows in same domain: group routes into single route file per resource
+
+---
+
+## Four Pillars — Project Specs Panel
+
+DDD defines 4 foundational pillars: **Logic**, **Data**, **Interface**, **Infrastructure**. The canvas handles the Logic pillar (domains, flows, nodes). The remaining 3 pillars are accessed via the **Project Specs** sidebar panel.
+
+### Toggle
+
+- **Breadcrumb button**: "Specs" button (BookOpen icon) in the breadcrumb bar, next to Lock/Minimap/Git
+- **State**: `specsPanelOpen` in ui-store
+- Available at all canvas levels (L1/L2/L3) since these are project-wide specs
+
+### Layout
+
+The SpecsSidebar renders on the **left side** of the canvas area (320px wide, `border-r`), mirroring the GitPanel on the right. Both can be open simultaneously.
+
+```
+┌─ Breadcrumb ──────────────────────────────────────────────────┐
+├─────────────┬──────────────────────────┬─────────────────────┤
+│ SpecsSidebar│       Canvas Area        │     GitPanel        │
+│  (320px)    │    (L1 / L2 / L3)       │     (320px)         │
+│  [Data]     │                          │                     │
+│  [Interface]│                          │                     │
+│  [Infra]    │                          │                     │
+└─────────────┴──────────────────────────┴─────────────────────┘
+```
+
+### Tabs
+
+| Tab | Icon | Source Files | Store Key |
+|-----|------|-------------|-----------|
+| **Data** | Database | `specs/schemas/*.yaml` | `schemas`, `baseSchema` |
+| **Interface** | Layout | `specs/ui/pages.yaml`, `specs/ui/{page-id}.yaml` | `pagesConfig`, `pageSpecs` |
+| **Infrastructure** | Server | `specs/infrastructure.yaml` | `infrastructure` |
+
+### Specs Store (`src/stores/specs-store.ts`)
+
+Zustand store following the same patterns as project-store:
+- `loadAll(projectPath)` — reads all spec files
+- Per-item save/add/delete actions
+- Uses `markWriting()` to prevent file-watcher self-reloads
+- Loaded after project-store's `loadProject()` completes
+- Reset when project is closed
+
+### Cross-Pillar Validation
+
+Added to system-scope validation (`validateSystem`):
+- **data_source references**: UI page sections with `data_source: domain/flow-id` must reference existing flows
+- **form flow references**: Form submit.flow must reference existing flows
+- **page navigation**: Navigation items must reference valid page IDs
+- **schema file references**: data_store nodes referencing models checked against `specs/schemas/` files
+- **initial_fetch references**: Page state initial_fetch checked against existing flows
+
+### File Watcher Integration
+
+External changes to `specs/schemas/`, `specs/ui/`, or `specs/infrastructure.yaml` trigger `specsStore.loadAll()` for live reload.

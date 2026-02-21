@@ -124,6 +124,15 @@ export function LlmCallSpecEditor({ spec, onChange }: Props) {
           <option value="exponential">Exponential</option>
         </select>
       </div>
+      <label className="flex items-center gap-1.5 text-xs text-text-secondary cursor-pointer">
+        <input
+          type="checkbox"
+          className="accent-accent"
+          checked={spec.retry?.jitter ?? false}
+          onChange={(e) => onChange({ ...spec, retry: { ...spec.retry, jitter: e.target.checked } })}
+        />
+        Retry Jitter
+      </label>
       <div>
         <label className="label">Description</label>
         <textarea
