@@ -190,9 +190,21 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
     // Write domain.yaml
     markWriting();
+    const newDomainYaml = stringify(newDomain);
     await invoke('write_file', {
       path: `${projectPath}/specs/domains/${domainId}/domain.yaml`,
-      contents: stringify(newDomain),
+      contents: newDomainYaml,
+    });
+
+    useChangeHistoryStore.getState().recordSave({
+      projectPath,
+      specFile: `specs/domains/${domainId}/domain.yaml`,
+      contents: newDomainYaml,
+      level: 'L1',
+      domain: domainId,
+      flow: null,
+      pillar: null,
+      action: 'created',
     });
 
     // Update ddd-project.json
@@ -311,9 +323,21 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     }
 
     markWriting();
+    const flowDocYaml = stringify(flowDoc);
     await invoke('write_file', {
       path: `${projectPath}/specs/domains/${domainId}/flows/${flowId}.yaml`,
-      contents: stringify(flowDoc),
+      contents: flowDocYaml,
+    });
+
+    useChangeHistoryStore.getState().recordSave({
+      projectPath,
+      specFile: `specs/domains/${domainId}/flows/${flowId}.yaml`,
+      contents: flowDocYaml,
+      level: 'L3',
+      domain: domainId,
+      flow: flowId,
+      pillar: 'logic',
+      action: 'created',
     });
 
     return flowId;
@@ -356,6 +380,17 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     } catch {
       // Silent — file may not exist
     }
+
+    useChangeHistoryStore.getState().recordSave({
+      projectPath,
+      specFile: `specs/domains/${domainId}/flows/${flowId}.yaml`,
+      contents: '',
+      level: 'L3',
+      domain: domainId,
+      flow: flowId,
+      pillar: 'logic',
+      action: 'deleted',
+    });
   },
 
   deleteDomain: async (domainId) => {
@@ -407,6 +442,17 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     } catch {
       // Silent — directory may not exist
     }
+
+    useChangeHistoryStore.getState().recordSave({
+      projectPath,
+      specFile: `specs/domains/${domainId}/domain.yaml`,
+      contents: '',
+      level: 'L1',
+      domain: domainId,
+      flow: null,
+      pillar: null,
+      action: 'deleted',
+    });
   },
 
   renameDomain: async (domainId, newName) => {

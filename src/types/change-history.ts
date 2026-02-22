@@ -13,6 +13,7 @@ export interface ChangeHistoryEntry {
   status: 'pending_implement' | 'implemented';
   implemented_at: string | null;
   code_files: string[];
+  action?: 'created' | 'updated' | 'deleted';
 }
 
 export interface RecordSaveParams {
@@ -23,4 +24,5 @@ export interface RecordSaveParams {
   domain: string | null;
   flow?: string;
   pillar: 'logic' | 'data' | 'interface' | 'infrastructure' | null;
+  action?: 'created' | 'updated' | 'deleted';
 }

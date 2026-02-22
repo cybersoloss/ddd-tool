@@ -19,7 +19,8 @@ function scopeLabel(entry: ChangeHistoryEntry): string {
   if (entry.scope.flow) parts.push(entry.scope.flow);
   const location = parts.join(' / ') || entry.spec_file;
   const pillar = entry.scope.pillar ? `  (${entry.scope.pillar})` : '';
-  return `${level} ${location}${pillar}`;
+  const action = entry.action === 'created' ? '  +new' : entry.action === 'deleted' ? '  −del' : '';
+  return `${level} ${location}${pillar}${action}`;
 }
 
 export function SaveNotification() {

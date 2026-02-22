@@ -64,13 +64,17 @@ export const useChangeHistoryStore = create<ChangeHistoryState>((set, get) => ({
     }
   },
 
-  recordSave: async ({ projectPath, specFile, contents, level, domain, flow, pillar }) => {
+  recordSave: async ({ projectPath, specFile, contents, level, domain, flow, pillar, action }) => {
     const { entries, lastChecksumByFile } = get();
 
-    const checksum = await sha256short(contents);
+    const isDeletion = action === 'deleted';
+    // Deletions always get a unique checksum so they're never deduped
+    const checksum = isDeletion
+      ? await sha256short('__deleted__:' + new Date().toISOString())
+      : await sha256short(contents);
 
-    // Dedup: skip if content hasn't changed
-    if (lastChecksumByFile[specFile] === checksum) return;
+    // Dedup: skip if content hasn't changed (deletions always record)
+    if (!isDeletion && lastChecksumByFile[specFile] === checksum) return;
 
     const entry: ChangeHistoryEntry = {
       id: nextId(entries),
@@ -82,6 +86,7 @@ export const useChangeHistoryStore = create<ChangeHistoryState>((set, get) => ({
       status: 'pending_implement',
       implemented_at: null,
       code_files: [],
+      ...(action && action !== 'updated' ? { action } : {}),
     };
 
     const newEntries = [...entries, entry];
