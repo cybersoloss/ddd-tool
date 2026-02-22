@@ -21,7 +21,18 @@
       "Bash(git -C /Users/mhcandan/.claude status)",
       "Bash(git push:*)",
       "Bash(git fetch:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(git -C /Users/mhcandan/dev/ddd-tool status -u)",
+      "Bash(git status:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tsx:*)",
+      "Bash(npm run test:specs:*)",
+      "Bash(git -C /Users/mhcandan/dev/ddd-tool status)",
+      "Bash(git -C /Users/mhcandan/dev/contentcurator status)",
+      "Bash(git -C /Users/mhcandan/dev/contentcurator diff --stat --cached)",
+      "Bash(npm run typecheck:*)",
+      "Bash(pkill:*)",
+      "Bash(lsof:*)"
     ]
   }
 }
