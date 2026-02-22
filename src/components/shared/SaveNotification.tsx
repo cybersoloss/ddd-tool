@@ -24,6 +24,8 @@ function scopeLabel(entry: ChangeHistoryEntry): string {
 
 export function SaveNotification() {
   const notification = useChangeHistoryStore((s) => s.notification);
+  const notificationVisible = useChangeHistoryStore((s) => s.notificationVisible);
+  const hideNotification = useChangeHistoryStore((s) => s.hideNotification);
   const dismissNotification = useChangeHistoryStore((s) => s.dismissNotification);
   const saveNotificationEnabled = useAppStore(
     (s) => s.settings.editor.saveNotification
@@ -37,18 +39,21 @@ export function SaveNotification() {
     }
   }, []);
 
+  // Auto-close hides the panel but keeps entries — next save re-opens with all of them
   const startTimer = useCallback(() => {
     clearTimer();
-    timerRef.current = setTimeout(dismissNotification, 2000);
-  }, [clearTimer, dismissNotification]);
+    timerRef.current = setTimeout(hideNotification, 2000);
+  }, [clearTimer, hideNotification]);
 
+  // Start timer whenever panel becomes visible with entries
   useEffect(() => {
-    if (notification.length > 0) startTimer();
+    if (notificationVisible && notification.length > 0) startTimer();
     return clearTimer;
-  }, [notification, startTimer, clearTimer]);
+  }, [notificationVisible, notification, startTimer, clearTimer]);
 
-  // Undefined (old settings without the key) defaults to showing
-  if (saveNotificationEnabled === false || notification.length === 0) return null;
+  if (saveNotificationEnabled === false || !notificationVisible || notification.length === 0) {
+    return null;
+  }
 
   const cmds = generateCommands(notification);
   const count = notification.length;

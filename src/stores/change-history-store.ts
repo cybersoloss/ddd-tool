@@ -20,11 +20,17 @@ function nextId(entries: ChangeHistoryEntry[]): string {
 interface ChangeHistoryState {
   entries: ChangeHistoryEntry[];
   lastChecksumByFile: Record<string, string>;
+  // Accumulated entries since last explicit dismiss
   notification: ChangeHistoryEntry[];
+  // Controls panel visibility independently from notification list.
+  // Auto-close hides the panel but keeps notification entries so the
+  // next save re-opens it showing all accumulated changes.
+  notificationVisible: boolean;
 
   load: (projectPath: string) => Promise<void>;
   recordSave: (params: RecordSaveParams) => Promise<void>;
-  dismissNotification: () => void;
+  hideNotification: () => void;    // called by auto-close timer — hides panel, keeps entries
+  dismissNotification: () => void; // called by ✕ / Dismiss — clears entries + hides
   reset: () => void;
 }
 
@@ -32,6 +38,7 @@ export const useChangeHistoryStore = create<ChangeHistoryState>((set, get) => ({
   entries: [],
   lastChecksumByFile: {},
   notification: [],
+  notificationVisible: false,
 
   load: async (projectPath) => {
     try {
@@ -50,10 +57,10 @@ export const useChangeHistoryStore = create<ChangeHistoryState>((set, get) => ({
         }
       }
 
-      set({ entries, lastChecksumByFile, notification: [] });
+      set({ entries, lastChecksumByFile, notification: [], notificationVisible: false });
     } catch {
       // File doesn't exist yet — that's fine
-      set({ entries: [], lastChecksumByFile: {}, notification: [] });
+      set({ entries: [], lastChecksumByFile: {}, notification: [], notificationVisible: false });
     }
   },
 
@@ -79,12 +86,14 @@ export const useChangeHistoryStore = create<ChangeHistoryState>((set, get) => ({
 
     const newEntries = [...entries, entry];
     const newLastChecksumByFile = { ...lastChecksumByFile, [specFile]: checksum };
+    // Append to existing notification list (accumulated since last explicit dismiss)
     const newNotification = [...get().notification, entry];
 
     set({
       entries: newEntries,
       lastChecksumByFile: newLastChecksumByFile,
       notification: newNotification,
+      notificationVisible: true, // always re-open panel on new save
     });
 
     // Persist to file (best effort)
@@ -99,11 +108,18 @@ export const useChangeHistoryStore = create<ChangeHistoryState>((set, get) => ({
     }
   },
 
+  // Auto-close: hide panel but keep accumulated entries.
+  // Next save will re-open the panel showing everything.
+  hideNotification: () => {
+    set({ notificationVisible: false });
+  },
+
+  // Explicit dismiss: clear accumulated entries and hide panel.
   dismissNotification: () => {
-    set({ notification: [] });
+    set({ notification: [], notificationVisible: false });
   },
 
   reset: () => {
-    set({ entries: [], lastChecksumByFile: {}, notification: [] });
+    set({ entries: [], lastChecksumByFile: {}, notification: [], notificationVisible: false });
   },
 }));
