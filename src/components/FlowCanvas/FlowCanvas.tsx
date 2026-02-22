@@ -30,6 +30,7 @@ import { useUiStore } from '../../stores/ui-store';
 import { nodeTypes } from './nodes';
 import { CircuitBreakerEdge } from './edges/CircuitBreakerEdge';
 import { BehaviorEdge } from './edges/BehaviorEdge';
+import { BracketOverlay } from './BracketOverlay';
 import { NodeToolbar } from './NodeToolbar';
 import { SpecPanel } from '../SpecPanel/SpecPanel';
 import { ConnectionEditor } from '../SpecPanel/ConnectionEditor';
@@ -44,7 +45,6 @@ const edgeTypes = {
 };
 
 const defaultEdgeOptions = {
-  animated: true,
   style: { stroke: 'var(--color-text-muted)', strokeWidth: 2 },
   markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--color-text-muted)' },
 };
@@ -104,6 +104,18 @@ function buildEdges(flow: ReturnType<typeof useFlowStore.getState>['currentFlow'
         targetHandle: conn.targetHandle ?? null,
         label: conn.label,
       };
+
+      // Color parallel branch edges pink
+      if (node.type === 'parallel' && conn.sourceHandle?.startsWith('branch-')) {
+        edge.style = { stroke: '#ec4899', strokeWidth: 1.5 };
+        edge.markerEnd = { type: MarkerType.ArrowClosed, color: '#ec4899' };
+      }
+
+      // Color smart_router route edges cyan
+      if (node.type === 'smart_router' && conn.sourceHandle) {
+        edge.style = { stroke: '#06b6d4', strokeWidth: 1.5 };
+        edge.markerEnd = { type: MarkerType.ArrowClosed, color: '#06b6d4' };
+      }
 
       // Circuit breaker edge for smart_router nodes (takes precedence)
       if (node.type === 'smart_router') {
@@ -421,6 +433,7 @@ function FlowCanvasInner() {
           className={pendingNodeType ? 'cursor-crosshair' : ''}
           style={{ width: '100%', height: '100%' }}
         >
+          <BracketOverlay />
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
           <Controls />
           {minimapVisible && (

@@ -3,6 +3,7 @@ import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react
 import { useSpecsStore } from '../../stores/specs-store';
 import { useProjectStore } from '../../stores/project-store';
 import type { UIPageSpec, PageSection, FormSpec, FormField } from '../../types/specs';
+import { UIPagePreview } from './UIPagePreview';
 
 const POSITION_OPTIONS = ['top', 'main', 'sidebar', 'footer', 'top-left', 'top-right', 'bottom'];
 const FORM_POSITION_OPTIONS = ['modal', 'sidebar', 'inline', 'drawer'];
@@ -23,6 +24,8 @@ interface Props {
 export function UIPageEditor({ pageId, spec, onBack }: Props) {
   const projectPath = useProjectStore((s) => s.projectPath);
   const savePageSpec = useSpecsStore((s) => s.savePageSpec);
+
+  const [mode, setMode] = useState<'edit' | 'preview'>('edit');
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     sections: true,
@@ -128,8 +131,29 @@ export function UIPageEditor({ pageId, spec, onBack }: Props) {
           <div className="text-xs font-medium text-text-primary truncate">{spec.page || pageId}</div>
           <div className="text-[10px] text-text-muted">{spec.route}</div>
         </div>
+        <div className="flex shrink-0 border border-border rounded overflow-hidden ml-auto">
+          <button
+            className={`px-2 py-0.5 text-[10px] transition-colors ${
+              mode === 'edit' ? 'bg-accent text-white' : 'text-text-muted hover:bg-bg-hover'
+            }`}
+            onClick={() => setMode('edit')}
+          >Edit</button>
+          <button
+            className={`px-2 py-0.5 text-[10px] transition-colors ${
+              mode === 'preview' ? 'bg-accent text-white' : 'text-text-muted hover:bg-bg-hover'
+            }`}
+            onClick={() => setMode('preview')}
+          >Preview</button>
+        </div>
       </div>
 
+      {mode === 'preview' && (
+        <div className="flex-1 overflow-y-auto p-2">
+          <UIPagePreview spec={spec} pageId={pageId} />
+        </div>
+      )}
+
+      {mode === 'edit' && <>
       {/* Meta */}
       <div className="px-3 py-2 space-y-2 border-b border-border">
         <div className="flex gap-2">
@@ -390,6 +414,7 @@ export function UIPageEditor({ pageId, spec, onBack }: Props) {
           </div>
         )}
       </div>
+      </>}
     </div>
   );
 }
