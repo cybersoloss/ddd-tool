@@ -236,11 +236,20 @@ export const useFlowStore = create<FlowState>((set, get) => ({
   },
 
   unloadFlow: () => {
-    if (saveTimer) clearTimeout(saveTimer);
-    const { projectPath, currentFlow } = get();
-    if (projectPath && currentFlow && currentFlow.flow) {
+    const { projectPath, currentFlow, domainId } = get();
+
+    // Flush any pending debounced save before clearing state.
+    // performSave takes explicit params so it's safe to fire after state is cleared.
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+      saveTimer = null;
+      if (currentFlow?.flow && domainId && projectPath) {
+        void performSave(currentFlow, domainId, projectPath);
+      }
+    }
+
+    if (projectPath && currentFlow?.flow) {
       cleanupAutoSave(projectPath, currentFlow.flow.id);
-      // Clear undo/redo stacks for this flow
       if (_clearFlowUndoFn) _clearFlowUndoFn(currentFlow.flow.id);
     }
     stopAutoSave();
