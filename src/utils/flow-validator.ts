@@ -91,6 +91,27 @@ function nodeTypeLabel(type: string): string {
   return type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// --- Helpers for parallel branch awareness ---
+
+/**
+ * Returns the set of node IDs that are direct branch children of a parallel node
+ * (i.e. targeted by a `branch-*` sourceHandle connection from any parallel node).
+ * These nodes are intentional leaf nodes — collected by the parallel `done` handle —
+ * and must be exempted from dead-end and branching-completeness checks.
+ */
+function getParallelBranchChildIds(flow: FlowDocument): Set<string> {
+  const ids = new Set<string>();
+  for (const node of getAllNodes(flow)) {
+    if (node.type !== 'parallel') continue;
+    for (const conn of node.connections ?? []) {
+      if (conn.sourceHandle?.startsWith('branch-')) {
+        ids.add(conn.targetNodeId);
+      }
+    }
+  }
+  return ids;
+}
+
 // --- Graph completeness checks ---
 
 function checkTriggerExists(flow: FlowDocument): ValidationIssue[] {
@@ -116,10 +137,15 @@ function checkAllPathsReachTerminal(flow: FlowDocument): ValidationIssue[] {
 
   // For each non-terminal node that has no outgoing connections and is reachable from trigger
   const reachable = bfsReachable(flow.trigger.id, adj);
+  // Parallel branch children are intentional leaf nodes — exempt from dead-end check
+  const parallelBranchChildIds = getParallelBranchChildIds(flow);
+
   for (const node of allNodes) {
     if (node.type === 'terminal') continue;
     // Loop and parallel nodes have special connection semantics — skip dead-end check
     if (node.type === 'loop' || node.type === 'parallel') continue;
+    // Parallel branch children are leaf nodes collected by the parallel done handle
+    if (parallelBranchChildIds.has(node.id)) continue;
     if (!reachable.has(node.id)) continue;
     const outgoing = adj.get(node.id) ?? [];
     if (outgoing.length === 0) {
@@ -592,7 +618,13 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
       case 'parallel': {
         const spec = (node.spec ?? {}) as ParallelSpec;
         const branches = Array.isArray(spec.branches) ? spec.branches : [];
-        if (branches.length < 2) {
+        // Also count actual branch connections — external YAML may have connections
+        // without spec.branches populated (created by /ddd-create or similar tools)
+        const branchConnCount = (node.connections ?? []).filter(
+          (c) => c.sourceHandle?.startsWith('branch-')
+        ).length;
+        const effectiveBranchCount = Math.max(branches.length, branchConnCount);
+        if (effectiveBranchCount < 2) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Parallel "${node.label}" must have at least 2 branches`,
             { nodeId: node.id, suggestion: 'Add at least 2 branches to the parallel node' }
@@ -894,8 +926,13 @@ function checkSubFlowReferenceExists(flow: FlowDocument, domainConfigs?: Record<
 function checkBranchingCompleteness(flow: FlowDocument): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const allNodes = getAllNodes(flow);
+  // Parallel branch children are leaf nodes — they don't need success/error handles
+  const parallelBranchChildIds = getParallelBranchChildIds(flow);
 
   for (const node of allNodes) {
+    // Skip nodes that are parallel branch children — they're collected, not continued
+    if (parallelBranchChildIds.has(node.id)) continue;
+
     const handles = new Set((node.connections ?? []).map((c) => c.sourceHandle));
     const label = node.label;
     const typeLabel = nodeTypeLabel(node.type);
@@ -1049,10 +1086,12 @@ function checkBranchingCompleteness(flow: FlowDocument): ValidationIssue[] {
         const spec = (node.spec ?? {}) as SmartRouterSpec;
         const rules = Array.isArray(spec.rules) ? spec.rules : [];
         for (const rule of rules) {
-          if (rule.id && !handles.has(rule.id)) {
+          // Source handle is built from rule.route, not rule.id
+          const routeHandle = rule.route ?? rule.id;
+          if (routeHandle && !handles.has(routeHandle)) {
             issues.push(issue('flow', 'warning', 'graph_completeness',
-              `Smart Router "${label}" is missing a connection for route "${rule.id}"`,
-              { nodeId: node.id, suggestion: `Connect the "${rule.id}" handle to a downstream node` }
+              `Smart Router "${label}" is missing a connection for route "${routeHandle}"`,
+              { nodeId: node.id, suggestion: `Connect the "${routeHandle}" handle to a downstream node` }
             ));
           }
         }
