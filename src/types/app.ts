@@ -30,6 +30,7 @@ export interface GlobalSettings {
   };
   editor: {
     gridSnap: boolean;
+    autoSave: boolean;
     autoSaveInterval: number;
     theme: 'light' | 'dark' | 'system';
     fontSize: number;

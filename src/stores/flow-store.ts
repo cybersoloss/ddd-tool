@@ -25,6 +25,7 @@ interface FlowState {
   projectPath: string | null;
   selectedNodeId: string | null;
   loading: boolean;
+  isDirty: boolean;
 
   loadFlow: (domainId: string, flowId: string, projectPath: string, flowType?: 'traditional' | 'agent') => Promise<void>;
   unloadFlow: () => void;
@@ -148,11 +149,15 @@ async function performSave(currentFlow: FlowDocument, domainId: string, projectP
 }
 
 function debouncedSave(state: FlowState) {
+  const autoSaveEnabled = _getAutoSaveEnabled ? _getAutoSaveEnabled() : true;
+  if (!autoSaveEnabled) return;
+
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
     const { currentFlow, domainId, projectPath } = state;
     if (!currentFlow || !currentFlow.flow || !domainId || !projectPath) return;
     await performSave(currentFlow, domainId, projectPath);
+    useFlowStore.setState({ isDirty: false });
   }, 500);
 }
 
@@ -160,6 +165,11 @@ function debouncedSave(state: FlowState) {
 let _getAutoSaveInterval: (() => number) | null = null;
 export function registerAutoSaveIntervalGetter(fn: () => number) {
   _getAutoSaveInterval = fn;
+}
+
+let _getAutoSaveEnabled: (() => boolean) | null = null;
+export function registerAutoSaveEnabledGetter(fn: () => boolean) {
+  _getAutoSaveEnabled = fn;
 }
 
 function startAutoSave(_projectPath: string, flowId: string) {
@@ -202,6 +212,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
   projectPath: null,
   selectedNodeId: null,
   loading: false,
+  isDirty: false,
 
   loadFlow: async (domainId, flowId, projectPath, flowType?) => {
     set({ loading: true, domainId, projectPath, selectedNodeId: null });
@@ -214,7 +225,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
         const content: string = await invoke('read_file', { path: flowPath });
         const raw = parse(content) as Record<string, unknown>;
         const doc = normalizeFlowDocument(raw, domainId, flowId, flowType);
-        set({ currentFlow: doc, loading: false });
+        set({ currentFlow: doc, loading: false, isDirty: false });
       } else {
         // Create default flow document
         const doc = createDefaultFlow(domainId, flowId, flowId, flowType);
@@ -223,12 +234,12 @@ export const useFlowStore = create<FlowState>((set, get) => ({
           path: flowPath,
           contents: stringify(doc),
         });
-        set({ currentFlow: doc, loading: false });
+        set({ currentFlow: doc, loading: false, isDirty: false });
       }
     } catch {
       // Fallback: create default
       const doc = createDefaultFlow(domainId, flowId, flowId, flowType);
-      set({ currentFlow: doc, loading: false });
+      set({ currentFlow: doc, loading: false, isDirty: false });
     }
 
     // Start auto-save interval
@@ -263,7 +274,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
   },
 
   restoreFlow: (doc) => {
-    set({ currentFlow: doc });
+    set({ currentFlow: doc, isDirty: true });
     debouncedSave(get());
   },
 
@@ -287,7 +298,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       ...currentFlow,
       nodes: [...currentFlow.nodes, node],
     };
-    set({ currentFlow: updated });
+    set({ currentFlow: updated, isDirty: true });
     debouncedSave(get());
   },
 
@@ -303,7 +314,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
         ...currentFlow,
         trigger: { ...currentFlow.trigger, position },
       };
-      set({ currentFlow: updated });
+      set({ currentFlow: updated, isDirty: true });
       debouncedSave(get());
       return;
     }
@@ -315,7 +326,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
         n.id === nodeId ? { ...n, position } : n
       ),
     };
-    set({ currentFlow: updated });
+    set({ currentFlow: updated, isDirty: true });
     debouncedSave(get());
   },
 
@@ -346,7 +357,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
           parentId: n.parentId === nodeId ? undefined : n.parentId,
         })),
     };
-    set({ currentFlow: updated, selectedNodeId: null });
+    set({ currentFlow: updated, selectedNodeId: null, isDirty: true });
     debouncedSave(get());
   },
 
@@ -370,7 +381,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
           connections: [...(currentFlow.trigger?.connections ?? []), conn],
         },
       };
-      set({ currentFlow: updated });
+      set({ currentFlow: updated, isDirty: true });
       debouncedSave(get());
       return;
     }
@@ -383,7 +394,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
           : n
       ),
     };
-    set({ currentFlow: updated });
+    set({ currentFlow: updated, isDirty: true });
     debouncedSave(get());
   },
 
@@ -404,7 +415,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
           connections: (currentFlow.trigger?.connections ?? []).filter(matchConn),
         },
       };
-      set({ currentFlow: updated });
+      set({ currentFlow: updated, isDirty: true });
       debouncedSave(get());
       return;
     }
@@ -417,7 +428,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
           : n
       ),
     };
-    set({ currentFlow: updated });
+    set({ currentFlow: updated, isDirty: true });
     debouncedSave(get());
   },
 
@@ -432,7 +443,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
         ...currentFlow,
         trigger: { ...currentFlow.trigger, spec },
       };
-      set({ currentFlow: updated });
+      set({ currentFlow: updated, isDirty: true });
       debouncedSave(get());
       return;
     }
@@ -443,7 +454,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
         n.id === nodeId ? { ...n, spec } : n
       ),
     };
-    set({ currentFlow: updated });
+    set({ currentFlow: updated, isDirty: true });
     debouncedSave(get());
   },
 
@@ -458,7 +469,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
         ...currentFlow,
         trigger: { ...currentFlow.trigger, label },
       };
-      set({ currentFlow: updated });
+      set({ currentFlow: updated, isDirty: true });
       debouncedSave(get());
       return;
     }
@@ -469,7 +480,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
         n.id === nodeId ? { ...n, label } : n
       ),
     };
-    set({ currentFlow: updated });
+    set({ currentFlow: updated, isDirty: true });
     debouncedSave(get());
   },
 
@@ -485,7 +496,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
         n.id === nodeId ? { ...n, parentId } : n
       ),
     };
-    set({ currentFlow: updated });
+    set({ currentFlow: updated, isDirty: true });
     debouncedSave(get());
   },
 
@@ -509,7 +520,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
         return pos ? { ...n, position: pos } : n;
       }),
     };
-    set({ currentFlow: updated });
+    set({ currentFlow: updated, isDirty: true });
     debouncedSave(get());
   },
 
@@ -521,5 +532,6 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     const { currentFlow, domainId, projectPath } = get();
     if (!currentFlow || !currentFlow.flow || !domainId || !projectPath) return;
     await performSave(currentFlow, domainId, projectPath);
+    set({ isDirty: false });
   },
 }));
