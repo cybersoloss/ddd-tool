@@ -33,6 +33,7 @@ export interface GlobalSettings {
     autoSaveInterval: number;
     theme: 'light' | 'dark' | 'system';
     fontSize: number;
+    saveNotification: boolean;
   };
   git: {
     autoCommitMessage: string;

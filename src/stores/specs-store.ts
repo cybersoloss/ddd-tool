@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 import { stringify, parse } from 'yaml';
 import { markWriting } from './write-guard';
+import { useChangeHistoryStore } from './change-history-store';
 import type {
   SchemaSpec,
   PagesConfig,
@@ -133,10 +134,19 @@ export const useSpecsStore = create<SpecsState>((set, get) => ({
       set((s) => ({ schemas: { ...s.schemas, [name]: schema } }));
     }
 
+    const contents = stringify(schema);
     markWriting();
     await invoke('write_file', {
       path: `${projectPath}/specs/schemas/${name}.yaml`,
-      contents: stringify(schema),
+      contents,
+    });
+    useChangeHistoryStore.getState().recordSave({
+      projectPath,
+      specFile: `specs/schemas/${name}.yaml`,
+      contents,
+      level: 'L1',
+      domain: null,
+      pillar: 'data',
     });
   },
 
@@ -174,20 +184,38 @@ export const useSpecsStore = create<SpecsState>((set, get) => ({
   savePagesConfig: async (projectPath, config) => {
     set({ pagesConfig: config });
 
+    const contents = stringify(config);
     markWriting();
     await invoke('write_file', {
       path: `${projectPath}/specs/ui/pages.yaml`,
-      contents: stringify(config),
+      contents,
+    });
+    useChangeHistoryStore.getState().recordSave({
+      projectPath,
+      specFile: 'specs/ui/pages.yaml',
+      contents,
+      level: 'L1',
+      domain: null,
+      pillar: 'interface',
     });
   },
 
   savePageSpec: async (projectPath, pageId, spec) => {
     set((s) => ({ pageSpecs: { ...s.pageSpecs, [pageId]: spec } }));
 
+    const contents = stringify(spec);
     markWriting();
     await invoke('write_file', {
       path: `${projectPath}/specs/ui/${pageId}.yaml`,
-      contents: stringify(spec),
+      contents,
+    });
+    useChangeHistoryStore.getState().recordSave({
+      projectPath,
+      specFile: `specs/ui/${pageId}.yaml`,
+      contents,
+      level: 'L1',
+      domain: null,
+      pillar: 'interface',
     });
   },
 
@@ -254,10 +282,19 @@ export const useSpecsStore = create<SpecsState>((set, get) => ({
   saveInfrastructure: async (projectPath, infra) => {
     set({ infrastructure: infra });
 
+    const contents = stringify(infra);
     markWriting();
     await invoke('write_file', {
       path: `${projectPath}/specs/infrastructure.yaml`,
-      contents: stringify(infra),
+      contents,
+    });
+    useChangeHistoryStore.getState().recordSave({
+      projectPath,
+      specFile: 'specs/infrastructure.yaml',
+      contents,
+      level: 'L1',
+      domain: null,
+      pillar: 'infrastructure',
     });
   },
 

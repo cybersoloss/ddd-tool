@@ -9,6 +9,7 @@ import { generateAutoLayout, generateFlowAutoLayout } from '../utils/domain-pars
 import { FLOW_TEMPLATES } from '../utils/flow-templates';
 import { markWriting } from './write-guard';
 import { useSpecsStore } from './specs-store';
+import { useChangeHistoryStore } from './change-history-store';
 
 interface ProjectState {
   projectPath: string | null;
@@ -144,6 +145,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       // Load supplementary specs (schemas, UI pages, infrastructure)
       useSpecsStore.getState().loadAll(path).catch(() => {
         // Silent — supplementary specs are optional
+      });
+
+      // Load change history
+      useChangeHistoryStore.getState().load(path).catch(() => {
+        // Silent — history is optional
       });
     } catch (e) {
       set({ loading: false, loaded: false });
@@ -591,10 +597,19 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     };
     set({ domainConfigs: { ...domainConfigs, [domainId]: updatedDomain } });
 
+    const contents = stringify(updatedDomain);
     markWriting();
     await invoke('write_file', {
       path: `${projectPath}/specs/domains/${domainId}/domain.yaml`,
-      contents: stringify(updatedDomain),
+      contents,
+    });
+    useChangeHistoryStore.getState().recordSave({
+      projectPath,
+      specFile: `specs/domains/${domainId}/domain.yaml`,
+      contents,
+      level: 'L2',
+      domain: domainId,
+      pillar: null,
     });
   },
 
@@ -610,10 +625,19 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const updatedDomain: DomainConfig = { ...domain, [key]: updatedList };
     set({ domainConfigs: { ...domainConfigs, [domainId]: updatedDomain } });
 
+    const contents = stringify(updatedDomain);
     markWriting();
     await invoke('write_file', {
       path: `${projectPath}/specs/domains/${domainId}/domain.yaml`,
-      contents: stringify(updatedDomain),
+      contents,
+    });
+    useChangeHistoryStore.getState().recordSave({
+      projectPath,
+      specFile: `specs/domains/${domainId}/domain.yaml`,
+      contents,
+      level: 'L2',
+      domain: domainId,
+      pillar: null,
     });
   },
 
@@ -630,10 +654,19 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     };
     set({ domainConfigs: { ...domainConfigs, [domainId]: updatedDomain } });
 
+    const contents = stringify(updatedDomain);
     markWriting();
     await invoke('write_file', {
       path: `${projectPath}/specs/domains/${domainId}/domain.yaml`,
-      contents: stringify(updatedDomain),
+      contents,
+    });
+    useChangeHistoryStore.getState().recordSave({
+      projectPath,
+      specFile: `specs/domains/${domainId}/domain.yaml`,
+      contents,
+      level: 'L2',
+      domain: domainId,
+      pillar: null,
     });
   },
 
@@ -1016,5 +1049,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       loaded: false,
     });
     useSpecsStore.getState().reset();
+    useChangeHistoryStore.getState().reset();
   },
 }));

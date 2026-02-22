@@ -41,6 +41,7 @@ export const DEFAULT_SETTINGS: GlobalSettings = {
     autoSaveInterval: 30,
     theme: 'dark',
     fontSize: 14,
+    saveNotification: true,
   },
   git: {
     autoCommitMessage: 'DDD: {action} in {flow_id}',

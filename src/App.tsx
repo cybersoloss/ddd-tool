@@ -5,6 +5,7 @@ import { ProjectLauncher } from './components/ProjectLauncher/ProjectLauncher';
 import { FirstRunWizard } from './components/FirstRun/FirstRunWizard';
 import { AppShell } from './AppShell';
 import { ErrorToasts } from './components/shared/ErrorToasts';
+import { SaveNotification } from './components/shared/SaveNotification';
 
 // Side-effect import: registers undo push callback with flow-store
 import './stores/undo-store';
@@ -37,6 +38,7 @@ function App() {
       {view === 'first-run' && <FirstRunWizard />}
       {view === 'project' && <AppShell />}
       <ErrorToasts />
+      <SaveNotification />
     </>
   );
 }

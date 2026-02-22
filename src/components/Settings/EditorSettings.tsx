@@ -82,6 +82,16 @@ export function EditorSettings() {
           Snap nodes to grid
         </span>
       </label>
+
+      <label className="flex items-center gap-2 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={editor.saveNotification ?? true}
+          onChange={(e) => updateEditor({ saveNotification: e.target.checked })}
+          className="w-4 h-4 rounded accent-accent"
+        />
+        <span className="text-sm text-text-secondary">Show save notification</span>
+      </label>
     </div>
   );
 }

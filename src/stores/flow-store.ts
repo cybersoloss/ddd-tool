@@ -12,6 +12,7 @@ import type {
 import type { Position } from '../types/sheet';
 import { computeDagLayout } from '../utils/auto-layout';
 import { defaultSpec, defaultLabel, normalizeFlowDocument } from '../utils/flow-normalizer';
+import { useChangeHistoryStore } from './change-history-store';
 
 // --- Skip-undo flag (used by undo-store to prevent loops) ---
 let _skipUndo = false;
@@ -121,11 +122,23 @@ function debouncedSave(state: FlowState) {
       metadata: { ...(currentFlow.metadata ?? {}), modified: new Date().toISOString() },
     };
 
+    const flowId = currentFlow.flow?.id ?? '';
+    const contents = stringify(updated);
+
     try {
       markWriting();
       await invoke('write_file', {
-        path: getFlowPath(projectPath, domainId, currentFlow.flow?.id ?? ''),
-        contents: stringify(updated),
+        path: getFlowPath(projectPath, domainId, flowId),
+        contents,
+      });
+      useChangeHistoryStore.getState().recordSave({
+        projectPath,
+        specFile: `specs/domains/${domainId}/flows/${flowId}.yaml`,
+        contents,
+        level: 'L3',
+        domain: domainId,
+        flow: flowId,
+        pillar: 'logic',
       });
     } catch {
       // Silent — save is best-effort
