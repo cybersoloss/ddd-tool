@@ -146,6 +146,9 @@ export function SystemMap() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!selectedDomainId || isLocked) return;
       if (pendingDelete || showAddDialog) return;
+      const target = e.target as HTMLElement;
+      const tag = target.tagName.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || target.isContentEditable) return;
       if (e.key === 'Backspace' || e.key === 'Delete') {
         e.preventDefault();
         setPendingDelete(selectedDomainId);

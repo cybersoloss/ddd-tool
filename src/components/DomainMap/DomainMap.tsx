@@ -146,7 +146,10 @@ export function DomainMap() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!selectedFlowId || isLocked) return;
-      if (showAddDialog || pendingDelete) return;
+      if (showAddDialog || pendingDelete || renamingFlowId) return;
+      const target = e.target as HTMLElement;
+      const tag = target.tagName.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || target.isContentEditable) return;
       if (e.key === 'Backspace' || e.key === 'Delete') {
         e.preventDefault();
         setPendingDelete(selectedFlowId);
@@ -154,7 +157,7 @@ export function DomainMap() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedFlowId, showAddDialog, pendingDelete, isLocked]);
+  }, [selectedFlowId, showAddDialog, pendingDelete, renamingFlowId, isLocked]);
 
   const mapData = useMemo(() => {
     if (!domainId || !domainConfig) return null;
