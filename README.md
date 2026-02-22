@@ -156,6 +156,19 @@ npm run test:specs -- ~/dev/DDD/examples/nexus
 
 Expected: `FULLY_COMPATIBLE`, 0 errors, 90+ quality score. Any regression here means a framework change broke the tool.
 
+## Four Pillars
+
+Every DDD project covers four foundational pillars of software. The tool lets you view and edit specs across all four — changes propagate to code via `/ddd-implement`.
+
+| Pillar | Spec location | What `/ddd-implement` generates |
+|--------|--------------|--------------------------------|
+| **Logic** | `specs/domains/*/flows/*.yaml` | Services, route handlers, job processors |
+| **Data** | `specs/schemas/*.yaml` | DB models, migrations, data access layer |
+| **Interface** | `specs/ui/*.yaml` | Frontend pages, components, forms |
+| **Infrastructure** | `specs/infrastructure.yaml` | Docker config, startup scripts, deployment |
+
+After editing specs in the tool, run `/ddd-sync` to detect what drifted, then `/ddd-implement` to regenerate the affected code. No pillar is silently skipped.
+
 ## How It Fits Together
 
 ```
