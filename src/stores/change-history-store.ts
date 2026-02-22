@@ -41,10 +41,13 @@ export const useChangeHistoryStore = create<ChangeHistoryState>((set, get) => ({
       const parsed = parse(content) as { changes?: ChangeHistoryEntry[] };
       const entries = parsed.changes ?? [];
 
-      // Rebuild lastChecksumByFile from all entries (last write wins)
+      // Rebuild lastChecksumByFile from pending entries only.
+      // Implemented entries don't block future saves of the same content.
       const lastChecksumByFile: Record<string, string> = {};
       for (const entry of entries) {
-        lastChecksumByFile[entry.spec_file] = entry.spec_checksum;
+        if (entry.status === 'pending_implement') {
+          lastChecksumByFile[entry.spec_file] = entry.spec_checksum;
+        }
       }
 
       set({ entries, lastChecksumByFile, notification: [] });

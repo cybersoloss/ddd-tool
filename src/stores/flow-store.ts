@@ -112,6 +112,12 @@ function getAutoSavePath(projectPath: string, flowId: string): string {
   return `${projectPath}/.ddd/autosave/${flowId}.yaml`;
 }
 
+function detectFlowPillar(flow: FlowDocument): 'logic' | 'data' | 'interface' | 'infrastructure' {
+  const nodeTypes = new Set(flow.nodes.map((n) => n.type));
+  if (nodeTypes.has('data_store')) return 'data';
+  return 'logic';
+}
+
 async function performSave(currentFlow: FlowDocument, domainId: string, projectPath: string) {
   const updated: FlowDocument = {
     ...currentFlow,
@@ -134,7 +140,7 @@ async function performSave(currentFlow: FlowDocument, domainId: string, projectP
       level: 'L3',
       domain: domainId,
       flow: flowId,
-      pillar: 'logic',
+      pillar: detectFlowPillar(currentFlow),
     });
   } catch {
     // Silent — save is best-effort

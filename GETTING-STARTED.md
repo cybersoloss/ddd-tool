@@ -10,11 +10,12 @@ How to use the Design Driven Development Tool to design software visually as flo
 4. [Level 1: System Map](#level-1-system-map)
 5. [Level 2: Domain Map](#level-2-domain-map)
 6. [Level 3: Flow Canvas](#level-3-flow-canvas)
-7. [Node Types & Specifications](#node-types--specifications)
-8. [Keyboard Shortcuts](#keyboard-shortcuts)
-9. [Git Integration](#git-integration)
-10. [Validation & Error Checking](#validation--error-checking)
-11. [Settings](#settings)
+7. [After Editing in the Canvas — Back to Claude Code](#after-editing-in-the-canvas--back-to-claude-code)
+8. [Node Types & Specifications](#node-types--specifications)
+9. [Keyboard Shortcuts](#keyboard-shortcuts)
+10. [Git Integration](#git-integration)
+11. [Validation & Error Checking](#validation--error-checking)
+12. [Settings](#settings)
 
 ---
 
@@ -369,6 +370,50 @@ This is the core feedback loop: edit specs visually → implement → code evolv
 
 ---
 
+## After Editing in the Canvas — Back to Claude Code
+
+When you save changes in the canvas, DDD Tool writes the changed spec files to disk and shows a notification with the exact commands to run in Claude Code.
+
+**The iterative loop:**
+
+1. Edit flows, nodes, or domain structure in the canvas
+2. Save — the notification panel appears (bottom-right) with the commands to run
+3. Copy the commands and paste into your Claude Code session:
+   ```
+   /ddd-implement
+   /ddd-test
+   ```
+4. `/ddd-implement` reads `.ddd/change-history.yaml` and implements only the specs that changed — no `--all` needed
+5. `/ddd-test` runs tests for the code that was just implemented
+6. Repeat — go back to the canvas, make more changes
+
+**Why no --all?**
+
+DDD Tool tracks every spec file it saves in `.ddd/change-history.yaml`. `/ddd-implement` reads the pending entries and scopes automatically to only what changed. A project with 50 flows runs the same fast loop as one with 3.
+
+**Escape hatches (if you need them):**
+
+| Command | When to use |
+|---------|------------|
+| `/ddd-implement --all` | Force full re-implementation of everything |
+| `/ddd-implement auth/user-login` | Implement one specific flow by name |
+| `/ddd-implement --ignore-history` | Skip change-history, show interactive list |
+| `/ddd-sync` | If you edited YAML files directly outside ddd-tool |
+
+**Domain structure changes (L1):**
+
+If you add/remove a domain or change domain-level event wiring, the notification shows three commands instead of two:
+```
+/ddd-sync
+/ddd-implement
+/ddd-test
+```
+Run `/ddd-sync` first so it re-scans the domain structure before implementing.
+
+**Save shortcut:** Press **Cmd+S** at any time to flush the auto-save immediately and record the change. The notification appears as soon as the file is written.
+
+---
+
 ## Node Types & Specifications
 
 Each node type has specific configuration options in the Spec Panel:
@@ -429,6 +474,7 @@ Each node type has specific configuration options in the Spec Panel:
 ### Editing
 | Shortcut | Action |
 |----------|--------|
+| **Cmd+S** | Save current flow immediately (flush auto-save) |
 | **Cmd+Z** | Undo |
 | **Cmd+Shift+Z** or **Cmd+Y** | Redo |
 | **Backspace** / **Delete** | Delete selected node or domain |

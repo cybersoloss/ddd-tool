@@ -4,58 +4,22 @@ import { useChangeHistoryStore } from '../../stores/change-history-store';
 import { useAppStore } from '../../stores/app-store';
 import type { ChangeHistoryEntry } from '../../types/change-history';
 
+// Spec: always /ddd-implement + /ddd-test.
+// Exception: if the ONLY changes are L1 (domain.yaml, not flow files), prepend /ddd-sync.
 function generateCommands(entries: ChangeHistoryEntry[]): string[] {
-  const cmds = new Set<string>();
+  const onlyL1 = entries.length > 0 && entries.every((e) => e.scope.level === 'L1');
+  if (onlyL1) return ['/ddd-sync', '/ddd-implement', '/ddd-test'];
+  return ['/ddd-implement', '/ddd-test'];
+}
 
-  // Non-logic pillar changes (data / interface / infrastructure) → --all
-  const hasPillarChanges = entries.some(
-    (e) =>
-      e.scope.pillar === 'data' ||
-      e.scope.pillar === 'interface' ||
-      e.scope.pillar === 'infrastructure'
-  );
-  if (hasPillarChanges) cmds.add('/ddd-implement --all');
-
-  // L3 logic flow changes
-  const l3Entries = entries.filter(
-    (e) => e.scope.level === 'L3' && e.scope.pillar === 'logic'
-  );
-  const l3Domains = [
-    ...new Set(l3Entries.map((e) => e.scope.domain).filter(Boolean)),
-  ] as string[];
-
-  if (l3Domains.length >= 3) {
-    cmds.add('/ddd-implement --all');
-  } else {
-    for (const domain of l3Domains) {
-      const domainFlows = l3Entries.filter((e) => e.scope.domain === domain);
-      if (domainFlows.length >= 3) {
-        cmds.add(`/ddd-implement ${domain}`);
-      } else {
-        for (const entry of domainFlows) {
-          if (entry.scope.flow) {
-            cmds.add(`/ddd-implement ${domain}/${entry.scope.flow}`);
-          }
-        }
-      }
-    }
-  }
-
-  // L2 domain config changes
-  const l2Entries = entries.filter((e) => e.scope.level === 'L2');
-  for (const entry of l2Entries) {
-    if (entry.scope.domain) cmds.add(`/ddd-implement ${entry.scope.domain}`);
-  }
-
-  // L1 non-pillar entries (domain.yaml structural changes)
-  const l1NoPillar = entries.filter(
-    (e) => e.scope.level === 'L1' && !e.scope.pillar
-  );
-  if (l1NoPillar.length > 0) cmds.add('/ddd-sync');
-
-  const result = [...cmds];
-  result.push('/ddd-test --all');
-  return result;
+function scopeLabel(entry: ChangeHistoryEntry): string {
+  const level = `[${entry.scope.level}]`;
+  const parts: string[] = [];
+  if (entry.scope.domain) parts.push(entry.scope.domain);
+  if (entry.scope.flow) parts.push(entry.scope.flow);
+  const location = parts.join(' / ') || entry.spec_file;
+  const pillar = entry.scope.pillar ? `  (${entry.scope.pillar})` : '';
+  return `${level} ${location}${pillar}`;
 }
 
 export function SaveNotification() {
@@ -83,10 +47,11 @@ export function SaveNotification() {
     return clearTimer;
   }, [notification, startTimer, clearTimer]);
 
-  // Undefined (old settings without the key) should default to showing
+  // Undefined (old settings without the key) defaults to showing
   if (saveNotificationEnabled === false || notification.length === 0) return null;
 
   const cmds = generateCommands(notification);
+  const count = notification.length;
 
   return (
     <div
@@ -95,11 +60,12 @@ export function SaveNotification() {
       onMouseLeave={startTimer}
     >
       <div className="card border border-accent/50 bg-surface-overlay shadow-lg overflow-hidden">
+        {/* Header */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle">
           <div className="flex items-center gap-2">
             <Terminal className="w-4 h-4 text-accent shrink-0" />
             <span className="text-sm font-medium text-text-primary">
-              {notification.length} spec{notification.length > 1 ? 's' : ''} saved
+              Saved — {count} change{count > 1 ? 's' : ''}
             </span>
           </div>
           <button onClick={dismissNotification} className="btn-icon -mr-1">
@@ -107,16 +73,23 @@ export function SaveNotification() {
           </button>
         </div>
 
-        <div className="px-3 py-2 space-y-0.5 border-b border-border-subtle max-h-24 overflow-y-auto">
+        {/* Changed files */}
+        <div className="px-3 py-2 space-y-1.5 border-b border-border-subtle max-h-32 overflow-y-auto">
           {notification.map((entry) => (
-            <div key={entry.id} className="text-xs text-text-muted font-mono truncate">
-              {entry.spec_file}
+            <div key={entry.id}>
+              <div className="text-xs text-text-primary font-mono">
+                ● {scopeLabel(entry)}
+              </div>
+              <div className="text-[11px] text-text-muted font-mono ml-3 truncate">
+                {entry.spec_file}
+              </div>
             </div>
           ))}
         </div>
 
+        {/* Commands */}
         <div className="px-3 pt-2 pb-1">
-          <p className="text-xs text-text-muted mb-1">Run next:</p>
+          <p className="text-xs text-text-muted mb-1.5">Run in Claude Code:</p>
           <div className="space-y-0.5">
             {cmds.map((cmd, i) => (
               <div key={i} className="text-xs text-accent font-mono">
@@ -126,6 +99,7 @@ export function SaveNotification() {
           </div>
         </div>
 
+        {/* Actions */}
         <div className="flex gap-2 justify-end px-3 py-2">
           <button
             className="btn-ghost text-xs flex items-center gap-1"
