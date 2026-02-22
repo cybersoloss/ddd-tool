@@ -66,6 +66,15 @@ export function Breadcrumb() {
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      // Cmd+S — flush debounce and save current flow immediately (global, works from text inputs too)
+      if (e.key === 's' && (e.metaKey || e.ctrlKey)) {
+        if (useFlowStore.getState().currentFlow) {
+          e.preventDefault();
+          useFlowStore.getState().saveNow();
+        }
+        return;
+      }
+
       const target = e.target as HTMLElement;
       const tag = target.tagName.toLowerCase();
       if (tag === 'input' || tag === 'textarea' || target.isContentEditable) {

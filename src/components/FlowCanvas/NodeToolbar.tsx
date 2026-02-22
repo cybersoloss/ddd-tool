@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useReactFlow } from '@xyflow/react';
-import { FormInput, Cog, GitFork, Square, RotateCw, Shield, Hand, Network, GitBranch, ArrowLeftRight, Box, Undo2, Redo2, Database, ExternalLink, Zap, Repeat, Columns, GitMerge, BrainCircuit, Copy, Check, RotateCcw, Clock, HardDrive, Shuffle, Filter, FileText, Lock, Layers, ShieldCheck, LayoutGrid, Settings, Terminal } from 'lucide-react';
+import { FormInput, Cog, GitFork, Square, RotateCw, Shield, Hand, Network, GitBranch, ArrowLeftRight, Box, Undo2, Redo2, Database, ExternalLink, Zap, Repeat, Columns, GitMerge, BrainCircuit, Copy, Check, RotateCcw, Clock, HardDrive, Shuffle, Filter, FileText, Lock, Layers, ShieldCheck, LayoutGrid, Settings, Terminal, Save } from 'lucide-react';
 import type { DddNodeType } from '../../types/flow';
 import { useSheetStore } from '../../stores/sheet-store';
 import { useUndoStore } from '../../stores/undo-store';
@@ -77,6 +77,7 @@ export function NodeToolbar({ pendingType, onSelectType, flowType = 'traditional
 
   const [copied, setCopied] = useState(false);
   const [reloading, setReloading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const handleCopyCommand = useCallback(() => {
     if (!current.domainId || !current.flowId) return;
@@ -98,6 +99,13 @@ export function NodeToolbar({ pendingType, onSelectType, flowType = 'traditional
       setTimeout(() => setReloading(false), 600);
     }
   }, [reloadProject]);
+
+  const saveNow = useFlowStore((s) => s.saveNow);
+  const handleSave = useCallback(async () => {
+    await saveNow();
+    setSaving(true);
+    setTimeout(() => setSaving(false), 1500);
+  }, [saveNow]);
 
   return (
     <div className="absolute left-3 top-3 z-10 bg-bg-secondary/90 backdrop-blur border border-border rounded-lg p-2 space-y-1">
@@ -128,6 +136,14 @@ export function NodeToolbar({ pendingType, onSelectType, flowType = 'traditional
       <div className="w-full h-px bg-border my-1" />
       <ValidationBadge />
       <div className="w-full h-px bg-border my-1" />
+      <div
+        className="flex items-center gap-2 px-3 py-2 rounded cursor-pointer transition-colors hover:bg-bg-hover"
+        onClick={handleSave}
+        title="Save now (Cmd+S)"
+      >
+        {saving ? <Check className="w-4 h-4 text-green-400" /> : <Save className="w-4 h-4 text-text-secondary" />}
+        <span className="text-sm text-text-primary">{saving ? 'Saved!' : 'Save'}</span>
+      </div>
       <div
         className="flex items-center gap-2 px-3 py-2 rounded cursor-pointer transition-colors hover:bg-bg-hover"
         onClick={handleCopyCommand}

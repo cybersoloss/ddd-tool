@@ -39,6 +39,7 @@ interface FlowState {
   updateNodeLabel: (nodeId: string, label: string) => void;
   reparentNode: (nodeId: string, parentId: string | undefined) => void;
   autoLayout: () => void;
+  saveNow: () => Promise<void>;
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -111,38 +112,41 @@ function getAutoSavePath(projectPath: string, flowId: string): string {
   return `${projectPath}/.ddd/autosave/${flowId}.yaml`;
 }
 
+async function performSave(currentFlow: FlowDocument, domainId: string, projectPath: string) {
+  const updated: FlowDocument = {
+    ...currentFlow,
+    metadata: { ...(currentFlow.metadata ?? {}), modified: new Date().toISOString() },
+  };
+
+  const flowId = currentFlow.flow?.id ?? '';
+  const contents = stringify(updated);
+
+  try {
+    markWriting();
+    await invoke('write_file', {
+      path: getFlowPath(projectPath, domainId, flowId),
+      contents,
+    });
+    useChangeHistoryStore.getState().recordSave({
+      projectPath,
+      specFile: `specs/domains/${domainId}/flows/${flowId}.yaml`,
+      contents,
+      level: 'L3',
+      domain: domainId,
+      flow: flowId,
+      pillar: 'logic',
+    });
+  } catch {
+    // Silent — save is best-effort
+  }
+}
+
 function debouncedSave(state: FlowState) {
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
     const { currentFlow, domainId, projectPath } = state;
     if (!currentFlow || !currentFlow.flow || !domainId || !projectPath) return;
-
-    const updated: FlowDocument = {
-      ...currentFlow,
-      metadata: { ...(currentFlow.metadata ?? {}), modified: new Date().toISOString() },
-    };
-
-    const flowId = currentFlow.flow?.id ?? '';
-    const contents = stringify(updated);
-
-    try {
-      markWriting();
-      await invoke('write_file', {
-        path: getFlowPath(projectPath, domainId, flowId),
-        contents,
-      });
-      useChangeHistoryStore.getState().recordSave({
-        projectPath,
-        specFile: `specs/domains/${domainId}/flows/${flowId}.yaml`,
-        contents,
-        level: 'L3',
-        domain: domainId,
-        flow: flowId,
-        pillar: 'logic',
-      });
-    } catch {
-      // Silent — save is best-effort
-    }
+    await performSave(currentFlow, domainId, projectPath);
   }, 500);
 }
 
@@ -492,5 +496,15 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     };
     set({ currentFlow: updated });
     debouncedSave(get());
+  },
+
+  saveNow: async () => {
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+      saveTimer = null;
+    }
+    const { currentFlow, domainId, projectPath } = get();
+    if (!currentFlow || !currentFlow.flow || !domainId || !projectPath) return;
+    await performSave(currentFlow, domainId, projectPath);
   },
 }));
