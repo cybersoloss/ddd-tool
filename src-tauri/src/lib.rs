@@ -15,6 +15,7 @@ pub fn run() {
             commands::file::delete_directory,
             commands::file::list_directory,
             commands::file::append_log,
+            commands::file::rename_path,
             commands::project::git_init,
             commands::project::git_add_all,
             commands::project::git_commit,

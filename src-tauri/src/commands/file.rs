@@ -93,6 +93,11 @@ pub fn append_log(path: String, line: String, max_bytes: u64, max_files: u32) ->
 }
 
 #[tauri::command]
+pub fn rename_path(from: String, to: String) -> Result<(), String> {
+    fs::rename(&from, &to).map_err(|e| format!("Failed to rename {} to {}: {}", from, to, e))
+}
+
+#[tauri::command]
 pub fn list_directory(path: String) -> Vec<String> {
     let p = Path::new(&path);
     if !p.exists() {

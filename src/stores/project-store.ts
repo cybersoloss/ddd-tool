@@ -463,15 +463,30 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const domain = domainConfigs[domainId];
     if (!domain) throw new Error(`Domain ${domainId} not found`);
 
-    const updatedDomain = { ...domain, name: newName };
-    const updatedConfigs = { ...domainConfigs, [domainId]: updatedDomain };
-    set({ domainConfigs: updatedConfigs });
+    const newDomainId = newName.toLowerCase().replace(/\s+/g, '-');
+    const oldDirPath = `${projectPath}/specs/domains/${domainId}`;
+    const newDirPath = `${projectPath}/specs/domains/${newDomainId}`;
 
-    // Write updated domain.yaml
+    // Rename the directory on disk (this is the primary fix — old code left the folder as-is)
+    if (domainId !== newDomainId) {
+      await invoke('rename_path', { from: oldDirPath, to: newDirPath });
+    }
+
+    const updatedDomain = { ...domain, name: newName };
+
+    // Write updated domain.yaml at new path
     await invoke('write_file', {
-      path: `${projectPath}/specs/domains/${domainId}/domain.yaml`,
+      path: `${newDirPath}/domain.yaml`,
       contents: stringify(updatedDomain),
     });
+
+    // Update in-memory state: move key from old ID to new ID
+    const updatedConfigs = { ...domainConfigs };
+    if (domainId !== newDomainId) {
+      delete updatedConfigs[domainId];
+    }
+    updatedConfigs[newDomainId] = updatedDomain;
+    set({ domainConfigs: updatedConfigs });
 
     // Update ddd-project.json
     try {
