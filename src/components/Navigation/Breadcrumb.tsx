@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ChevronRight, ArrowLeft, GitBranch, Map, Lock, Unlock, Search, MessageSquare, BookOpen } from 'lucide-react';
 import { useSheetStore } from '../../stores/sheet-store';
 import { useProjectStore } from '../../stores/project-store';
@@ -9,6 +9,7 @@ import { useImplementationStore } from '../../stores/implementation-store';
 import { useUndoStore } from '../../stores/undo-store';
 import { useFlowStore } from '../../stores/flow-store';
 import { useUiStore } from '../../stores/ui-store';
+import { UnsavedChangesDialog } from '../shared/UnsavedChangesDialog';
 import { ValidationBadge } from '../Validation/ValidationBadge';
 import type { BreadcrumbSegment } from '../../types/sheet';
 
@@ -18,6 +19,8 @@ export function Breadcrumb() {
   const navigateUp = useSheetStore((s) => s.navigateUp);
   const domainConfigs = useProjectStore((s) => s.domainConfigs);
   const setView = useAppStore((s) => s.setView);
+  const isDirty = useFlowStore((s) => s.isDirty);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const gitBranch = useGitStore((s) => s.branch);
   const gitPanelOpen = useGitStore((s) => s.panelOpen);
   const gitStaged = useGitStore((s) => s.staged);
@@ -34,6 +37,14 @@ export function Breadcrumb() {
   const syncScore = useImplementationStore((s) => s.syncScore);
   const pendingAnnotations = syncScore?.annotated ?? 0;
   const totalChanges = gitStaged.length + gitUnstaged.length + gitUntracked.length;
+
+  const requestGoToLauncher = () => {
+    if (isDirty) {
+      setShowUnsavedDialog(true);
+    } else {
+      setView('launcher');
+    }
+  };
 
   const segments = useMemo(() => {
     const result: BreadcrumbSegment[] = [
@@ -137,7 +148,7 @@ export function Breadcrumb() {
         if (useValidationStore.getState().panelOpen) return;
         e.preventDefault();
         if (current.level === 'system') {
-          setView('launcher');
+          requestGoToLauncher();
         } else {
           navigateUp();
         }
@@ -146,13 +157,28 @@ export function Breadcrumb() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [current.level, navigateUp, setView, toggleMinimap, toggleLock]);
+  }, [current.level, navigateUp, setView, toggleMinimap, toggleLock, isDirty]);
 
   return (
+    <>
+    {showUnsavedDialog && (
+      <UnsavedChangesDialog
+        onSave={async () => {
+          await useFlowStore.getState().saveNow();
+          setShowUnsavedDialog(false);
+          setView('launcher');
+        }}
+        onDiscard={() => {
+          setShowUnsavedDialog(false);
+          setView('launcher');
+        }}
+        onCancel={() => setShowUnsavedDialog(false)}
+      />
+    )}
     <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-bg-secondary min-h-[44px]">
       <button
         className="btn-ghost text-xs px-2 py-1"
-        onClick={() => setView('launcher')}
+        onClick={requestGoToLauncher}
       >
         <ArrowLeft className="w-3.5 h-3.5" />
         Launcher
@@ -169,8 +195,14 @@ export function Breadcrumb() {
                 <ChevronRight className="w-3.5 h-3.5 text-text-muted" />
               )}
               {isLast ? (
-                <span className="text-sm font-medium text-text-primary px-1.5 py-0.5">
+                <span className="flex items-center gap-1 text-sm font-medium text-text-primary px-1.5 py-0.5">
                   {segment.label}
+                  {isDirty && (
+                    <span
+                      className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"
+                      title="Unsaved changes"
+                    />
+                  )}
                 </span>
               ) : (
                 <button
@@ -271,5 +303,6 @@ export function Breadcrumb() {
         )}
       </button>
     </div>
+    </>
   );
 }

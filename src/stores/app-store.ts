@@ -38,6 +38,7 @@ export const DEFAULT_SETTINGS: GlobalSettings = {
   },
   editor: {
     gridSnap: true,
+    autoSave: false,
     autoSaveInterval: 30,
     theme: 'dark',
     fontSize: 14,

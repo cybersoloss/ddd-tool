@@ -54,22 +54,33 @@ export function EditorSettings() {
         />
       </div>
 
-      <div>
-        <label className="label">Auto-save Interval (seconds)</label>
+      <label className="flex items-center gap-2 cursor-pointer">
         <input
-          type="number"
-          className="input w-24"
-          min={0}
-          max={300}
-          value={editor.autoSaveInterval}
-          onChange={(e) =>
-            updateEditor({
-              autoSaveInterval: parseInt(e.target.value, 10) || 0,
-            })
-          }
+          type="checkbox"
+          checked={editor.autoSave ?? false}
+          onChange={(e) => updateEditor({ autoSave: e.target.checked })}
+          className="w-4 h-4 rounded accent-accent"
         />
-        <p className="text-xs text-text-muted mt-1">0 to disable auto-save</p>
-      </div>
+        <span className="text-sm text-text-secondary">Enable auto-save</span>
+      </label>
+
+      {editor.autoSave && (
+        <div>
+          <label className="label">Auto-save Interval (seconds)</label>
+          <input
+            type="number"
+            className="input w-24"
+            min={5}
+            max={300}
+            value={editor.autoSaveInterval}
+            onChange={(e) =>
+              updateEditor({
+                autoSaveInterval: parseInt(e.target.value, 10) || 30,
+              })
+            }
+          />
+        </div>
+      )}
 
       <label className="flex items-center gap-2 cursor-pointer">
         <input

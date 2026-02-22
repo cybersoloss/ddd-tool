@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useAppStore } from './stores/app-store';
-import { registerAutoSaveIntervalGetter } from './stores/flow-store';
+import { registerAutoSaveIntervalGetter, registerAutoSaveEnabledGetter } from './stores/flow-store';
 import { ProjectLauncher } from './components/ProjectLauncher/ProjectLauncher';
 import { FirstRunWizard } from './components/FirstRun/FirstRunWizard';
 import { AppShell } from './AppShell';
@@ -10,9 +10,12 @@ import { SaveNotification } from './components/shared/SaveNotification';
 // Side-effect import: registers undo push callback with flow-store
 import './stores/undo-store';
 
-// Register auto-save interval getter
+// Register auto-save getters
 registerAutoSaveIntervalGetter(() =>
   useAppStore.getState().settings.editor.autoSaveInterval || 30
+);
+registerAutoSaveEnabledGetter(() =>
+  useAppStore.getState().settings.editor.autoSave ?? false
 );
 
 function App() {
