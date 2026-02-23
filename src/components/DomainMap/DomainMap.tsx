@@ -285,7 +285,7 @@ export function DomainMap() {
         const configs = useProjectStore.getState().domainConfigs;
         const domain = configs[domainId!];
         if (!domain) { setConnecting(null); return; }
-        const flowLayout = domain.layout.flows;
+        const flowLayout = domain.layout?.flows ?? {};
 
         let targetId: string | null = null;
         for (const f of domain.flows) {
@@ -318,7 +318,7 @@ export function DomainMap() {
     const configs = useProjectStore.getState().domainConfigs;
     const domain = configs[domainId];
     if (domain) {
-      const flowPositions = Object.values(domain.layout.flows);
+      const flowPositions = Object.values(domain.layout?.flows ?? {});
       const portalPositions = Object.values(domain.layout.portals ?? {});
       const allPositions = [...flowPositions, ...portalPositions];
       if (allPositions.length > 0) {
