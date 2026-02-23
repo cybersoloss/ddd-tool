@@ -249,17 +249,39 @@ function checkDecisionBranches(flow: FlowDocument): ValidationIssue[] {
     if (node.type !== 'decision') continue;
 
     const handles = new Set((node.connections ?? []).map((c) => c.sourceHandle));
-    if (!handles.has('true')) {
-      issues.push(issue('flow', 'error', 'graph_completeness',
-        `Decision "${node.label}" is missing a "Yes" (true) branch connection`,
-        { nodeId: node.id, suggestion: 'Connect the "Yes" handle to a downstream node' }
-      ));
-    }
-    if (!handles.has('false')) {
-      issues.push(issue('flow', 'error', 'graph_completeness',
-        `Decision "${node.label}" is missing a "No" (false) branch connection`,
-        { nodeId: node.id, suggestion: 'Connect the "No" handle to a downstream node' }
-      ));
+    const spec = (node.spec ?? {}) as DecisionSpec & Record<string, unknown>;
+
+    // Multi-branch decision: uses a `branches` array where each branch has a label.
+    // External YAML (/ddd-create) may encode decisions this way with arbitrary branch names.
+    const branches = Array.isArray(spec.branches) ? spec.branches as Array<Record<string, unknown>> : null;
+    if (branches && branches.length >= 2) {
+      for (const branch of branches) {
+        const branchLabel = branch.label as string | undefined;
+        if (branchLabel && !handles.has(branchLabel)) {
+          issues.push(issue('flow', 'error', 'graph_completeness',
+            `Decision "${node.label}" is missing a connection for branch "${branchLabel}"`,
+            { nodeId: node.id, suggestion: `Connect the "${branchLabel}" handle to a downstream node` }
+          ));
+        }
+      }
+    } else {
+      // Standard binary decision. Accept both canonical "true"/"false" and custom
+      // handle names defined via true_label/false_label (snake_case from external YAML)
+      // or trueLabel/falseLabel (camelCase from internal format).
+      const trueLabel = String(spec.true_label ?? spec.trueLabel ?? '');
+      const falseLabel = String(spec.false_label ?? spec.falseLabel ?? '');
+      if (!handles.has('true') && (!trueLabel || !handles.has(trueLabel))) {
+        issues.push(issue('flow', 'error', 'graph_completeness',
+          `Decision "${node.label}" is missing a "Yes" (true) branch connection`,
+          { nodeId: node.id, suggestion: 'Connect the "Yes" handle to a downstream node' }
+        ));
+      }
+      if (!handles.has('false') && (!falseLabel || !handles.has(falseLabel))) {
+        issues.push(issue('flow', 'error', 'graph_completeness',
+          `Decision "${node.label}" is missing a "No" (false) branch connection`,
+          { nodeId: node.id, suggestion: 'Connect the "No" handle to a downstream node' }
+        ));
+      }
     }
   }
 
@@ -519,7 +541,8 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
           ));
         }
         if (storeType === 'database') {
-          if (isBlank(spec.model)) {
+          // aggregate operations span multiple models (via collection config) — model not required
+          if (spec.operation !== 'aggregate' && isBlank(spec.model)) {
             issues.push(issue('flow', 'error', 'spec_completeness',
               `Data store "${node.label}" must have a model defined`,
               { nodeId: node.id, suggestion: 'Set the model name (e.g., User, Order)' }
@@ -791,7 +814,11 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
         break;
       }
       case 'transaction': {
-        const spec = (node.spec ?? {}) as TransactionSpec;
+        const spec = (node.spec ?? {}) as TransactionSpec & Record<string, unknown>;
+        // External /ddd-create format uses operation-based transaction nodes (begin/rollback/commit).
+        // These don't use the steps array — skip the steps check for them.
+        const txOp = spec._transactionOp as string | undefined ?? spec.operation as string | undefined;
+        if (txOp) break; // operation-based: no steps required
         const steps = Array.isArray(spec.steps) ? spec.steps : [];
         if (steps.length < 2) {
           issues.push(issue('flow', 'error', 'spec_completeness',
@@ -947,7 +974,24 @@ function checkBranchingCompleteness(flow: FlowDocument): ValidationIssue[] {
 
     switch (node.type) {
       // Static dual-handle: success / error
-      case 'data_store':
+      // data_store: also accept hit/miss (cache-style dedup read pattern from external YAML)
+      case 'data_store': {
+        const hasSuccess = handles.has('success') || handles.has('hit') || handles.has('found');
+        const hasError = handles.has('error') || handles.has('miss') || handles.has('not_found');
+        if (!hasSuccess) {
+          issues.push(issue('flow', 'error', 'graph_completeness',
+            `${typeLabel} "${label}" is missing a "success" branch connection`,
+            { nodeId: node.id, suggestion: 'Connect the "success" handle to a downstream node' }
+          ));
+        }
+        if (!hasError) {
+          issues.push(issue('flow', 'error', 'graph_completeness',
+            `${typeLabel} "${label}" is missing an "error" branch connection`,
+            { nodeId: node.id, suggestion: 'Connect the "error" handle to a downstream node' }
+          ));
+        }
+        break;
+      }
       case 'service_call':
       case 'ipc_call':
       case 'llm_call':
@@ -985,7 +1029,13 @@ function checkBranchingCompleteness(flow: FlowDocument): ValidationIssue[] {
         break;
       }
       // Static dual-handle: committed / rolled_back
+      // External /ddd-create format uses individual operation nodes (begin/rollback/commit);
+      // only commit nodes have dual exits. begin/rollback are single-exit pass-through nodes.
       case 'transaction': {
+        const txSpec = (node.spec ?? {}) as Record<string, unknown>;
+        const txOp = txSpec._transactionOp as string | undefined ?? txSpec.operation as string | undefined;
+        // begin and rollback are single-exit; skip committed/rolled_back checks
+        if (txOp === 'begin' || txOp === 'rollback') break;
         if (!handles.has('committed')) {
           issues.push(issue('flow', 'error', 'graph_completeness',
             `${typeLabel} "${label}" is missing a "committed" branch connection`,
@@ -1016,8 +1066,12 @@ function checkBranchingCompleteness(flow: FlowDocument): ValidationIssue[] {
         }
         break;
       }
-      // Static dual-handle: hit / miss
+      // Static dual-handle: hit / miss — only for get/read operations.
+      // Cache set/delete nodes have a single output and don't branch on hit/miss.
       case 'cache': {
+        const cacheSpec = (node.spec ?? {}) as CacheSpec;
+        const cacheOp = cacheSpec.operation ?? 'get';
+        if (cacheOp !== 'get' && cacheOp !== 'read') break; // set/delete: no hit/miss required
         if (!handles.has('hit')) {
           issues.push(issue('flow', 'error', 'graph_completeness',
             `${typeLabel} "${label}" is missing a "hit" branch connection`,
@@ -1033,6 +1087,8 @@ function checkBranchingCompleteness(flow: FlowDocument): ValidationIssue[] {
         break;
       }
       // Static dual-handle: result / empty
+      // Note: external /ddd-create YAML uses collection as a query builder that passes config
+      // to a data_store; the data_store handles the empty case. So "empty" is a warning.
       case 'collection': {
         if (!handles.has('result')) {
           issues.push(issue('flow', 'error', 'graph_completeness',
@@ -1041,9 +1097,9 @@ function checkBranchingCompleteness(flow: FlowDocument): ValidationIssue[] {
           ));
         }
         if (!handles.has('empty')) {
-          issues.push(issue('flow', 'error', 'graph_completeness',
+          issues.push(issue('flow', 'warning', 'graph_completeness',
             `${typeLabel} "${label}" is missing an "empty" branch connection`,
-            { nodeId: node.id, suggestion: 'Connect the "empty" handle to a downstream node' }
+            { nodeId: node.id, suggestion: 'Connect the "empty" handle to handle the case when the collection has no results' }
           ));
         }
         break;
@@ -1068,17 +1124,22 @@ function checkBranchingCompleteness(flow: FlowDocument): ValidationIssue[] {
       }
       // Dynamic: parallel branches + done
       case 'parallel': {
-        const spec = (node.spec ?? {}) as ParallelSpec;
+        const spec = (node.spec ?? {}) as ParallelSpec & Record<string, unknown>;
         const branches = Array.isArray(spec.branches) ? spec.branches : [];
-        for (let idx = 0; idx < branches.length; idx++) {
-          const handleId = `branch-${idx}`;
-          if (!handles.has(handleId)) {
-            const branchItem = branches[idx];
-            const branchLabel = typeof branchItem === 'string' ? branchItem : branchItem.label;
-            issues.push(issue('flow', 'error', 'graph_completeness',
-              `Parallel "${label}" is missing a connection for branch "${branchLabel || idx}"`,
-              { nodeId: node.id, suggestion: `Connect the "${handleId}" handle to a downstream node` }
-            ));
+        // Skip branch-N handle checks for inline-branch parallel nodes (from external YAML).
+        // Inline branches are sub-node configs embedded in the parallel spec — they run
+        // internally and don't create branch-N sourceHandle connections.
+        if (!spec._inlineBranches) {
+          for (let idx = 0; idx < branches.length; idx++) {
+            const handleId = `branch-${idx}`;
+            if (!handles.has(handleId)) {
+              const branchItem = branches[idx];
+              const branchLabel = typeof branchItem === 'string' ? branchItem : (branchItem as { label?: string }).label;
+              issues.push(issue('flow', 'error', 'graph_completeness',
+                `Parallel "${label}" is missing a connection for branch "${branchLabel || idx}"`,
+                { nodeId: node.id, suggestion: `Connect the "${handleId}" handle to a downstream node` }
+              ));
+            }
           }
         }
         if (!handles.has('done')) {

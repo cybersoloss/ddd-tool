@@ -296,7 +296,7 @@ export function normalizeFlowDocument(raw: Record<string, unknown>, domainId: st
   const normalizeNode = (n: any): DddFlowNode => {
     // Normalize connections: target / targetId → targetNodeId
     const rawConns: Array<Record<string, unknown>> = n.connections ?? [];
-    const connections = rawConns.map((c: Record<string, unknown>) => {
+    let connections = rawConns.map((c: Record<string, unknown>) => {
       const sh = c.sourceHandle as string | undefined;
       const th = c.targetHandle as string | undefined;
       return {
@@ -333,16 +333,23 @@ export function normalizeFlowDocument(raw: Record<string, unknown>, domainId: st
       );
     }
 
-    // Normalize data_store: entity/schema → model
+    // Normalize data_store: entity/schema/models → model
     if (n.type === 'data_store' && !spec.model) {
       if (spec.entity) spec.model = spec.entity;
       else if (spec.schema) spec.model = spec.schema;
+      else if (Array.isArray(spec.models) && (spec.models as string[]).length > 0) {
+        spec.model = (spec.models as string[])[0]; // use first model for validation
+      }
     }
 
-    // Normalize event: event_type → event_name, infer direction from label
+    // Normalize event: event_type → event_name, action → direction, infer from label
     if (n.type === 'event') {
-      if (!spec.event_name && spec.event_type) {
-        spec.event_name = spec.event_type;
+      if (!spec.event_name && spec.event_type) spec.event_name = spec.event_type;
+      // External YAML uses `event: "name"` at config level for event name
+      if (!spec.event_name && spec.event && typeof spec.event === 'string') spec.event_name = spec.event;
+      // External YAML uses `action: emit/consume` instead of `direction`
+      if (!spec.direction && spec.action) {
+        spec.direction = String(spec.action) === 'emit' || String(spec.action) === 'publish' ? 'emit' : 'consume';
       }
       if (!spec.direction) {
         const label = (n.label ?? n.name ?? '') as string;
@@ -350,7 +357,17 @@ export function normalizeFlowDocument(raw: Record<string, unknown>, domainId: st
           spec.direction = 'emit';
         } else if (/^(consume|handle|listen|receive)\b/i.test(label)) {
           spec.direction = 'consume';
+        } else {
+          // Default to emit when we can infer from event name in label
+          spec.direction = 'emit';
         }
+      }
+      // Last-resort: infer event_name from label ("Emit alert.triggered" → "alert.triggered")
+      if (!spec.event_name) {
+        const label = (n.label ?? n.name ?? '') as string;
+        const match = label.match(/^(?:emit|publish|consume|handle|listen|receive)\s+(.+)$/i);
+        if (match) spec.event_name = match[1].trim();
+        else if (label.trim()) spec.event_name = label.trim();
       }
     }
 
@@ -390,13 +407,173 @@ export function normalizeFlowDocument(raw: Record<string, unknown>, domainId: st
       }
     }
 
+    const nodeId = (n.id ?? `${n.type ?? 'node'}-auto-${Math.random().toString(36).slice(2, 8)}`) as string;
+    // Map unknown node types from /ddd-create to nearest known DDD node type
+    const TYPE_MAP: Record<string, string> = {
+      http: 'service_call',
+      rest: 'service_call',
+      manual: 'process',
+      webhook: 'trigger',
+    };
+    const rawType = (n.type ?? 'process') as string;
+    const nodeType = (TYPE_MAP[rawType] ?? rawType) as DddNodeType;
+
+    // --- Post-process connections and spec based on node type ---
+
+    // Batch: external YAML uses `operation: {type, ...}` instead of `operation_template`,
+    // and may not have an explicit `input` field (data is implicit from context).
+    if (nodeType === 'batch') {
+      if (!spec.operation_template && spec.operation && typeof spec.operation === 'object') {
+        spec.operation_template = spec.operation as Record<string, unknown>;
+      }
+      if (!spec.input && (spec.chunk_size || spec.max_concurrency || spec.operation_template)) {
+        spec.input = '$.data';
+      }
+    }
+
+    // Parse: external YAML may not have an explicit `input` field.
+    if (nodeType === 'parse') {
+      if (!spec.input && (spec.format || spec.strategy)) {
+        spec.input = '$.data';
+      }
+    }
+
+    // Transaction: external YAML uses individual operation nodes (begin/rollback/commit)
+    // rather than the internal multi-step format. Normalize for validator compatibility:
+    // - commit: remap success→committed, error→rolled_back
+    // - begin/rollback: single-exit nodes; mark with _transactionOp for validator
+    if (nodeType === 'transaction') {
+      const op = spec.operation as string | undefined;
+      if (op) spec._transactionOp = op;
+      if (op === 'commit') {
+        connections = connections.map((conn) => {
+          if (conn.sourceHandle === 'success') return { ...conn, sourceHandle: 'committed' };
+          if (conn.sourceHandle === 'error') return { ...conn, sourceHandle: 'rolled_back' };
+          return conn;
+        });
+      }
+    }
+
+    // Event: normalize operation → direction (some external YAML uses operation instead of action)
+    if (nodeType === 'event' && !spec.direction && spec.operation) {
+      const op = String(spec.operation);
+      spec.direction = (op === 'emit' || op === 'publish') ? 'emit' : 'consume';
+    }
+
+    // Decision: normalize true_label/false_label → trueLabel/falseLabel,
+    // remap semantic handle names to canonical "true"/"false",
+    // and normalize `expression` → `condition` (external YAML alias).
+    if (nodeType === 'decision') {
+      if (!spec.condition && spec.expression) spec.condition = spec.expression;
+      const trueLabel = spec.true_label as string | undefined;
+      const falseLabel = spec.false_label as string | undefined;
+      if (trueLabel && !spec.trueLabel) spec.trueLabel = trueLabel;
+      if (falseLabel && !spec.falseLabel) spec.falseLabel = falseLabel;
+      // Remap semantic handles (e.g. "can_escalate") → "true"/"false"
+      if (trueLabel || falseLabel) {
+        connections = connections.map((conn) => {
+          if (trueLabel && conn.sourceHandle === trueLabel) return { ...conn, sourceHandle: 'true' };
+          if (falseLabel && conn.sourceHandle === falseLabel) return { ...conn, sourceHandle: 'false' };
+          return conn;
+        });
+      }
+      // Remap common yes/no aliases
+      connections = connections.map((conn) => {
+        if (conn.sourceHandle === 'yes') return { ...conn, sourceHandle: 'true' };
+        if (conn.sourceHandle === 'no') return { ...conn, sourceHandle: 'false' };
+        return conn;
+      });
+    }
+
+    // Collection: infer operation/input from external query-builder format
+    // and remap "valid"/"output"/undefined handles → "result".
+    if (nodeType === 'collection') {
+      if (!spec.operation) {
+        if (spec.filters || spec.filter) spec.operation = 'filter';
+        else if (spec.aggregate) spec.operation = 'aggregate';
+        else if (spec.group_by) spec.operation = 'group_by';
+        else spec.operation = 'filter';
+      }
+      if (!spec.input && (spec.filters || spec.filter || spec.aggregate || spec.group_by || spec.sort || spec.pagination)) {
+        spec.input = '$.data';
+      }
+      // Remap "valid", "output", and unnamed handles → "result" when no explicit "result" exists
+      const hasResult = connections.some((c) => c.sourceHandle === 'result');
+      if (!hasResult) {
+        connections = connections.map((conn) => {
+          if (conn.sourceHandle === 'valid' || conn.sourceHandle === 'output' || conn.sourceHandle === undefined) {
+            return { ...conn, sourceHandle: 'result' };
+          }
+          return conn;
+        });
+      }
+    }
+
+    // Guardrail: external YAML uses "passed"/"blocked" instead of "pass"/"block".
+    // Normalize to the canonical handle names used by the validator.
+    if (nodeType === 'guardrail') {
+      connections = connections.map((conn) => {
+        if (conn.sourceHandle === 'passed') return { ...conn, sourceHandle: 'pass' };
+        if (conn.sourceHandle === 'blocked') return { ...conn, sourceHandle: 'block' };
+        return conn;
+      });
+    }
+
+    // Transform: external YAML uses mode:expression + output:{} instead of
+    // input_schema/output_schema. Set placeholder schema names so the validator passes.
+    if (nodeType === 'transform') {
+      if (spec.mode && !spec.input_schema) spec.input_schema = 'Expression';
+      if (spec.mode && !spec.output_schema) spec.output_schema = 'Expression';
+      if (!spec.field_mappings && spec.output && typeof spec.output === 'object') {
+        spec.field_mappings = spec.output;
+      }
+    }
+
+    // Parallel: normalize external branch formats to the internal branch-N sourceHandle convention.
+    if (nodeType === 'parallel' && Array.isArray(spec.branches)) {
+      const branches = spec.branches as Array<Record<string, unknown>>;
+
+      // Format A — Inline branches: branches embed full node configs (node_type or node field).
+      // These run internally; the parallel only emits done/error with no branch-N connections.
+      // Mark with _inlineBranches so the validator skips branch-N handle checks.
+      const hasInlineBranches = branches.some(
+        (b) => 'node_type' in b || 'node' in b
+      );
+      if (hasInlineBranches) {
+        spec._inlineBranches = true;
+      } else {
+        // Format B — Fan-out branches: branches have id/output_key only; separate nodes are
+        // connected via branch ID as sourceHandle (e.g., "email", "sms").
+        // Remap branch ID handles → branch-N so getParallelBranchChildIds can detect them.
+        const idToIdx = new Map<string, number>();
+        branches.forEach((b, idx) => {
+          const id = b.id as string | undefined;
+          const label = b.label as string | undefined;
+          if (id) idToIdx.set(id, idx);
+          if (label) idToIdx.set(label, idx);
+        });
+        const hasBranchN = connections.some((c) => c.sourceHandle?.startsWith('branch-'));
+        if (!hasBranchN && idToIdx.size > 0) {
+          connections = connections.map((conn) => {
+            if (conn.sourceHandle !== undefined && conn.sourceHandle !== 'done' && conn.sourceHandle !== 'error') {
+              const idx = idToIdx.get(conn.sourceHandle);
+              if (idx !== undefined) {
+                return { ...conn, sourceHandle: `branch-${idx}` };
+              }
+            }
+            return conn;
+          });
+        }
+      }
+    }
+
     return {
-      id: n.id ?? `${n.type ?? 'node'}-auto-${Math.random().toString(36).slice(2, 8)}`,
-      type: n.type ?? 'process',
+      id: nodeId,
+      type: nodeType,
       position: n.position ?? { x: 0, y: 0 },
       connections,
       spec,
-      label: n.label ?? n.name ?? n.id,
+      label: ((n.label ?? n.name ?? n.id ?? nodeId) as string | undefined) ?? nodeId,
       parentId: n.parentId,
       observability: n.observability,
       security: n.security,
@@ -407,6 +584,16 @@ export function normalizeFlowDocument(raw: Record<string, unknown>, domainId: st
   let trigger = doc.trigger;
   let nodes: unknown[] = (doc.nodes as unknown[]) ?? [];
 
+  // Coerce API trigger types (http, timer, cron, webhook, etc.) to DDD trigger type.
+  // These appear in the trigger: section as type: http/timer — they are trigger specs,
+  // not node types. Always use type: 'trigger' for the node.
+  const NON_NODE_TRIGGER_TYPES = new Set([
+    'http', 'timer', 'cron', 'webhook', 'event', 'schedule', 'queue',
+    'graphql', 'grpc', 'manual', 'interval',
+    // Additional trigger types from /ddd-create that are not DDD node types:
+    'sub_flow', 'pattern', 'ipc', 'message', 'stream', 'pubsub', 'job', 'signal',
+  ]);
+
   if (!trigger || !trigger.id) {
     const triggerIdx = (nodes as Array<Record<string, unknown>>).findIndex(
       (n) => n.type === 'trigger'
@@ -414,7 +601,58 @@ export function normalizeFlowDocument(raw: Record<string, unknown>, domainId: st
     if (triggerIdx >= 0) {
       trigger = (nodes as Array<Record<string, unknown>>)[triggerIdx] as unknown as typeof trigger;
       nodes = [...(nodes as unknown[]).slice(0, triggerIdx), ...(nodes as unknown[]).slice(triggerIdx + 1)];
+    } else if (trigger && NON_NODE_TRIGGER_TYPES.has((trigger as unknown as Record<string, unknown>).type as string)) {
+      // Top-level trigger block with API type (e.g. type: http) — synthesize a trigger node from it.
+      // Auto-connect to the first node since the dispatch is implicit in API-triggered flows.
+      const rawTrigger = trigger as unknown as Record<string, unknown>;
+      const firstNodeId = (nodes as Array<Record<string, unknown>>)[0]?.id as string | undefined;
+      trigger = {
+        id: 'trigger-default',
+        type: 'trigger',
+        label: (rawTrigger.label ?? rawTrigger.name ?? String(rawTrigger.type ?? 'Trigger')) as string,
+        position: { x: 250, y: 50 },
+        connections: firstNodeId ? [{ targetNodeId: firstNodeId }] : (rawTrigger.connections ?? []),
+        spec: { event: rawTrigger.path ?? rawTrigger.event ?? rawTrigger.type, method: rawTrigger.method, ...rawTrigger },
+      } as unknown as typeof trigger;
     }
+  }
+
+  // Handle top-level connections array (external /ddd-create format):
+  //   connections: [{from: nodeId, to: nodeId, sourceHandle?, targetHandle?, label?}]
+  // Distribute them into each source node's connections array before normalization.
+  const topLevelConns = (raw as Record<string, unknown>).connections;
+  if (Array.isArray(topLevelConns) && topLevelConns.length > 0) {
+    const connsBySource = new Map<string, Array<{ targetNodeId: string; sourceHandle?: string; targetHandle?: string; label?: string }>>();
+    for (const conn of topLevelConns as Array<Record<string, unknown>>) {
+      const from = conn.from as string;
+      const to = conn.to as string;
+      if (!from || !to) continue;
+      if (!connsBySource.has(from)) connsBySource.set(from, []);
+      const sh = conn.sourceHandle as string | undefined;
+      const th = conn.targetHandle as string | undefined;
+      connsBySource.get(from)!.push({
+        targetNodeId: to,
+        sourceHandle: sh === 'default' ? undefined : sh,
+        targetHandle: th === 'default' ? undefined : th,
+        label: conn.label as string | undefined,
+      });
+    }
+
+    // Inject into trigger
+    const triggerObj = trigger as unknown as Record<string, unknown>;
+    const triggerId = triggerObj?.id as string;
+    if (triggerId && connsBySource.has(triggerId)) {
+      const existing = (triggerObj.connections as unknown[] | undefined) ?? [];
+      triggerObj.connections = [...existing, ...connsBySource.get(triggerId)!];
+    }
+
+    // Inject into regular nodes
+    nodes = (nodes as Array<Record<string, unknown>>).map((n) => {
+      const nodeId = n.id as string;
+      if (!nodeId || !connsBySource.has(nodeId)) return n;
+      const existing = (n.connections as unknown[] | undefined) ?? [];
+      return { ...n, connections: [...existing, ...connsBySource.get(nodeId)!] };
+    });
   }
 
   const normalizedTrigger = trigger ? normalizeNode(trigger) : {
