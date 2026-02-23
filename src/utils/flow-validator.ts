@@ -41,6 +41,14 @@ import type { SchemaSpec, PagesConfig, UIPageSpec, InfrastructureSpec } from '..
 
 // --- Helpers ---
 
+/** Returns true if val is falsy or, if it's a string, empty after trimming.
+ *  Handles non-string values (numbers, booleans) coming from external YAML. */
+function isBlank(val: unknown): boolean {
+  if (!val && val !== 0) return true;
+  if (typeof val === 'string') return val.trim() === '';
+  return false;
+}
+
 function issue(
   scope: ValidationScope,
   severity: ValidationSeverity,
@@ -300,7 +308,7 @@ function checkInputFieldTypes(flow: FlowDocument): ValidationIssue[] {
     const spec = (node.spec ?? {}) as InputSpec;
     const fields = Array.isArray(spec.fields) ? spec.fields : [];
     for (const field of fields) {
-      if (!field.type || field.type.trim() === '') {
+      if (isBlank(field.type)) {
         issues.push(issue('flow', 'error', 'spec_completeness',
           `Input "${node.label}" field "${field.name}" is missing a type`,
           { nodeId: node.id, suggestion: 'Set a type for each input field (e.g., string, number)' }
@@ -319,7 +327,7 @@ function checkDecisionCondition(flow: FlowDocument): ValidationIssue[] {
   for (const node of allNodes) {
     if (node.type !== 'decision') continue;
     const spec = (node.spec ?? {}) as DecisionSpec;
-    if (!spec.condition || spec.condition.trim() === '') {
+    if (isBlank(spec.condition)) {
       issues.push(issue('flow', 'error', 'spec_completeness',
         `Decision "${node.label}" must have a condition defined`,
         { nodeId: node.id, suggestion: 'Set the condition expression in the spec panel' }
@@ -337,7 +345,7 @@ function checkProcessDescription(flow: FlowDocument): ValidationIssue[] {
   for (const node of allNodes) {
     if (node.type !== 'process') continue;
     const spec = (node.spec ?? {}) as ProcessSpec;
-    if ((!spec.description || spec.description.trim() === '') && (!spec.action || spec.action.trim() === '')) {
+    if (isBlank(spec.description) && isBlank(spec.action)) {
       issues.push(issue('flow', 'warning', 'spec_completeness',
         `Process "${node.label}" has no description or action defined`,
         { nodeId: node.id, suggestion: 'Add a description or action to clarify what this process does' }
@@ -403,7 +411,7 @@ function checkAgentFlow(flow: FlowDocument): ValidationIssue[] {
       ));
     }
 
-    if (!spec.model || spec.model.trim() === '') {
+    if (isBlank(spec.model)) {
       issues.push(issue('flow', 'error', 'agent_validation',
         `Agent loop "${agentLoop.label}" has no LLM model specified`,
         { nodeId: agentLoop.id, suggestion: 'Set the model (e.g., claude-sonnet) in the spec panel' }
@@ -460,7 +468,7 @@ function checkOrchestrationNodes(flow: FlowDocument): ValidationIssue[] {
       }
       case 'handoff': {
         const spec = (node.spec ?? {}) as HandoffSpec;
-        if (!spec.target?.flow || spec.target.flow.trim() === '') {
+        if (isBlank(spec.target?.flow)) {
           issues.push(issue('flow', 'error', 'orchestration_validation',
             `Handoff "${node.label}" must have a target flow`,
             { nodeId: node.id, suggestion: 'Set the target flow in the spec panel' }
@@ -511,27 +519,27 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
           ));
         }
         if (storeType === 'database') {
-          if (!spec.model || spec.model.trim() === '') {
+          if (isBlank(spec.model)) {
             issues.push(issue('flow', 'error', 'spec_completeness',
               `Data store "${node.label}" must have a model defined`,
               { nodeId: node.id, suggestion: 'Set the model name (e.g., User, Order)' }
             ));
           }
         } else if (storeType === 'filesystem') {
-          if (!spec.path || spec.path.trim() === '') {
+          if (isBlank(spec.path)) {
             issues.push(issue('flow', 'error', 'spec_completeness',
               `Filesystem data store "${node.label}" must have a path defined`,
               { nodeId: node.id, suggestion: 'Set the file path (e.g., $.project_path/specs/system.yaml)' }
             ));
           }
         } else if (storeType === 'memory') {
-          if (!spec.store || spec.store.trim() === '') {
+          if (isBlank(spec.store)) {
             issues.push(issue('flow', 'error', 'spec_completeness',
               `Memory data store "${node.label}" must have a store name`,
               { nodeId: node.id, suggestion: 'Set the store name (e.g., project-store)' }
             ));
           }
-          if (spec.operation !== 'reset' && (!spec.selector || spec.selector.trim() === '')) {
+          if (spec.operation !== 'reset' && isBlank(spec.selector)) {
             issues.push(issue('flow', 'error', 'spec_completeness',
               `Memory data store "${node.label}" must have a selector`,
               { nodeId: node.id, suggestion: 'Set the state selector (e.g., domains, currentFlow.nodes)' }
@@ -539,7 +547,7 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
           }
           // update_where requires predicate + patch
           if (spec.operation === 'update_where') {
-            if (!spec.predicate || spec.predicate.trim() === '') {
+            if (isBlank(spec.predicate)) {
               issues.push(issue('flow', 'error', 'spec_completeness',
                 `Memory data store "${node.label}" with update_where must have a predicate`,
                 { nodeId: node.id, suggestion: 'Set the predicate (e.g., $.id === targetId)' }
@@ -565,7 +573,7 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
         }
         // URL is required unless an integration reference is provided
         const hasIntegration = !!spec.integration;
-        if (!hasIntegration && (!spec.url || spec.url.trim() === '')) {
+        if (!hasIntegration && isBlank(spec.url)) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Service call "${node.label}" must have a URL or integration defined`,
             { nodeId: node.id, suggestion: 'Set the service URL or reference an integration' }
@@ -575,7 +583,7 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
       }
       case 'ipc_call': {
         const spec = (node.spec ?? {}) as IpcCallSpec;
-        if (!spec.command || spec.command.trim() === '') {
+        if (isBlank(spec.command)) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `IPC call "${node.label}" must have a command name`,
             { nodeId: node.id, suggestion: 'Set the command name (e.g., git_status, compute_file_hash)' }
@@ -591,7 +599,7 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
             { nodeId: node.id, suggestion: 'Set the direction (emit or consume)' }
           ));
         }
-        if (!spec.event_name || spec.event_name.trim() === '') {
+        if (isBlank(spec.event_name)) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Event "${node.label}" must have an event name defined`,
             { nodeId: node.id, suggestion: 'Set the event name' }
@@ -601,13 +609,13 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
       }
       case 'loop': {
         const spec = (node.spec ?? {}) as LoopSpec;
-        if (!spec.collection || spec.collection.trim() === '') {
+        if (isBlank(spec.collection)) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Loop "${node.label}" must have a collection defined`,
             { nodeId: node.id, suggestion: 'Set the collection to iterate over' }
           ));
         }
-        if (!spec.iterator || spec.iterator.trim() === '') {
+        if (isBlank(spec.iterator)) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Loop "${node.label}" must have an iterator variable defined`,
             { nodeId: node.id, suggestion: 'Set the iterator variable name' }
@@ -640,12 +648,12 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
       }
       case 'sub_flow': {
         const spec = (node.spec ?? {}) as SubFlowSpec;
-        if (!spec.flow_ref || spec.flow_ref.trim() === '') {
+        if (isBlank(spec.flow_ref)) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Sub-flow "${node.label}" must have a flow reference defined`,
             { nodeId: node.id, suggestion: 'Set the flow_ref (e.g., domain/flow-id)' }
           ));
-        } else if (!spec.flow_ref.includes('/')) {
+        } else if (!String(spec.flow_ref).includes('/')) {
           issues.push(issue('flow', 'warning', 'spec_completeness',
             `Sub-flow "${node.label}" flow_ref should be in domain/flow-id format`,
             { nodeId: node.id, suggestion: 'Use the format domain/flow-id for the flow reference' }
@@ -681,13 +689,13 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
       }
       case 'llm_call': {
         const spec = (node.spec ?? {}) as LlmCallSpec;
-        if (!spec.model || spec.model.trim() === '') {
+        if (isBlank(spec.model)) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `LLM call "${node.label}" must have a model specified`,
             { nodeId: node.id, suggestion: 'Set the model (e.g., claude-sonnet, gpt-4o)' }
           ));
         }
-        if (!spec.prompt_template || spec.prompt_template.trim() === '') {
+        if (isBlank(spec.prompt_template)) {
           issues.push(issue('flow', 'warning', 'spec_completeness',
             `LLM call "${node.label}" has no prompt template defined`,
             { nodeId: node.id, suggestion: 'Set the prompt template with {{variables}} for dynamic content' }
@@ -703,7 +711,7 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
             { nodeId: node.id, suggestion: 'Set the operation (filter, sort, deduplicate, merge, group_by, aggregate, reduce, flatten)' }
           ));
         }
-        if (!spec.input || spec.input.trim() === '') {
+        if (isBlank(spec.input)) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Collection "${node.label}" must have an input defined`,
             { nodeId: node.id, suggestion: 'Set the input collection to operate on' }
@@ -719,7 +727,7 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
             { nodeId: node.id, suggestion: 'Set the format (json, csv, xml, yaml, html, markdown, regex)' }
           ));
         }
-        if (!spec.input || spec.input.trim() === '') {
+        if (isBlank(spec.input)) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Parse "${node.label}" must have an input defined`,
             { nodeId: node.id, suggestion: 'Set the input to parse' }
@@ -749,7 +757,7 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
             { nodeId: node.id, suggestion: 'Set the operation (encrypt, decrypt, hash, sign, verify, hmac)' }
           ));
         }
-        if (!spec.algorithm || spec.algorithm.trim() === '') {
+        if (isBlank(spec.algorithm)) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Crypto "${node.label}" must have an algorithm defined`,
             { nodeId: node.id, suggestion: 'Set the algorithm (e.g., aes-256-gcm, sha256)' }
@@ -768,7 +776,7 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
       }
       case 'batch': {
         const spec = (node.spec ?? {}) as BatchSpec;
-        if (!spec.input || spec.input.trim() === '') {
+        if (isBlank(spec.input)) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Batch "${node.label}" must have an input defined`,
             { nodeId: node.id, suggestion: 'Set the input collection to process in batch' }
@@ -795,7 +803,7 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
       }
       case 'cache': {
         const spec = (node.spec ?? {}) as CacheSpec;
-        if (!spec.key || spec.key.trim() === '') {
+        if (isBlank(spec.key)) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Cache "${node.label}" must have a key defined`,
             { nodeId: node.id, suggestion: 'Set the cache key template (e.g. "search:{query}")' }
@@ -811,13 +819,13 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
       }
       case 'transform': {
         const spec = (node.spec ?? {}) as TransformSpec;
-        if (!spec.input_schema || spec.input_schema.trim() === '') {
+        if (isBlank(spec.input_schema)) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Transform "${node.label}" must have an input_schema defined`,
             { nodeId: node.id, suggestion: 'Set the input schema name' }
           ));
         }
-        if (!spec.output_schema || spec.output_schema.trim() === '') {
+        if (isBlank(spec.output_schema)) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Transform "${node.label}" must have an output_schema defined`,
             { nodeId: node.id, suggestion: 'Set the output schema name' }
@@ -1222,8 +1230,8 @@ function checkSchemaReferences(
       if (node.type !== 'data_store') continue;
       const spec = (node.spec ?? {}) as DataStoreSpec;
       if ((spec.store_type ?? 'database') !== 'database') continue;
-      if (!spec.model || spec.model.trim() === '') continue;
-      if (!allSchemas.has(spec.model)) {
+      if (isBlank(spec.model)) continue;
+      if (!allSchemas.has(spec.model!)) {
         issues.push(issue('domain', 'warning', 'reference_integrity',
           `Data store "${node.label}" references model "${spec.model}" which is not in any domain's owns_schemas`,
           { domainId, nodeId: node.id, flowId: flow.flow?.id }
@@ -1259,8 +1267,8 @@ function checkStoreReferences(
       if (node.type !== 'data_store') continue;
       const spec = (node.spec ?? {}) as DataStoreSpec;
       if ((spec.store_type ?? 'database') !== 'memory') continue;
-      if (!spec.store || spec.store.trim() === '') continue;
-      if (!allStores.has(spec.store)) {
+      if (isBlank(spec.store)) continue;
+      if (!allStores.has(spec.store!)) {
         issues.push(issue('domain', 'warning', 'reference_integrity',
           `Memory data store "${node.label}" references store "${spec.store}" which is not declared in any domain's stores`,
           { domainId, nodeId: node.id, flowId: flow.flow?.id }
@@ -1511,10 +1519,10 @@ function checkSchemaFileReferences(
       if (node.type !== 'data_store') continue;
       const spec = (node.spec ?? {}) as DataStoreSpec;
       if ((spec.store_type ?? 'database') !== 'database') continue;
-      if (!spec.model || spec.model.trim() === '') continue;
+      if (isBlank(spec.model)) continue;
 
       // Check against schema file names (lowercase comparison)
-      const modelLower = spec.model.toLowerCase();
+      const modelLower = spec.model!.toLowerCase();
       const hasSchemaFile = [...schemaNames].some((s) => s.toLowerCase() === modelLower);
       if (!hasSchemaFile) {
         issues.push(issue('system', 'info', 'reference_integrity',
