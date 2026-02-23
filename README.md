@@ -8,6 +8,8 @@ Built with Tauri 2.0 (Rust) + React 19 + TypeScript + Tailwind CSS v4.
 
 [![Alpha](https://img.shields.io/badge/status-alpha-orange.svg)]() [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
+![DDD Workflow Demo](https://raw.githubusercontent.com/cybersoloss/DDD/main/assets/ddd-demo.gif)
+
 ## What It Does
 
 The Design Driven Development Tool is a visual editor for designing software as flow diagrams. You draw flows on a canvas, the tool outputs YAML specs, and Claude Code generates working code from those specs.
@@ -19,6 +21,8 @@ The Design Driven Development Tool is a visual editor for designing software as 
 | **L1 — System Map** | Bird's-eye view | All domains as cards, inter-domain event wiring |
 | **L2 — Domain Map** | Domain detail | Flow blocks with drag positioning, connections, sync indicators |
 | **L3 — Flow Canvas** | Flow editor | Full node graph with 28 node types, connections, spec panel |
+
+![DDD Tool Canvas](https://raw.githubusercontent.com/cybersoloss/DDD/main/assets/ddd-tool-demo-2.gif)
 
 **System Map** — domains and event wiring at a glance:
 
@@ -34,7 +38,7 @@ The Design Driven Development Tool is a visual editor for designing software as 
 
 ## Features
 
-- **28 node types** — trigger, input, process, decision, terminal, data_store, service_call, ipc_call, event, loop, parallel, sub_flow, llm_call, delay, cache, transform, collection, parse, crypto, batch, transaction, agent_loop, guardrail, human_gate, orchestrator, smart_router, handoff, agent_group
+- **29 node types** — trigger, input, process, decision, terminal, data_store, service_call, ipc_call, event, loop, parallel, sub_flow, llm_call, delay, cache, transform, collection, parse, crypto, batch, transaction, agent_loop, guardrail, human_gate, orchestrator, smart_router, handoff, agent_group, websocket_broadcast
 - **Visual flow editor** — drag-and-drop nodes, connect with typed handles (valid/invalid, true/false, success/error, hit/miss, etc.)
 - **YAML spec panel** — edit node specs directly alongside the canvas, changes sync both ways
 - **Validation engine** — 20+ rules checking flow completeness, connection wiring, event matching, and spec correctness
@@ -104,7 +108,7 @@ src/                              # React frontend
     SystemMap/                    # L1 — system overview with domain cards
     DomainMap/                    # L2 — domain map with draggable flow blocks
     FlowCanvas/                   # L3 — React Flow canvas
-      nodes/                      # 28 node type components
+      nodes/                      # 29 node type components
     SpecPanel/                    # YAML spec editor sidebar
       editors/                    # Per-field editors (cross-cutting, spec fields)
     Validation/                   # Validation panel and badges
@@ -123,7 +127,7 @@ src/                              # React frontend
     undo-store.ts                 # Per-flow undo/redo history
     app-store.ts                  # App-level state (view, theme)
   types/                          # TypeScript type definitions
-    flow.ts                       # 28 node types, specs, connections
+    flow.ts                       # 29 node types, specs, connections
     implementation.ts             # SyncState, FlowMapping, DriftInfo, Annotations
   utils/                          # Validators, auto-layout, helpers
 src-tauri/                        # Rust backend
@@ -148,7 +152,7 @@ Produces two YAML reports in `<project>/.ddd/reports/`:
 | `tool-compatibility-report.yaml` | YAML parse failures, unknown node types, normalization crashes — "the tool broke" |
 | `spec-quality-report.yaml` | Validation errors, broken references, event wiring issues, feature coverage — "the specs are wrong" |
 
-The runner is part of the [DDD e2e test infrastructure](https://github.com/cybersoloss/DDD/tree/main/tests/e2e). The DDD repo ships a purpose-built example project ([Nexus](https://github.com/cybersoloss/DDD/tree/main/examples/nexus)) that exercises all 28 node types, 13 trigger types, and all other DDD features. After cloning the DDD repo, run:
+The runner is part of the [DDD e2e test infrastructure](https://github.com/cybersoloss/DDD/tree/main/tests/e2e). The DDD repo ships a purpose-built example project ([Nexus](https://github.com/cybersoloss/DDD/tree/main/examples/nexus)) that exercises all 29 node types, 13 trigger types, and all other DDD features. After cloning the DDD repo, run:
 
 ```bash
 npm run test:specs -- ~/dev/DDD/examples/nexus
