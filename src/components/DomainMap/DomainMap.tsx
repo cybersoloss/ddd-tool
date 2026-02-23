@@ -520,7 +520,8 @@ export function DomainMap() {
 
         {/* Flow groups / swimlanes */}
         {domainConfig?.groups?.map((group) => {
-          const groupFlows = mapData.flows.filter((f) => group.flow_ids.includes(f.id));
+          const flowIds = group.flow_ids ?? (group as unknown as Record<string, unknown>).flows as string[] ?? [];
+          const groupFlows = mapData.flows.filter((f) => flowIds.includes(f.id));
           if (groupFlows.length === 0) return null;
           const minX = Math.min(...groupFlows.map((f) => f.position.x)) - 20;
           const minY = Math.min(...groupFlows.map((f) => f.position.y)) - 30;

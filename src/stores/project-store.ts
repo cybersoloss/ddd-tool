@@ -87,6 +87,16 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
               path: domainYamlPath,
             });
             const parsed = parse(yamlContent) as DomainConfig;
+            // Normalize groups: external YAML uses `flows` key; internal type uses `flow_ids`
+            if (Array.isArray(parsed.groups)) {
+              parsed.groups = parsed.groups.map((g: Record<string, unknown>) => ({
+                ...g,
+                flow_ids: ((g.flow_ids ?? g.flows ?? []) as string[]),
+              })) as DomainConfig['groups'];
+            }
+            // Normalize publishes_events/consumes_events: default to [] if missing
+            if (!Array.isArray(parsed.publishes_events)) parsed.publishes_events = [];
+            if (!Array.isArray(parsed.consumes_events)) parsed.consumes_events = [];
             domainConfigs[domainId] = parsed;
           } else {
             // Fallback: create a minimal config from project.json
