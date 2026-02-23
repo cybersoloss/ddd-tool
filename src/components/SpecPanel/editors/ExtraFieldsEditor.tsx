@@ -30,8 +30,9 @@ const KNOWN_KEYS: Record<DddNodeType, Set<string>> = {
   collection: new Set(['operation', 'input', 'predicate', 'key', 'direction', 'accumulator', 'output', 'description']),
   parse: new Set(['format', 'input', 'strategy', 'library', 'output', 'description']),
   crypto: new Set(['operation', 'algorithm', 'key_source', 'input_fields', 'output_field', 'encoding', 'description']),
-  batch: new Set(['input', 'operation_template', 'concurrency', 'on_error', 'output', 'description']),
+  batch: new Set(['input', 'operation_template', 'sub_flow_ref', 'concurrency', 'on_error', 'output', 'description']),
   transaction: new Set(['isolation', 'steps', 'rollback_on_error', 'description']),
+  websocket_broadcast: new Set(['channel', 'event_name', 'payload', 'include_sender', 'description']),
 };
 
 interface Props {

@@ -11,7 +11,8 @@ export type DddNodeType =
   | 'collection' | 'parse' | 'crypto' | 'batch' | 'transaction'
   | 'ipc_call'
   | 'agent_loop' | 'guardrail' | 'human_gate'
-  | 'orchestrator' | 'smart_router' | 'handoff' | 'agent_group';
+  | 'orchestrator' | 'smart_router' | 'handoff' | 'agent_group'
+  | 'websocket_broadcast';
 
 // --- Per-node spec shapes ---
 
@@ -422,9 +423,19 @@ export interface CryptoSpec {
   [key: string]: unknown;
 }
 
+export interface WebSocketBroadcastSpec {
+  channel?: string;
+  event_name?: string;
+  payload?: string | Record<string, unknown>;
+  include_sender?: boolean;
+  description?: string;
+  [key: string]: unknown;
+}
+
 export interface BatchSpec {
   input?: string;
   operation_template?: { type?: string; dispatch_field?: string; configs?: Record<string, unknown> };
+  sub_flow_ref?: string;
   concurrency?: number;
   on_error?: 'continue' | 'stop';
   output?: string;
@@ -468,7 +479,8 @@ export type NodeSpec =
   | OrchestratorSpec
   | SmartRouterSpec
   | HandoffSpec
-  | AgentGroupSpec;
+  | AgentGroupSpec
+  | WebSocketBroadcastSpec;
 
 // --- Flow node (persisted) ---
 
@@ -509,6 +521,8 @@ export interface FlowDocument {
     };
     emits?: string[];
     listens_to?: string[];
+    auth?: { required: boolean; roles?: string[]; strategy?: 'jwt' | 'api_key' | 'none' };
+    metrics?: Array<{ name: string; type: 'counter' | 'gauge' | 'histogram'; labels?: string[] }>;
   };
   trigger: DddFlowNode;
   nodes: DddFlowNode[];

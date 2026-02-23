@@ -19,19 +19,44 @@ export function BatchSpecEditor({ spec, onChange }: Props) {
         />
       </div>
       <div>
-        <label className="label">Operation Template</label>
-        <textarea
-          className="input min-h-[60px] resize-y font-mono text-xs"
-          value={JSON.stringify(spec.operation_template ?? {}, null, 2)}
-          onChange={(e) => {
-            try {
-              onChange({ ...spec, operation_template: JSON.parse(e.target.value) });
-            } catch {
-              // Keep raw while editing
-            }
-          }}
-          placeholder='{"type": "service_call", "dispatch_field": "", "configs": {}}'
-        />
+        <label className="label">Per-item Operation</label>
+        <div className="flex gap-2 mb-1">
+          <button
+            type="button"
+            className={`text-xs px-2 py-0.5 rounded ${!spec.sub_flow_ref ? 'bg-accent text-white' : 'bg-muted text-muted-foreground'}`}
+            onClick={() => onChange({ ...spec, sub_flow_ref: undefined })}
+          >
+            operation_template
+          </button>
+          <button
+            type="button"
+            className={`text-xs px-2 py-0.5 rounded ${spec.sub_flow_ref !== undefined ? 'bg-accent text-white' : 'bg-muted text-muted-foreground'}`}
+            onClick={() => onChange({ ...spec, operation_template: undefined, sub_flow_ref: '' })}
+          >
+            sub_flow_ref
+          </button>
+        </div>
+        {spec.sub_flow_ref !== undefined ? (
+          <input
+            className="input"
+            value={spec.sub_flow_ref ?? ''}
+            onChange={(e) => onChange({ ...spec, sub_flow_ref: e.target.value })}
+            placeholder="e.g. forecasting/generate-ai-forecast"
+          />
+        ) : (
+          <textarea
+            className="input min-h-[60px] resize-y font-mono text-xs"
+            value={JSON.stringify(spec.operation_template ?? {}, null, 2)}
+            onChange={(e) => {
+              try {
+                onChange({ ...spec, operation_template: JSON.parse(e.target.value) });
+              } catch {
+                // Keep raw while editing
+              }
+            }}
+            placeholder='{"type": "service_call", "dispatch_field": "", "configs": {}}'
+          />
+        )}
       </div>
       <div>
         <label className="label">Concurrency</label>

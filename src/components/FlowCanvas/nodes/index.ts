@@ -27,6 +27,7 @@ import { CryptoNode } from './CryptoNode';
 import { BatchNode } from './BatchNode';
 import { TransactionNode } from './TransactionNode';
 import { IpcCallNode } from './IpcCallNode';
+import { WebSocketBroadcastNode } from './WebSocketBroadcastNode';
 
 export const nodeTypes: NodeTypes = {
   trigger: TriggerNode,
@@ -57,4 +58,5 @@ export const nodeTypes: NodeTypes = {
   batch: BatchNode,
   transaction: TransactionNode,
   ipc_call: IpcCallNode,
+  websocket_broadcast: WebSocketBroadcastNode,
 };

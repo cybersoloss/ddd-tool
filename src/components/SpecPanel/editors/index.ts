@@ -28,6 +28,7 @@ import { CryptoSpecEditor } from './CryptoSpecEditor';
 import { BatchSpecEditor } from './BatchSpecEditor';
 import { TransactionSpecEditor } from './TransactionSpecEditor';
 import { IpcCallSpecEditor } from './IpcCallSpecEditor';
+import { WebSocketBroadcastSpecEditor } from './WebSocketBroadcastSpecEditor';
 
 // Each editor receives spec + onChange typed to its own spec shape.
 // We use a generic props interface so the registry can hold them uniformly.
@@ -65,4 +66,5 @@ export const specEditors: Record<DddNodeType, ComponentType<EditorProps>> = {
   batch: BatchSpecEditor as ComponentType<EditorProps>,
   transaction: TransactionSpecEditor as ComponentType<EditorProps>,
   ipc_call: IpcCallSpecEditor as ComponentType<EditorProps>,
+  websocket_broadcast: WebSocketBroadcastSpecEditor as ComponentType<EditorProps>,
 };

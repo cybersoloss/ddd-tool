@@ -909,6 +909,8 @@ function checkHttpTriggerFields(flow: FlowDocument): ValidationIssue[] {
   const event = typeof spec.event === 'string' ? spec.event : '';
   const isHttp = event === 'http_request' || event === 'HTTP' || event === 'api' ||
     spec.source === 'http' || spec.source === 'api';
+  // Also detect DDD convention format: "HTTP POST /path"
+  const isHttpDdd = /^HTTP\s+(GET|POST|PUT|PATCH|DELETE)\s+/i.test(event);
 
   if (isHttp) {
     if (!spec.method || (typeof spec.method === 'string' && spec.method.trim() === '')) {
@@ -923,6 +925,14 @@ function checkHttpTriggerFields(flow: FlowDocument): ValidationIssue[] {
         { nodeId: flow.trigger.id, suggestion: 'Set the path (e.g., /api/users) in the trigger spec' }
       ));
     }
+  }
+
+  // Auth warning for HTTP flows (both legacy format and DDD convention format)
+  if ((isHttp || isHttpDdd) && !flow.flow?.auth) {
+    issues.push(issue('flow', 'warning', 'reference_integrity',
+      'HTTP flow has no auth declaration. Add `auth: { required: boolean, strategy: jwt|api_key|none }` to flow metadata.',
+      { nodeId: flow.trigger.id, suggestion: 'Public endpoints (login, register, health) set required: false. Protected endpoints set required: true.' }
+    ));
   }
 
   return issues;
