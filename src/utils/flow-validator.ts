@@ -1080,8 +1080,8 @@ function checkBranchingCompleteness(flow: FlowDocument): ValidationIssue[] {
       // Cache set/delete nodes have a single output and don't branch on hit/miss.
       case 'cache': {
         const cacheSpec = (node.spec ?? {}) as CacheSpec;
-        const cacheOp = cacheSpec.operation ?? 'get';
-        if (cacheOp !== 'get' && cacheOp !== 'read') break; // set/delete: no hit/miss required
+        const cacheOp = cacheSpec.operation ?? 'check';
+        if (cacheOp !== 'check') break; // set/invalidate: no hit/miss required
         if (!handles.has('hit')) {
           issues.push(issue('flow', 'error', 'graph_completeness',
             `${typeLabel} "${label}" is missing a "hit" branch connection`,

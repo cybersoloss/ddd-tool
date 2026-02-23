@@ -10,6 +10,8 @@ interface Props {
 
 export function ServiceCallSpecEditor({ spec, onChange }: Props) {
   const [reqConfigOpen, setReqConfigOpen] = useState(false);
+  const [oauthOpen, setOauthOpen] = useState(!!spec.oauth_config);
+  const [fallbackOpen, setFallbackOpen] = useState(!!spec.fallback);
   const reqConfig = spec.request_config ?? {};
 
   const updateReqConfig = (updates: Partial<NonNullable<ServiceCallSpec['request_config']>>) => {
@@ -290,6 +292,122 @@ export function ServiceCallSpecEditor({ spec, onChange }: Props) {
                 <option value="none">None</option>
               </select>
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* OAuth Config */}
+      <div className="border-t border-border/50 pt-2">
+        <button
+          className="flex items-center gap-1.5 w-full"
+          onClick={() => setOauthOpen(!oauthOpen)}
+        >
+          {oauthOpen ? (
+            <ChevronDown className="w-3.5 h-3.5 text-text-muted" />
+          ) : (
+            <ChevronRight className="w-3.5 h-3.5 text-text-muted" />
+          )}
+          <span className="text-[10px] uppercase tracking-wider text-text-muted font-medium">
+            OAuth Config
+          </span>
+        </button>
+        {oauthOpen && (
+          <div className="space-y-2 ml-2 mt-2">
+            <div>
+              <label className="label">Token Store</label>
+              <input
+                className="input"
+                value={spec.oauth_config?.token_store ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (!v && !spec.oauth_config?.refresh_url && !spec.oauth_config?.client_id_env && !spec.oauth_config?.client_secret_env) {
+                    onChange({ ...spec, oauth_config: undefined });
+                  } else {
+                    onChange({ ...spec, oauth_config: { token_store: v, refresh_url: spec.oauth_config?.refresh_url ?? '', client_id_env: spec.oauth_config?.client_id_env ?? '', client_secret_env: spec.oauth_config?.client_secret_env ?? '' } });
+                  }
+                }}
+                placeholder="e.g. $.oauth_tokens.google"
+              />
+            </div>
+            <div>
+              <label className="label">Refresh URL</label>
+              <input
+                className="input"
+                value={spec.oauth_config?.refresh_url ?? ''}
+                onChange={(e) => onChange({ ...spec, oauth_config: { token_store: spec.oauth_config?.token_store ?? '', refresh_url: e.target.value, client_id_env: spec.oauth_config?.client_id_env ?? '', client_secret_env: spec.oauth_config?.client_secret_env ?? '' } })}
+                placeholder="e.g. https://oauth2.googleapis.com/token"
+              />
+            </div>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <label className="label">Client ID Env</label>
+                <input
+                  className="input"
+                  value={spec.oauth_config?.client_id_env ?? ''}
+                  onChange={(e) => onChange({ ...spec, oauth_config: { token_store: spec.oauth_config?.token_store ?? '', refresh_url: spec.oauth_config?.refresh_url ?? '', client_id_env: e.target.value, client_secret_env: spec.oauth_config?.client_secret_env ?? '' } })}
+                  placeholder="e.g. GOOGLE_CLIENT_ID"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="label">Client Secret Env</label>
+                <input
+                  className="input"
+                  value={spec.oauth_config?.client_secret_env ?? ''}
+                  onChange={(e) => onChange({ ...spec, oauth_config: { token_store: spec.oauth_config?.token_store ?? '', refresh_url: spec.oauth_config?.refresh_url ?? '', client_id_env: spec.oauth_config?.client_id_env ?? '', client_secret_env: e.target.value } })}
+                  placeholder="e.g. GOOGLE_CLIENT_SECRET"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Fallback */}
+      <div className="border-t border-border/50 pt-2">
+        <button
+          className="flex items-center gap-1.5 w-full"
+          onClick={() => setFallbackOpen(!fallbackOpen)}
+        >
+          {fallbackOpen ? (
+            <ChevronDown className="w-3.5 h-3.5 text-text-muted" />
+          ) : (
+            <ChevronRight className="w-3.5 h-3.5 text-text-muted" />
+          )}
+          <span className="text-[10px] uppercase tracking-wider text-text-muted font-medium">
+            Fallback
+          </span>
+        </button>
+        {fallbackOpen && (
+          <div className="space-y-2 ml-2 mt-2">
+            <div>
+              <label className="label">Fallback Value (JSON)</label>
+              <textarea
+                className="input min-h-[60px] resize-y font-mono text-xs"
+                value={spec.fallback?.value !== undefined ? JSON.stringify(spec.fallback.value, null, 2) : ''}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (!raw.trim()) {
+                    onChange({ ...spec, fallback: spec.fallback?.log ? { value: null, log: spec.fallback.log } : undefined });
+                    return;
+                  }
+                  try {
+                    onChange({ ...spec, fallback: { ...spec.fallback, value: JSON.parse(raw) } });
+                  } catch {
+                    // Keep raw while editing
+                  }
+                }}
+                placeholder="null"
+              />
+            </div>
+            <label className="flex items-center gap-1.5 text-xs text-text-secondary cursor-pointer">
+              <input
+                type="checkbox"
+                className="accent-accent"
+                checked={spec.fallback?.log ?? false}
+                onChange={(e) => onChange({ ...spec, fallback: { value: spec.fallback?.value ?? null, log: e.target.checked } })}
+              />
+              Log Fallback
+            </label>
           </div>
         )}
       </div>

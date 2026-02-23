@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Plus, Trash2 } from 'lucide-react';
 import type { DataStoreSpec } from '../../../types/flow';
 import { useFlowStore } from '../../../stores/flow-store';
 import { ExtraFieldsEditor } from './ExtraFieldsEditor';
@@ -72,6 +73,7 @@ export function DataStoreSpecEditor({ spec, onChange }: Props) {
               <option value="create_many">Create Many</option>
               <option value="update_many">Update Many</option>
               <option value="delete_many">Delete Many</option>
+              <option value="aggregate">Aggregate</option>
             </>
           )}
         </select>
@@ -228,6 +230,97 @@ export function DataStoreSpecEditor({ spec, onChange }: Props) {
                 placeholder="Comma-separated keys, e.g. email, tenant_id"
               />
             </div>
+          )}
+          {spec.operation === 'aggregate' && (
+            <>
+              <div>
+                <label className="label">Group By</label>
+                <input
+                  className="input"
+                  value={(spec.group_by ?? []).join(', ')}
+                  onChange={(e) =>
+                    onChange({
+                      ...spec,
+                      group_by: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
+                    })
+                  }
+                  placeholder="Comma-separated fields, e.g. status, category"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="label">Aggregate Fields</label>
+                {(spec.aggregate_fields ?? []).map((agg, idx) => (
+                  <div key={idx} className="bg-surface-2 rounded p-2 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-text-muted">Field {idx + 1}</span>
+                      <button
+                        className="text-text-muted hover:text-red-400 transition-colors"
+                        onClick={() => {
+                          const next = [...(spec.aggregate_fields ?? [])];
+                          next.splice(idx, 1);
+                          onChange({ ...spec, aggregate_fields: next.length ? next : undefined });
+                        }}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <div>
+                      <label className="label">Function</label>
+                      <select
+                        className="input"
+                        value={agg.function}
+                        onChange={(e) => {
+                          const next = [...(spec.aggregate_fields ?? [])];
+                          next[idx] = { ...agg, function: e.target.value as 'count' | 'sum' | 'avg' | 'min' | 'max' };
+                          onChange({ ...spec, aggregate_fields: next });
+                        }}
+                      >
+                        <option value="count">Count</option>
+                        <option value="sum">Sum</option>
+                        <option value="avg">Avg</option>
+                        <option value="min">Min</option>
+                        <option value="max">Max</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="label">
+                        Field {agg.function === 'count' && <span className="text-text-muted">(optional for count)</span>}
+                      </label>
+                      <input
+                        className={`input ${agg.function === 'count' ? 'opacity-50' : ''}`}
+                        value={agg.field ?? ''}
+                        onChange={(e) => {
+                          const next = [...(spec.aggregate_fields ?? [])];
+                          next[idx] = { ...agg, field: e.target.value || undefined };
+                          onChange({ ...spec, aggregate_fields: next });
+                        }}
+                        placeholder="e.g. amount"
+                      />
+                    </div>
+                    <div>
+                      <label className="label">Alias</label>
+                      <input
+                        className="input"
+                        value={agg.alias}
+                        onChange={(e) => {
+                          const next = [...(spec.aggregate_fields ?? [])];
+                          next[idx] = { ...agg, alias: e.target.value };
+                          onChange({ ...spec, aggregate_fields: next });
+                        }}
+                        placeholder="e.g. total_amount"
+                      />
+                    </div>
+                  </div>
+                ))}
+                <button
+                  className="flex items-center gap-1 text-xs text-accent hover:text-accent/80 transition-colors"
+                  onClick={() => onChange({ ...spec, aggregate_fields: [...(spec.aggregate_fields ?? []), { function: 'count', alias: '' }] })}
+                >
+                  <Plus className="w-3 h-3" />
+                  Add Aggregate Field
+                </button>
+              </div>
+            </>
           )}
         </>
       )}

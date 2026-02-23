@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react';
 import type { TriggerSpec, JobConfig, JobRetryConfig, TriggerPattern } from '../../../types/flow';
 import { ExtraFieldsEditor } from './ExtraFieldsEditor';
 
@@ -11,6 +11,15 @@ interface Props {
 export function TriggerSpecEditor({ spec, onChange }: Props) {
   const [jobConfigOpen, setJobConfigOpen] = useState(false);
   const [patternOpen, setPatternOpen] = useState(false);
+  const [rateLimitOpen, setRateLimitOpen] = useState(!!spec.rate_limit);
+  const [signatureOpen, setSignatureOpen] = useState(!!spec.signature);
+  const [wsConfigOpen, setWsConfigOpen] = useState(!!spec.connection_config);
+  const [tierLimitsOpen, setTierLimitsOpen] = useState(!!(spec.tier_limits && spec.tier_limits.length > 0));
+
+  // Determine trigger type from event string
+  const eventStr = Array.isArray(spec.event) ? spec.event[0] ?? '' : (spec.event ?? '');
+  const isWebSocket = eventStr.toLowerCase().startsWith('ws ');
+  const isHttp = /^(GET|POST|PUT|PATCH|DELETE|HTTP)\s/i.test(eventStr);
 
   const jobConfig = spec.job_config ?? {};
   const pattern = spec.pattern ?? {};
@@ -302,6 +311,324 @@ export function TriggerSpecEditor({ spec, onChange }: Props) {
           </div>
         )}
       </div>
+
+      {/* Rate Limit */}
+      <div className="border-t border-border/50 pt-2">
+        <button
+          className="flex items-center gap-1.5 w-full"
+          onClick={() => setRateLimitOpen(!rateLimitOpen)}
+        >
+          {rateLimitOpen ? (
+            <ChevronDown className="w-3.5 h-3.5 text-text-muted" />
+          ) : (
+            <ChevronRight className="w-3.5 h-3.5 text-text-muted" />
+          )}
+          <span className="text-[10px] uppercase tracking-wider text-text-muted font-medium">
+            Rate Limit
+          </span>
+        </button>
+        {rateLimitOpen && (
+          <div className="space-y-2 ml-2 mt-2">
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <label className="label">Window (ms)</label>
+                <input
+                  type="number"
+                  className="input"
+                  value={spec.rate_limit?.window_ms ?? ''}
+                  onChange={(e) => {
+                    const v = e.target.value ? Number(e.target.value) : undefined;
+                    if (v === undefined && !spec.rate_limit?.max_requests) {
+                      onChange({ ...spec, rate_limit: undefined });
+                    } else {
+                      onChange({ ...spec, rate_limit: { ...spec.rate_limit, window_ms: v ?? 0, max_requests: spec.rate_limit?.max_requests ?? 0 } });
+                    }
+                  }}
+                  placeholder="e.g. 60000"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="label">Max Requests</label>
+                <input
+                  type="number"
+                  className="input"
+                  value={spec.rate_limit?.max_requests ?? ''}
+                  onChange={(e) => {
+                    const v = e.target.value ? Number(e.target.value) : undefined;
+                    if (v === undefined && !spec.rate_limit?.window_ms) {
+                      onChange({ ...spec, rate_limit: undefined });
+                    } else {
+                      onChange({ ...spec, rate_limit: { ...spec.rate_limit, window_ms: spec.rate_limit?.window_ms ?? 0, max_requests: v ?? 0 } });
+                    }
+                  }}
+                  placeholder="e.g. 100"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="label">Key By</label>
+              <select
+                className="input"
+                value={spec.rate_limit?.key_by ?? ''}
+                onChange={(e) => onChange({ ...spec, rate_limit: { ...spec.rate_limit, window_ms: spec.rate_limit?.window_ms ?? 0, max_requests: spec.rate_limit?.max_requests ?? 0, key_by: (e.target.value || undefined) as TriggerSpec['rate_limit'] extends infer T ? T extends { key_by?: infer U } ? U : never : never } })}
+              >
+                <option value="">Default</option>
+                <option value="ip">IP</option>
+                <option value="user">User</option>
+                <option value="api_key">API Key</option>
+              </select>
+            </div>
+            <div>
+              <label className="label">On Exceeded</label>
+              <select
+                className="input"
+                value={spec.rate_limit?.on_exceeded ?? ''}
+                onChange={(e) => onChange({ ...spec, rate_limit: { ...spec.rate_limit, window_ms: spec.rate_limit?.window_ms ?? 0, max_requests: spec.rate_limit?.max_requests ?? 0, on_exceeded: (e.target.value || undefined) as TriggerSpec['rate_limit'] extends infer T ? T extends { on_exceeded?: infer U } ? U : never : never } })}
+              >
+                <option value="">Default</option>
+                <option value="reject">Reject</option>
+                <option value="queue">Queue</option>
+                <option value="delay">Delay</option>
+              </select>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Webhook Signature */}
+      <div className="border-t border-border/50 pt-2">
+        <button
+          className="flex items-center gap-1.5 w-full"
+          onClick={() => setSignatureOpen(!signatureOpen)}
+        >
+          {signatureOpen ? (
+            <ChevronDown className="w-3.5 h-3.5 text-text-muted" />
+          ) : (
+            <ChevronRight className="w-3.5 h-3.5 text-text-muted" />
+          )}
+          <span className="text-[10px] uppercase tracking-wider text-text-muted font-medium">
+            Webhook Signature
+          </span>
+        </button>
+        {signatureOpen && (
+          <div className="space-y-2 ml-2 mt-2">
+            <div>
+              <label className="label">Algorithm</label>
+              <select
+                className="input"
+                value={spec.signature?.algorithm ?? 'hmac-sha256'}
+                onChange={(e) => onChange({ ...spec, signature: { ...spec.signature, algorithm: e.target.value as 'hmac-sha256' | 'hmac-sha1', key_source: spec.signature?.key_source ?? { env: '' }, header: spec.signature?.header ?? '' } })}
+              >
+                <option value="hmac-sha256">HMAC-SHA256</option>
+                <option value="hmac-sha1">HMAC-SHA1</option>
+              </select>
+            </div>
+            <div>
+              <label className="label">Key Env Var</label>
+              <input
+                className="input"
+                value={spec.signature?.key_source?.env ?? ''}
+                onChange={(e) => {
+                  const env = e.target.value;
+                  if (!env && !spec.signature?.algorithm && !spec.signature?.header) {
+                    onChange({ ...spec, signature: undefined });
+                  } else {
+                    onChange({ ...spec, signature: { algorithm: spec.signature?.algorithm ?? 'hmac-sha256', key_source: { env }, header: spec.signature?.header ?? '' } });
+                  }
+                }}
+                placeholder="e.g. WEBHOOK_SECRET"
+              />
+            </div>
+            <div>
+              <label className="label">Header</label>
+              <input
+                className="input"
+                value={spec.signature?.header ?? ''}
+                onChange={(e) => onChange({ ...spec, signature: { algorithm: spec.signature?.algorithm ?? 'hmac-sha256', key_source: spec.signature?.key_source ?? { env: '' }, header: e.target.value } })}
+                placeholder="e.g. X-Hub-Signature-256"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* WebSocket Config (shown only for ws events) */}
+      {isWebSocket && (
+        <div className="border-t border-border/50 pt-2">
+          <button
+            className="flex items-center gap-1.5 w-full"
+            onClick={() => setWsConfigOpen(!wsConfigOpen)}
+          >
+            {wsConfigOpen ? (
+              <ChevronDown className="w-3.5 h-3.5 text-text-muted" />
+            ) : (
+              <ChevronRight className="w-3.5 h-3.5 text-text-muted" />
+            )}
+            <span className="text-[10px] uppercase tracking-wider text-text-muted font-medium">
+              WebSocket Config
+            </span>
+          </button>
+          {wsConfigOpen && (
+            <div className="space-y-2 ml-2 mt-2">
+              <div className="flex items-center gap-2">
+                <label className="label flex-1">Auth Required</label>
+                <button
+                  className={`relative w-9 h-5 rounded-full transition-colors ${
+                    spec.connection_config?.auth_required ? 'bg-accent' : 'bg-surface-2'
+                  }`}
+                  onClick={() => onChange({ ...spec, connection_config: { ...spec.connection_config, auth_required: !spec.connection_config?.auth_required } })}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                      spec.connection_config?.auth_required ? 'translate-x-4' : ''
+                    }`}
+                  />
+                </button>
+              </div>
+              <div>
+                <label className="label">Auth Strategy</label>
+                <select
+                  className="input"
+                  value={spec.connection_config?.auth_strategy ?? ''}
+                  onChange={(e) => onChange({ ...spec, connection_config: { ...spec.connection_config, auth_required: spec.connection_config?.auth_required ?? false, auth_strategy: (e.target.value || undefined) as 'jwt' | 'api_key' | 'none' | undefined } })}
+                >
+                  <option value="">Default</option>
+                  <option value="jwt">JWT</option>
+                  <option value="api_key">API Key</option>
+                  <option value="none">None</option>
+                </select>
+              </div>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="label">Heartbeat (ms)</label>
+                  <input
+                    type="number"
+                    className="input"
+                    value={spec.connection_config?.heartbeat_ms ?? ''}
+                    onChange={(e) => onChange({ ...spec, connection_config: { ...spec.connection_config, auth_required: spec.connection_config?.auth_required ?? false, heartbeat_ms: e.target.value ? Number(e.target.value) : undefined } })}
+                    placeholder="e.g. 30000"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="label">Max Conn / Client</label>
+                  <input
+                    type="number"
+                    className="input"
+                    value={spec.connection_config?.max_connections_per_client ?? ''}
+                    onChange={(e) => onChange({ ...spec, connection_config: { ...spec.connection_config, auth_required: spec.connection_config?.auth_required ?? false, max_connections_per_client: e.target.value ? Number(e.target.value) : undefined } })}
+                    placeholder="e.g. 5"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="label flex-1">Reconnect</label>
+                <button
+                  className={`relative w-9 h-5 rounded-full transition-colors ${
+                    spec.connection_config?.reconnect ? 'bg-accent' : 'bg-surface-2'
+                  }`}
+                  onClick={() => onChange({ ...spec, connection_config: { ...spec.connection_config, auth_required: spec.connection_config?.auth_required ?? false, reconnect: !spec.connection_config?.reconnect } })}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                      spec.connection_config?.reconnect ? 'translate-x-4' : ''
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tier Limits (shown only for HTTP triggers) */}
+      {isHttp && (
+        <div className="border-t border-border/50 pt-2">
+          <button
+            className="flex items-center gap-1.5 w-full"
+            onClick={() => setTierLimitsOpen(!tierLimitsOpen)}
+          >
+            {tierLimitsOpen ? (
+              <ChevronDown className="w-3.5 h-3.5 text-text-muted" />
+            ) : (
+              <ChevronRight className="w-3.5 h-3.5 text-text-muted" />
+            )}
+            <span className="text-[10px] uppercase tracking-wider text-text-muted font-medium">
+              Tier Limits
+            </span>
+          </button>
+          {tierLimitsOpen && (
+            <div className="space-y-2 ml-2 mt-2">
+              {(spec.tier_limits ?? []).map((tier, idx) => (
+                <div key={idx} className="bg-surface-2 rounded p-2 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-text-muted">Tier {idx + 1}</span>
+                    <button
+                      className="text-text-muted hover:text-red-400 transition-colors"
+                      onClick={() => {
+                        const next = [...(spec.tier_limits ?? [])];
+                        next.splice(idx, 1);
+                        onChange({ ...spec, tier_limits: next.length ? next : undefined });
+                      }}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div>
+                    <label className="label">Role</label>
+                    <input
+                      className="input"
+                      value={tier.role}
+                      onChange={(e) => {
+                        const next = [...(spec.tier_limits ?? [])];
+                        next[idx] = { ...tier, role: e.target.value };
+                        onChange({ ...spec, tier_limits: next });
+                      }}
+                      placeholder="e.g. free, pro, admin"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <label className="label">Max Requests</label>
+                      <input
+                        type="number"
+                        className="input"
+                        value={tier.max_requests}
+                        onChange={(e) => {
+                          const next = [...(spec.tier_limits ?? [])];
+                          next[idx] = { ...tier, max_requests: Number(e.target.value) };
+                          onChange({ ...spec, tier_limits: next });
+                        }}
+                        placeholder="100"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="label">Window (ms)</label>
+                      <input
+                        type="number"
+                        className="input"
+                        value={tier.window_ms}
+                        onChange={(e) => {
+                          const next = [...(spec.tier_limits ?? [])];
+                          next[idx] = { ...tier, window_ms: Number(e.target.value) };
+                          onChange({ ...spec, tier_limits: next });
+                        }}
+                        placeholder="60000"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <button
+                className="flex items-center gap-1 text-xs text-accent hover:text-accent/80 transition-colors"
+                onClick={() => onChange({ ...spec, tier_limits: [...(spec.tier_limits ?? []), { role: '', max_requests: 100, window_ms: 60000 }] })}
+              >
+                <Plus className="w-3 h-3" />
+                Add Tier
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       <ExtraFieldsEditor spec={spec} nodeType="trigger" onChange={onChange} />
     </div>

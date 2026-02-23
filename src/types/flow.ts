@@ -52,6 +52,25 @@ export interface TriggerSpec {
   path?: string;
   job_config?: JobConfig;
   pattern?: TriggerPattern;
+  rate_limit?: {
+    window_ms: number;
+    max_requests: number;
+    key_by?: 'ip' | 'user' | 'api_key';
+    on_exceeded?: 'reject' | 'queue' | 'delay';
+  };
+  signature?: {
+    algorithm: 'hmac-sha256' | 'hmac-sha1';
+    key_source: { env: string };
+    header: string;
+  };
+  connection_config?: {
+    auth_required: boolean;
+    auth_strategy?: 'jwt' | 'api_key' | 'none';
+    heartbeat_ms?: number;
+    max_connections_per_client?: number;
+    reconnect?: boolean;
+  };
+  tier_limits?: Array<{ role: string; max_requests: number; window_ms: number }>;
   [key: string]: unknown;
 }
 
@@ -246,7 +265,7 @@ export interface AgentGroupSpec {
 export interface DataStoreSpec {
   store_type?: 'database' | 'filesystem' | 'memory';
   operation?: 'create' | 'read' | 'update' | 'delete' | 'upsert' | 'create_many' | 'update_many' | 'delete_many'
-    | 'get' | 'set' | 'merge' | 'reset' | 'subscribe' | 'update_where';
+    | 'get' | 'set' | 'merge' | 'reset' | 'subscribe' | 'update_where' | 'aggregate';
   model?: string;
   data?: Record<string, string>;
   query?: Record<string, string>;
@@ -268,6 +287,13 @@ export interface DataStoreSpec {
   patch?: Record<string, unknown>;
   // safety mode for null handling
   safety?: 'strict' | 'lenient';
+  // aggregate fields (when operation = 'aggregate')
+  aggregate_fields?: Array<{
+    function: 'count' | 'sum' | 'avg' | 'min' | 'max';
+    field?: string;
+    alias: string;
+  }>;
+  group_by?: string[];
   description?: string;
   [key: string]: unknown;
 }
@@ -289,6 +315,16 @@ export interface ServiceCallSpec {
     fallback?: 'headless_browser' | 'none';
   };
   integration?: string;
+  oauth_config?: {
+    token_store: string;
+    refresh_url: string;
+    client_id_env: string;
+    client_secret_env: string;
+  };
+  fallback?: {
+    value: unknown;
+    log?: boolean;
+  };
   description?: string;
   [key: string]: unknown;
 }
@@ -368,8 +404,11 @@ export interface DelaySpec {
 }
 
 export interface CacheSpec {
+  operation?: 'check' | 'set' | 'invalidate';
   key?: string;
   ttl_ms?: number;
+  ttl_jitter_ms?: number;
+  value?: string;
   store?: 'redis' | 'memory';
   description?: string;
   [key: string]: unknown;
