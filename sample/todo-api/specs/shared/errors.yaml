@@ -1,0 +1,15 @@
+errors:
+  VALIDATION_ERROR:
+    http_status: 400
+    message: "Validation failed: {details}"
+    log_level: warn
+
+  NOT_FOUND:
+    http_status: 404
+    message: "{resource} not found"
+    log_level: info
+
+  INTERNAL_ERROR:
+    http_status: 500
+    message: "An unexpected error occurred"
+    log_level: error

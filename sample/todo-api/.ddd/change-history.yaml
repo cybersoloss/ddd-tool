@@ -1,0 +1,62 @@
+- id: chg-0001
+  timestamp: "2026-02-25T00:00:00.000Z"
+  source: ddd-create
+  scope:
+    level: L3
+    domain: todos
+    flow: create-todo
+    pillar: logic
+  spec_file: specs/domains/todos/flows/create-todo.yaml
+  spec_checksum: 3a3ebeb9c9656284fa5f38cbbbcaf8daf14c6c6e55c014369705a4be7a646304
+  status: implemented
+  implemented_at: "2026-02-25T00:00:00.000Z"
+  code_files:
+    - src/routes/todos.ts
+    - src/repositories/todo.repository.ts
+    - src/db/client.ts
+
+- id: chg-0002
+  timestamp: "2026-02-25T00:00:00.000Z"
+  source: ddd-create
+  scope:
+    level: L3
+    domain: todos
+    flow: list-todos
+    pillar: logic
+  spec_file: specs/domains/todos/flows/list-todos.yaml
+  spec_checksum: ce59245fbdd0ad9fd81cf694c392b879179aec2f0f40223fda5b810b02525b9e
+  status: implemented
+  implemented_at: "2026-02-25T01:00:00.000Z"
+  code_files:
+    - src/routes/todos.ts
+    - src/repositories/todo.repository.ts
+
+- id: chg-0003
+  timestamp: "2026-02-25T00:00:00.000Z"
+  source: ddd-create
+  scope:
+    level: L3
+    domain: todos
+    flow: delete-todo
+    pillar: logic
+  spec_file: specs/domains/todos/flows/delete-todo.yaml
+  spec_checksum: 4cbb8cb95cdb519eaa7ba301afbd555c8c988fc719dab44748aa42067431687b
+  status: implemented
+  implemented_at: "2026-02-25T00:00:00.000Z"
+  code_files:
+    - src/routes/todos.ts
+    - src/repositories/todo.repository.ts
+
+- id: chg-0004
+  timestamp: "2026-02-25T00:00:00.000Z"
+  source: ddd-create
+  scope:
+    level: L1
+    domain: null
+    pillar: data
+  spec_file: specs/schemas/todo.yaml
+  spec_checksum: 6f4e4a9e8922df448b07d570a15947e539b4c24940ce05a1782d3f840e8aa6e7
+  status: implemented
+  implemented_at: "2026-02-25T00:00:00.000Z"
+  code_files:
+    - prisma/schema.prisma

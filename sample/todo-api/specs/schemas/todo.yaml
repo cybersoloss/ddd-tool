@@ -1,0 +1,28 @@
+name: Todo
+inherits: _base
+description: A todo item
+
+fields:
+  - name: title
+    type: string
+    required: true
+    max_length: 255
+    description: Short description of the task
+
+  - name: completed
+    type: boolean
+    default: false
+    description: Whether the todo is done
+
+indexes:
+  - fields: [created_at]
+    type: btree
+    description: For sorting todos by creation time
+
+  - fields: [completed]
+    type: btree
+    description: For filtering by completion status
+
+metadata:
+  created: "2026-02-25T00:00:00.000Z"
+  modified: "2026-02-25T00:00:00.000Z"

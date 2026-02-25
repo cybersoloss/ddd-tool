@@ -1,0 +1,25 @@
+services:
+  - id: database
+    type: datastore
+    engine: "SQLite"
+    entry: "file:./dev.db"
+    health: "npx prisma db push --skip-generate"
+    depends_on: []
+    setup: "npx prisma generate && npx prisma db push"
+
+  - id: backend
+    type: server
+    runtime: "Node.js 20"
+    entry: src/server.ts
+    port: 3001
+    health: /health
+    depends_on: [database]
+    dev_command: "npx tsx watch src/server.ts"
+    setup: "npm install"
+
+startup_order:
+  - database
+  - backend
+
+deployment:
+  local: process-manager

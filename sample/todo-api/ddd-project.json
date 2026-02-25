@@ -1,0 +1,12 @@
+{
+  "name": "todo-api",
+  "description": "Simple Todo REST API",
+  "version": "0.1.0",
+  "domains": [
+    {
+      "id": "todos",
+      "name": "Todos",
+      "description": "Todo item management"
+    }
+  ]
+}

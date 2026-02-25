@@ -1,0 +1,105 @@
+flow:
+  id: delete-todo
+  name: Delete Todo
+  type: traditional
+  domain: todos
+  description: Looks up a todo by ID and deletes it, returning 404 if not found
+  auth:
+    required: false
+
+trigger:
+  id: trigger-pKwT8bHs
+  type: trigger
+  position: { x: 400, y: 50 }
+  connections:
+    - targetNodeId: datastore-mQeY3vLc
+  spec:
+    event: "HTTP DELETE /api/todos/:id"
+  label: "DELETE /api/todos/:id"
+
+nodes:
+  - id: datastore-mQeY3vLc
+    type: data_store
+    position: { x: 400, y: 200 }
+    connections:
+      - targetNodeId: decision-rFnJ7xAg
+        sourceHandle: success
+      - targetNodeId: terminal-yMkX5jBq
+        sourceHandle: error
+    spec:
+      store_type: database
+      operation: read
+      model: Todo
+      query:
+        id: "$.params.id"
+      safety: strict
+      description: Look up the todo by ID
+    label: Find Todo
+
+  - id: decision-rFnJ7xAg
+    type: decision
+    position: { x: 400, y: 350 }
+    connections:
+      - targetNodeId: datastore-tBpD4mKw
+        sourceHandle: "true"
+      - targetNodeId: terminal-cWgZ1oPi
+        sourceHandle: "false"
+    spec:
+      condition: "$.todo != null"
+      trueLabel: Found
+      falseLabel: Not Found
+    label: Todo Exists?
+
+  - id: datastore-tBpD4mKw
+    type: data_store
+    position: { x: 400, y: 500 }
+    connections:
+      - targetNodeId: terminal-sVhR6nEf
+        sourceHandle: success
+      - targetNodeId: terminal-yMkX5jBq
+        sourceHandle: error
+    spec:
+      store_type: database
+      operation: delete
+      model: Todo
+      query:
+        id: "$.params.id"
+      description: Delete the todo row
+    label: Delete Todo
+
+  - id: terminal-sVhR6nEf
+    type: terminal
+    position: { x: 400, y: 650 }
+    connections: []
+    spec:
+      outcome: success
+      status: 204
+    label: 204 No Content
+
+  - id: terminal-cWgZ1oPi
+    type: terminal
+    position: { x: 750, y: 350 }
+    connections: []
+    spec:
+      outcome: error
+      status: 404
+      body:
+        code: NOT_FOUND
+        message: Todo not found
+    label: 404 Not Found
+
+  - id: terminal-yMkX5jBq
+    type: terminal
+    position: { x: 750, y: 200 }
+    connections: []
+    spec:
+      outcome: error
+      status: 500
+      body:
+        code: INTERNAL_ERROR
+        message: Database error
+    label: 500 Error
+
+metadata:
+  created: "2026-02-25T00:00:00.000Z"
+  modified: "2026-02-25T00:00:00.000Z"

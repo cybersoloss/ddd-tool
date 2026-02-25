@@ -1,0 +1,19 @@
+name: _base
+description: Base fields shared by all models
+
+fields:
+  - name: id
+    type: integer
+    primary_key: true
+    auto_increment: true
+    description: Unique identifier
+
+  - name: created_at
+    type: datetime
+    default: now()
+    description: Record creation timestamp
+
+  - name: updated_at
+    type: datetime
+    auto_update: now()
+    description: Record last update timestamp

@@ -1,0 +1,18 @@
+variables:
+  - name: PORT
+    type: number
+    required: false
+    default: "3001"
+    description: Server port
+
+  - name: DATABASE_URL
+    type: string
+    required: true
+    description: SQLite database file path
+    example: "file:./dev.db"
+
+  - name: NODE_ENV
+    type: string
+    required: false
+    default: development
+    values: [development, production, test]

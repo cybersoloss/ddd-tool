@@ -1,0 +1,19 @@
+project:
+  name: todo-api
+  description: Simple Todo REST API
+  version: "0.1.0"
+
+tech_stack:
+  language: TypeScript
+  framework: Express
+  runtime: "Node.js 20"
+  database: SQLite
+  orm: Prisma
+
+environments:
+  development:
+    url: "http://localhost:3001"
+    database_url: "file:./dev.db"
+  production:
+    url: "https://api.todo.example.com"
+    database_url: "file:./prod.db"

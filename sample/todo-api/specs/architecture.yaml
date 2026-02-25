@@ -1,0 +1,40 @@
+project_structure:
+  source_root: src
+  entry_point: src/server.ts
+  layers:
+    - routes    # HTTP handlers
+    - services  # business logic
+    - repositories  # data access
+
+naming_conventions:
+  files: kebab-case
+  functions: camelCase
+  types: PascalCase
+  constants: UPPER_SNAKE_CASE
+
+dependencies:
+  runtime:
+    - express
+    - "@prisma/client"
+    - zod
+  dev:
+    - typescript
+    - tsx
+    - prisma
+    - "@types/express"
+    - "@types/node"
+
+api_design:
+  style: REST
+  base_path: /api
+  response_format: json
+  error_format:
+    code: string
+    message: string
+
+testing:
+  framework: jest
+  command: npx jest
+  coverage_threshold: 80
+
+cross_cutting_patterns: {}

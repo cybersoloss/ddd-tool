@@ -1,0 +1,97 @@
+flow:
+  id: create-todo
+  name: Create Todo
+  type: traditional
+  domain: todos
+  description: Validates the request body and creates a new todo in the database
+  auth:
+    required: false
+
+trigger:
+  id: trigger-crtg8xpQ
+  type: trigger
+  position: { x: 400, y: 50 }
+  connections:
+    - targetNodeId: input-vMnK2bRw
+  spec:
+    event: "HTTP POST /api/todos"
+  label: "POST /api/todos"
+
+nodes:
+  - id: input-vMnK2bRw
+    type: input
+    position: { x: 400, y: 200 }
+    connections:
+      - targetNodeId: datastore-sFpE7yLj
+        sourceHandle: valid
+      - targetNodeId: terminal-eDhW3cBx
+        sourceHandle: invalid
+    spec:
+      fields:
+        - name: title
+          type: string
+          required: true
+        - name: completed
+          type: boolean
+          required: false
+      validation: zod
+      description: Validate that title is present and non-empty
+    label: Validate Input
+
+  - id: datastore-sFpE7yLj
+    type: data_store
+    position: { x: 400, y: 350 }
+    connections:
+      - targetNodeId: terminal-kNqT4mAz
+        sourceHandle: success
+      - targetNodeId: terminal-jRmY9pKv
+        sourceHandle: error
+    spec:
+      store_type: database
+      operation: create
+      model: Todo
+      data:
+        title: "$.title"
+        completed: "$.completed"
+      returning: true
+      description: Insert new todo row
+    label: Save Todo
+
+  - id: terminal-kNqT4mAz
+    type: terminal
+    position: { x: 400, y: 500 }
+    connections: []
+    spec:
+      outcome: success
+      status: 201
+      body:
+        todo: "$.todo"
+    label: 201 Created
+
+  - id: terminal-eDhW3cBx
+    type: terminal
+    position: { x: 750, y: 200 }
+    connections: []
+    spec:
+      outcome: error
+      status: 400
+      body:
+        code: VALIDATION_ERROR
+        message: "$.validation_errors"
+    label: 400 Bad Request
+
+  - id: terminal-jRmY9pKv
+    type: terminal
+    position: { x: 750, y: 350 }
+    connections: []
+    spec:
+      outcome: error
+      status: 500
+      body:
+        code: INTERNAL_ERROR
+        message: Failed to create todo
+    label: 500 Error
+
+metadata:
+  created: "2026-02-25T00:00:00.000Z"
+  modified: "2026-02-25T00:00:00.000Z"

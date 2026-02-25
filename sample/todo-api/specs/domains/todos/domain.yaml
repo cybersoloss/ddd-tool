@@ -1,0 +1,30 @@
+name: Todos
+description: Todo item management — create, list, and delete todos
+
+owns_schemas:
+  - Todo
+
+flows:
+  - id: create-todo
+    name: Create Todo
+    description: Validate input and persist a new todo item
+    type: traditional
+    tags: [public-api]
+
+  - id: list-todos
+    name: List Todos
+    description: Return all todo items sorted by creation date
+    type: traditional
+    tags: [public-api]
+
+  - id: delete-todo
+    name: Delete Todo
+    description: Find and delete a todo item by ID
+    type: traditional
+    tags: [public-api]
+
+layout:
+  flows:
+    create-todo: { x: 100, y: 100 }
+    list-todos:  { x: 400, y: 100 }
+    delete-todo: { x: 700, y: 100 }

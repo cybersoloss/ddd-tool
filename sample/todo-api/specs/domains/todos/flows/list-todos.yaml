@@ -1,0 +1,95 @@
+flow:
+  id: list-todos
+  name: List Todos
+  type: traditional
+  domain: todos
+  description: Returns todo items, optionally filtered by completed status
+  auth:
+    required: false
+
+trigger:
+  id: trigger-gHsL5nTd
+  type: trigger
+  position: { x: 400, y: 50 }
+  connections:
+    - targetNodeId: input-fLpQ2kNs
+  spec:
+    event: "HTTP GET /api/todos"
+  label: "GET /api/todos"
+
+nodes:
+  # NEW NODE: validates optional ?completed query param
+  - id: input-fLpQ2kNs
+    type: input
+    position: { x: 400, y: 200 }
+    connections:
+      - targetNodeId: datastore-wCeJ1fQr
+        sourceHandle: valid
+      - targetNodeId: terminal-invalid
+        sourceHandle: invalid
+    spec:
+      fields:
+        - name: completed
+          type: boolean
+          required: false
+      description: Optional filter by completion status via ?completed=true|false
+    label: Parse Query Params
+
+  - id: datastore-wCeJ1fQr
+    type: data_store
+    position: { x: 400, y: 350 }
+    connections:
+      - targetNodeId: terminal-aBuN6kMp
+        sourceHandle: success
+      - targetNodeId: terminal-xVrG2yZo
+        sourceHandle: error
+    spec:
+      store_type: database
+      operation: read
+      model: Todo
+      # CHANGED: query now uses optional filter
+      query:
+        completed: "$.completed"
+      sort:
+        created_at: desc
+      description: Fetch todos, filtered by completed if provided
+    label: Fetch Todos
+
+  - id: terminal-aBuN6kMp
+    type: terminal
+    position: { x: 400, y: 500 }
+    connections: []
+    spec:
+      outcome: success
+      status: 200
+      body:
+        todos: "$.todos"
+    label: 200 OK
+
+  - id: terminal-invalid
+    type: terminal
+    position: { x: 750, y: 200 }
+    connections: []
+    spec:
+      outcome: error
+      status: 400
+      body:
+        code: VALIDATION_ERROR
+        message: "$.validation_errors"
+    label: 400 Bad Request
+
+  - id: terminal-xVrG2yZo
+    type: terminal
+    position: { x: 750, y: 350 }
+    connections: []
+    spec:
+      outcome: error
+      status: 500
+      body:
+        code: INTERNAL_ERROR
+        message: Failed to fetch todos
+    label: 500 Error
+
+metadata:
+  created: "2026-02-25T00:00:00.000Z"
+  modified: "2026-02-25T01:00:00.000Z"
