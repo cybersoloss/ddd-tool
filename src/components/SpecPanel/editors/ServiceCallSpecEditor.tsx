@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, X } from 'lucide-react';
 import type { ServiceCallSpec } from '../../../types/flow';
 import { ExtraFieldsEditor } from './ExtraFieldsEditor';
 
@@ -11,6 +11,7 @@ interface Props {
 export function ServiceCallSpecEditor({ spec, onChange }: Props) {
   const [reqConfigOpen, setReqConfigOpen] = useState(false);
   const [oauthOpen, setOauthOpen] = useState(!!spec.oauth_config);
+  const [oauth1aOpen, setOauth1aOpen] = useState(!!spec.oauth1a_config);
   const [fallbackOpen, setFallbackOpen] = useState(!!spec.fallback);
   const reqConfig = spec.request_config ?? {};
 
@@ -174,6 +175,40 @@ export function ServiceCallSpecEditor({ spec, onChange }: Props) {
           onChange={(e) => onChange({ ...spec, integration: e.target.value || undefined })}
           placeholder="e.g. stripe, twilio (ref to system.yaml)"
         />
+      </div>
+      <div>
+        <label className="label">Capture Headers</label>
+        <div className="space-y-1">
+          {(spec.capture_headers ?? []).map((h, i) => (
+            <div key={i} className="flex gap-1 items-center">
+              <input
+                className="input text-xs flex-1"
+                value={h}
+                onChange={(e) => {
+                  const updated = [...(spec.capture_headers ?? [])];
+                  updated[i] = e.target.value;
+                  onChange({ ...spec, capture_headers: updated });
+                }}
+                placeholder="x-restli-id"
+              />
+              <button
+                className="btn-icon !p-0.5"
+                onClick={() => {
+                  const updated = (spec.capture_headers ?? []).filter((_, j) => j !== i);
+                  onChange({ ...spec, capture_headers: updated.length ? updated : undefined });
+                }}
+              >
+                <X className="w-3 h-3 text-danger" />
+              </button>
+            </div>
+          ))}
+          <button
+            className="flex items-center gap-1 text-[10px] text-accent hover:text-accent-hover"
+            onClick={() => onChange({ ...spec, capture_headers: [...(spec.capture_headers ?? []), ''] })}
+          >
+            <Plus className="w-2.5 h-2.5" /> Add header
+          </button>
+        </div>
       </div>
 
       {/* Request Config */}
@@ -358,6 +393,52 @@ export function ServiceCallSpecEditor({ spec, onChange }: Props) {
                 />
               </div>
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* OAuth 1.0a Config */}
+      <div className="border-t border-border/50 pt-2">
+        <button
+          className="flex items-center gap-1.5 w-full"
+          onClick={() => setOauth1aOpen(!oauth1aOpen)}
+        >
+          {oauth1aOpen ? (
+            <ChevronDown className="w-3.5 h-3.5 text-text-muted" />
+          ) : (
+            <ChevronRight className="w-3.5 h-3.5 text-text-muted" />
+          )}
+          <span className="text-[10px] uppercase tracking-wider text-text-muted font-medium">
+            OAuth 1.0a Config
+          </span>
+        </button>
+        {oauth1aOpen && (
+          <div className="space-y-2 ml-2 mt-2">
+            <p className="text-[10px] text-text-muted">HMAC-SHA1 signing. All 4 credential fields required. Reference decrypted values from flow context.</p>
+            {(
+              [
+                { key: 'api_key_field', label: 'API Key Field', placeholder: '$.credentials.api_key' },
+                { key: 'api_key_secret_field', label: 'API Key Secret Field', placeholder: '$.credentials.api_key_secret' },
+                { key: 'access_token_field', label: 'Access Token Field', placeholder: '$.credentials.access_token' },
+                { key: 'access_token_secret_field', label: 'Access Token Secret Field', placeholder: '$.credentials.access_token_secret' },
+              ] as const
+            ).map(({ key, label, placeholder }) => (
+              <div key={key}>
+                <label className="label">{label}</label>
+                <input
+                  className="input"
+                  value={spec.oauth1a_config?.[key] ?? ''}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    const current = spec.oauth1a_config ?? { api_key_field: '', api_key_secret_field: '', access_token_field: '', access_token_secret_field: '' };
+                    const updated = { ...current, [key]: v };
+                    const isEmpty = Object.values(updated).every(s => !s);
+                    onChange({ ...spec, oauth1a_config: isEmpty ? undefined : updated });
+                  }}
+                  placeholder={placeholder}
+                />
+              </div>
+            ))}
           </div>
         )}
       </div>

@@ -360,6 +360,33 @@ export function UIPageEditor({ pageId, spec, onBack }: Props) {
                         required
                       </label>
                     </div>
+                    <input
+                      className="input text-[10px] w-full"
+                      value={field.visible_when ?? ''}
+                      onChange={(e) => updateFormField(fi, ffi, { visible_when: e.target.value || undefined })}
+                      placeholder="visible_when expr"
+                    />
+                    <input
+                      className="input text-[10px] w-full"
+                      value={
+                        (() => {
+                          const rw = field.required_when;
+                          if (!rw) return '';
+                          return `${rw.field ?? ''}=${Array.isArray(rw.value) ? (rw.value as string[]).join(',') : String(rw.value ?? '')}`;
+                        })()
+                      }
+                      onChange={(e) => {
+                        const raw = e.target.value.trim();
+                        if (!raw) { updateFormField(fi, ffi, { required_when: undefined }); return; }
+                        const eqIdx = raw.indexOf('=');
+                        if (eqIdx < 0) return;
+                        const f = raw.slice(0, eqIdx);
+                        const v = raw.slice(eqIdx + 1);
+                        const val = v.includes(',') ? v.split(',').map(s => s.trim()) : v;
+                        updateFormField(fi, ffi, { required_when: { field: f, value: val } });
+                      }}
+                      placeholder="required_when field=value"
+                    />
                   </div>
                 ))}
                 <button

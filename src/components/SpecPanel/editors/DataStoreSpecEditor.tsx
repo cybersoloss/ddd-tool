@@ -129,6 +129,62 @@ export function DataStoreSpecEditor({ spec, onChange }: Props) {
               placeholder="{}"
             />
           </div>
+          <div>
+            <label className="label">Optional Filters</label>
+            <div className="space-y-1">
+              {(spec.filters ?? []).map((f, i) => (
+                <div key={i} className="flex gap-1 items-center">
+                  <input
+                    className="input text-xs w-24"
+                    value={f.field}
+                    onChange={(e) => {
+                      const updated = [...(spec.filters ?? [])];
+                      updated[i] = { ...updated[i], field: e.target.value };
+                      onChange({ ...spec, filters: updated });
+                    }}
+                    placeholder="field"
+                  />
+                  <input
+                    className="input text-xs flex-1"
+                    value={f.value}
+                    onChange={(e) => {
+                      const updated = [...(spec.filters ?? [])];
+                      updated[i] = { ...updated[i], value: e.target.value };
+                      onChange({ ...spec, filters: updated });
+                    }}
+                    placeholder="$.value"
+                  />
+                  <label className="flex items-center gap-0.5 text-[10px] text-text-muted shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={f.required ?? true}
+                      onChange={(e) => {
+                        const updated = [...(spec.filters ?? [])];
+                        updated[i] = { ...updated[i], required: e.target.checked };
+                        onChange({ ...spec, filters: updated });
+                      }}
+                    />
+                    req
+                  </label>
+                  <button
+                    className="btn-icon !p-0.5"
+                    onClick={() => {
+                      const updated = (spec.filters ?? []).filter((_, j) => j !== i);
+                      onChange({ ...spec, filters: updated.length ? updated : undefined });
+                    }}
+                  >
+                    <span className="text-danger text-xs">×</span>
+                  </button>
+                </div>
+              ))}
+              <button
+                className="flex items-center gap-1 text-[10px] text-accent hover:text-accent-hover"
+                onClick={() => onChange({ ...spec, filters: [...(spec.filters ?? []), { field: '', value: '', required: false }] })}
+              >
+                + Add filter
+              </button>
+            </div>
+          </div>
           {spec.operation === 'read' && (
             <>
               <div>

@@ -231,11 +231,21 @@ export function FlowBlock({ flow, domainId, selected, isStale, syncState, annota
             const isSchedule = tag.startsWith('cron:') || tag.startsWith('schedule:');
             const isHttp = tag === 'http' || tag === 'api';
             const isEvent = tag === 'event_handler';
-            const TagIcon = isSchedule ? Clock : isHttp ? Globe : isEvent ? Zap : null;
+            const isQueue = tag.startsWith('queue:');
+            const TagIcon = isSchedule ? Clock : isHttp ? Globe : isEvent ? Zap : isQueue ? Clock : null;
+            const displayTag = isQueue ? tag.replace('queue:', 'q:') : tag;
             return (
-              <span key={tag} className="text-[10px] bg-bg-tertiary text-text-muted px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+              <span
+                key={tag}
+                className={`text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5 ${
+                  isQueue
+                    ? 'bg-amber-500/10 text-amber-400'
+                    : 'bg-bg-tertiary text-text-muted'
+                }`}
+                title={isQueue ? `Worker queue: ${tag.replace('queue:', '')}` : tag}
+              >
                 {TagIcon && <TagIcon className="w-2.5 h-2.5" />}
-                {tag}
+                {displayTag}
               </span>
             );
           })}

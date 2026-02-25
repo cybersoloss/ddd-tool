@@ -190,6 +190,7 @@ export interface FormField {
   value_field?: string;
   validation?: string;
   visible_when?: string;
+  required_when?: { field: string; value: unknown };
   allow_empty?: boolean;
   accept?: string;
   max_size_mb?: number;

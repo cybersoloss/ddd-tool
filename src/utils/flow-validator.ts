@@ -602,6 +602,22 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
             { nodeId: node.id, suggestion: 'Set the service URL or reference an integration' }
           ));
         }
+        // oauth1a_config requires all 4 credential fields
+        if (spec.oauth1a_config) {
+          const { api_key_field, api_key_secret_field, access_token_field, access_token_secret_field } = spec.oauth1a_config;
+          const missing = [
+            !api_key_field && 'api_key_field',
+            !api_key_secret_field && 'api_key_secret_field',
+            !access_token_field && 'access_token_field',
+            !access_token_secret_field && 'access_token_secret_field',
+          ].filter(Boolean);
+          if (missing.length > 0) {
+            issues.push(issue('flow', 'error', 'spec_completeness',
+              `Service call "${node.label}" oauth1a_config is missing required fields: ${missing.join(', ')}`,
+              { nodeId: node.id, suggestion: 'All 4 OAuth 1.0a credential fields are required for HMAC-SHA1 signing' }
+            ));
+          }
+        }
         break;
       }
       case 'ipc_call': {
@@ -777,8 +793,24 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
         if (!spec.operation) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Crypto "${node.label}" must have an operation set`,
-            { nodeId: node.id, suggestion: 'Set the operation (encrypt, decrypt, hash, sign, verify, hmac)' }
+            { nodeId: node.id, suggestion: 'Set the operation (encrypt, decrypt, hash, sign, verify, generate_key, generate_token)' }
           ));
+        }
+        // generate_token does not use algorithm or key_source — it generates a random opaque string
+        if (spec.operation === 'generate_token') {
+          if (!spec.output_field) {
+            issues.push(issue('flow', 'warning', 'spec_completeness',
+              `Crypto "${node.label}" (generate_token) should have an output_field defined`,
+              { nodeId: node.id, suggestion: 'Set output_field to name the generated token (e.g., "api_key")' }
+            ));
+          }
+          if (!spec.encoding) {
+            issues.push(issue('flow', 'warning', 'spec_completeness',
+              `Crypto "${node.label}" (generate_token) should have an encoding defined`,
+              { nodeId: node.id, suggestion: 'Set encoding to hex, base64, base64url, or uuid' }
+            ));
+          }
+          break;
         }
         if (isBlank(spec.algorithm)) {
           issues.push(issue('flow', 'error', 'spec_completeness',

@@ -262,6 +262,12 @@ export interface AgentGroupSpec {
 
 // --- Extended traditional node spec shapes ---
 
+export interface DataStoreFilter {
+  field: string;
+  value: string;
+  required?: boolean;
+}
+
 export interface DataStoreSpec {
   store_type?: 'database' | 'filesystem' | 'memory';
   operation?: 'create' | 'read' | 'update' | 'delete' | 'upsert' | 'create_many' | 'update_many' | 'delete_many'
@@ -269,6 +275,7 @@ export interface DataStoreSpec {
   model?: string;
   data?: Record<string, string>;
   query?: Record<string, string>;
+  filters?: DataStoreFilter[];
   pagination?: Record<string, unknown>;
   sort?: Record<string, unknown>;
   batch?: boolean;
@@ -298,6 +305,13 @@ export interface DataStoreSpec {
   [key: string]: unknown;
 }
 
+export interface Oauth1aConfig {
+  api_key_field: string;
+  api_key_secret_field: string;
+  access_token_field: string;
+  access_token_secret_field: string;
+}
+
 export interface ServiceCallSpec {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   url?: string;
@@ -321,6 +335,8 @@ export interface ServiceCallSpec {
     client_id_env: string;
     client_secret_env: string;
   };
+  oauth1a_config?: Oauth1aConfig;
+  capture_headers?: string[];
   fallback?: {
     value: unknown;
     log?: boolean;
@@ -365,10 +381,16 @@ export interface LoopSpec {
   [key: string]: unknown;
 }
 
+export interface ParallelMergeStrategy {
+  type: 'keyed_by_output_key' | 'collect_success' | 'collect_all' | 'first_success';
+}
+
 export interface ParallelSpec {
-  branches?: (string | { label: string; condition?: string; id?: string })[];
+  branches?: (string | { label: string; condition?: string; id?: string; output_key?: string })[];
   join?: 'all' | 'any' | 'n_of';
   join_count?: number;
+  failure_policy?: 'all_required' | 'any_required' | 'best_effort';
+  merge_strategy?: ParallelMergeStrategy;
   timeout_ms?: number;
   description?: string;
   [key: string]: unknown;
@@ -452,12 +474,13 @@ export interface ParseSpec {
 }
 
 export interface CryptoSpec {
-  operation?: 'encrypt' | 'decrypt' | 'hash' | 'sign' | 'verify' | 'generate_key';
+  operation?: 'encrypt' | 'decrypt' | 'hash' | 'sign' | 'verify' | 'generate_key' | 'generate_token';
   algorithm?: string;
   key_source?: { env?: string; vault?: string };
   input_fields?: string[];
   output_field?: string;
-  encoding?: 'base64' | 'hex';
+  encoding?: 'base64' | 'hex' | 'base64url' | 'uuid';
+  length?: number;
   description?: string;
   [key: string]: unknown;
 }
@@ -538,6 +561,7 @@ export interface DddFlowNode {
   spec: NodeSpec;
   label: string;
   parentId?: string;
+  pattern_governed?: string;
   observability?: ObservabilityConfig;
   security?: SecurityConfig;
 }
@@ -580,4 +604,5 @@ export interface DddNodeData extends Record<string, unknown> {
   validationIssues?: ValidationIssue[];
   observability?: ObservabilityConfig;
   security?: SecurityConfig;
+  pattern_governed?: string;
 }
