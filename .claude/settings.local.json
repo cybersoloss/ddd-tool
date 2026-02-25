@@ -44,7 +44,9 @@
       "Bash(git init:*)",
       "Bash(git branch:*)",
       "Bash(mkdir:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)"
     ]
   }
 }
