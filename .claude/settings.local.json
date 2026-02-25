@@ -32,7 +32,19 @@
       "Bash(git -C /Users/mhcandan/dev/contentcurator diff --stat --cached)",
       "Bash(npm run typecheck:*)",
       "Bash(pkill:*)",
-      "Bash(lsof:*)"
+      "Bash(lsof:*)",
+      "Bash(python3 -m json.tool:*)",
+      "Bash(python3:*)",
+      "Bash(node scripts/auto-test-runner.mjs:*)",
+      "Bash(node src/scripts/auto-test-runner.js:*)",
+      "Bash(npm run:*)",
+      "Bash(npm test:*)",
+      "Bash(shasum -a 256 specs/domains/todos/flows/create-todo.yaml specs/domains/todos/flows/list-todos.yaml specs/domains/todos/flows/delete-todo.yaml)",
+      "Bash(shasum:*)",
+      "Bash(git init:*)",
+      "Bash(git branch:*)",
+      "Bash(mkdir:*)",
+      "Bash(rm:*)"
     ]
   }
 }
