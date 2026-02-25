@@ -54,6 +54,35 @@ function FieldMock({ type }: { type: string }) {
           <span>[+]</span>
         </div>
       );
+    case 'date-range':
+      return (
+        <div className="border border-border rounded h-6 bg-bg-primary text-[10px] text-text-muted px-2 flex items-center gap-1 w-full">
+          <span>yyyy-mm-dd</span>
+          <span className="text-text-muted">to</span>
+          <span>yyyy-mm-dd</span>
+        </div>
+      );
+    case 'markdown':
+      return (
+        <div className="border border-border rounded h-10 bg-bg-primary text-[10px] text-text-muted px-2 flex items-start pt-1 w-full">
+          <span className="border border-border rounded px-0.5 mr-1 text-[9px] font-mono">Md</span>
+          ___
+        </div>
+      );
+    case 'repeating_group':
+      return (
+        <div className="border border-border rounded bg-bg-primary text-[10px] text-text-muted w-full p-1 space-y-0.5">
+          <div className="flex gap-1">
+            <div className="flex-1 bg-bg-hover rounded h-4" />
+            <div className="flex-1 bg-bg-hover rounded h-4" />
+          </div>
+          <div className="flex gap-1">
+            <div className="flex-1 bg-bg-hover rounded h-4" />
+            <div className="flex-1 bg-bg-hover rounded h-4" />
+          </div>
+          <div className="text-[9px] text-accent">[+] row</div>
+        </div>
+      );
     default:
       // text, email, url, password, number, color
       return (

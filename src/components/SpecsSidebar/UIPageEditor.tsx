@@ -9,7 +9,8 @@ const POSITION_OPTIONS = ['top', 'main', 'sidebar', 'footer', 'top-left', 'top-r
 const FORM_POSITION_OPTIONS = ['modal', 'sidebar', 'inline', 'drawer'];
 const FORM_FIELD_TYPES = [
   'text', 'number', 'select', 'multi-select', 'search-select',
-  'date', 'datetime', 'textarea', 'toggle', 'tag-input', 'file', 'color', 'slider',
+  'date', 'datetime', 'date-range', 'textarea', 'markdown', 'toggle',
+  'tag-input', 'file', 'color', 'slider', 'repeating_group',
 ];
 const LOADING_OPTIONS = ['skeleton', 'spinner', 'blur'];
 const ERROR_OPTIONS = ['retry-banner', 'error-page', 'toast'];
@@ -386,6 +387,29 @@ export function UIPageEditor({ pageId, spec, onBack }: Props) {
                         updateFormField(fi, ffi, { required_when: { field: f, value: val } });
                       }}
                       placeholder="required_when field=value"
+                    />
+                    <input
+                      className="input text-[10px] w-full"
+                      value={
+                        (() => {
+                          const od = field.options_depends_on;
+                          if (!od) return '';
+                          return `${od.field ?? ''}:${od.transform ?? ''}${od.source_field ? ':' + od.source_field : ''}`;
+                        })()
+                      }
+                      onChange={(e) => {
+                        const raw = e.target.value.trim();
+                        if (!raw) { updateFormField(fi, ffi, { options_depends_on: undefined }); return; }
+                        const parts = raw.split(':');
+                        if (parts.length < 2) return;
+                        const obj: { field: string; transform: string; source_field?: string } = {
+                          field: parts[0],
+                          transform: parts[1],
+                        };
+                        if (parts[2]) obj.source_field = parts[2];
+                        updateFormField(fi, ffi, { options_depends_on: obj });
+                      }}
+                      placeholder="options_depends_on field:transform:source_field"
                     />
                   </div>
                 ))}

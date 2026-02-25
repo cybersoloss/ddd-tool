@@ -148,6 +148,7 @@ export interface ItemAction {
   confirm?: boolean;
   confirm_message?: string;
   variant?: string;
+  visible_when?: string;
 }
 
 export interface PageSection {
@@ -178,14 +179,16 @@ export interface FormSubmit {
 
 export interface FormField {
   name: string;
-  type: string; // text | number | select | multi-select | search-select | date | datetime | textarea | toggle | tag-input | file | color | slider
+  type: string; // text | number | select | multi-select | search-select | date | datetime | textarea | toggle | tag-input | file | color | slider | date-range | markdown | repeating_group
   label: string;
   placeholder?: string;
   required?: boolean;
   default?: unknown;
   options?: string[];
   options_source?: string;
+  options_depends_on?: { field: string; transform: string; source_field?: string };
   search_source?: string;
+  search_args?: Record<string, unknown>;
   display_field?: string;
   value_field?: string;
   validation?: string;
@@ -199,6 +202,8 @@ export interface FormField {
   step?: number;
   autocomplete_source?: string;
   autocomplete_field?: string;
+  markdown_config?: { mode?: string; toolbar?: boolean; min_height?: number };
+  repeating_group?: { columns: string[]; min_rows?: number; max_rows?: number; add_label?: string; remove_label?: string };
 }
 
 export interface FormSpec {
@@ -211,6 +216,8 @@ export interface FormSpec {
   visible_when?: string;
   prefill_source?: string;
   prefill_args?: Record<string, unknown>;
+  auto_save?: { debounce_ms: number; save_flow: string };
+  wizard?: { steps: { id: string; label: string; fields: string[] }[] };
 }
 
 export interface PageState {
