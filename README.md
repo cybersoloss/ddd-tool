@@ -12,7 +12,7 @@ Built with Tauri 2.0 (Rust) + React 19 + TypeScript + Tailwind CSS v4.
 
 **Full Feature Preview** — 9 domains, 53 flows, 28 node types (Vantage supply chain project):
 
-https://github.com/cybersoloss/ddd-tool/raw/main/demo/demo-feature-preview.mp4
+<video src="https://github.com/cybersoloss/ddd-tool/raw/main/demo/demo-feature-preview.mp4" controls width="100%"></video>
 
 ## What It Does
 
