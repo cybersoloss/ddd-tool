@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { X, Plus, Trash2 } from 'lucide-react';
+import { X, Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { useFlowStore } from '../../stores/flow-store';
 
 interface ContractInput {
@@ -12,6 +12,18 @@ interface ContractInput {
 interface ContractOutput {
   name: string;
   type: string;
+}
+
+interface FlowAuth {
+  required: boolean;
+  roles: string[];
+  strategy: 'jwt' | 'api_key' | 'none';
+}
+
+interface FlowMetric {
+  name: string;
+  type: 'counter' | 'gauge' | 'histogram';
+  labels: string[];
 }
 
 interface Props {
@@ -36,6 +48,17 @@ export function FlowSettingsDialog({ open, onClose }: Props) {
     flow?.contract?.outputs ?? []
   );
   const [newParamName, setNewParamName] = useState('');
+  const [auth, setAuth] = useState<FlowAuth>({
+    required: flow?.auth?.required ?? false,
+    roles: flow?.auth?.roles ?? [],
+    strategy: flow?.auth?.strategy ?? 'jwt',
+  });
+  const [rolesInput, setRolesInput] = useState((flow?.auth?.roles ?? []).join(', '));
+  const [metrics, setMetrics] = useState<FlowMetric[]>(
+    (flow?.metrics ?? []).map((m) => ({ ...m, labels: m.labels ?? [] }))
+  );
+  const [authOpen, setAuthOpen] = useState(false);
+  const [metricsOpen, setMetricsOpen] = useState(false);
 
   // Reset when flow changes
   useEffect(() => {
@@ -44,6 +67,10 @@ export function FlowSettingsDialog({ open, onClose }: Props) {
       setParameters(flow.parameters ?? {});
       setContractInputs(flow.contract?.inputs ?? []);
       setContractOutputs(flow.contract?.outputs ?? []);
+      const a = flow.auth;
+      setAuth({ required: a?.required ?? false, roles: a?.roles ?? [], strategy: a?.strategy ?? 'jwt' });
+      setRolesInput((a?.roles ?? []).join(', '));
+      setMetrics((flow.metrics ?? []).map((m) => ({ ...m, labels: m.labels ?? [] })));
     }
   }, [flow?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -57,6 +84,15 @@ export function FlowSettingsDialog({ open, onClose }: Props) {
         }
       : undefined;
 
+    const parsedRoles = rolesInput.split(',').map((r) => r.trim()).filter(Boolean);
+    const authValue = auth.required || parsedRoles.length > 0
+      ? { required: auth.required, roles: parsedRoles.length > 0 ? parsedRoles : undefined, strategy: auth.strategy }
+      : undefined;
+
+    const metricsValue = metrics.length > 0
+      ? metrics.map((m) => ({ name: m.name, type: m.type, labels: m.labels.length > 0 ? m.labels : undefined }))
+      : undefined;
+
     restoreFlow({
       ...currentFlow,
       flow: {
@@ -64,10 +100,12 @@ export function FlowSettingsDialog({ open, onClose }: Props) {
         template: isTemplate || undefined,
         parameters: Object.keys(parameters).length > 0 ? parameters : undefined,
         contract,
+        auth: authValue,
+        metrics: metricsValue,
       },
     });
     onClose();
-  }, [currentFlow, isTemplate, parameters, contractInputs, contractOutputs, restoreFlow, onClose]);
+  }, [currentFlow, isTemplate, parameters, contractInputs, contractOutputs, auth, rolesInput, metrics, restoreFlow, onClose]);
 
   if (!open || !flow) return null;
 
@@ -284,6 +322,109 @@ export function FlowSettingsDialog({ open, onClose }: Props) {
                 </button>
               </div>
             ))}
+          </div>
+          {/* Auth */}
+          <div>
+            <button
+              type="button"
+              className="flex items-center gap-1 w-full text-left"
+              onClick={() => setAuthOpen((v) => !v)}
+            >
+              {authOpen ? <ChevronDown className="w-3.5 h-3.5 text-text-muted" /> : <ChevronRight className="w-3.5 h-3.5 text-text-muted" />}
+              <span className="label !mb-0 cursor-pointer">Auth</span>
+            </button>
+            {authOpen && (
+              <div className="mt-2 space-y-2 pl-4">
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-text-secondary flex-1">Required</label>
+                  <button
+                    type="button"
+                    className={`relative w-9 h-5 rounded-full transition-colors ${auth.required ? 'bg-accent' : 'bg-surface-2'}`}
+                    onClick={() => setAuth({ ...auth, required: !auth.required })}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${auth.required ? 'translate-x-4' : ''}`} />
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-text-secondary w-16">Strategy</label>
+                  <select
+                    className="input py-1 text-xs flex-1"
+                    value={auth.strategy}
+                    onChange={(e) => setAuth({ ...auth, strategy: e.target.value as FlowAuth['strategy'] })}
+                  >
+                    <option value="jwt">jwt</option>
+                    <option value="api_key">api_key</option>
+                    <option value="none">none</option>
+                  </select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-text-secondary w-16">Roles</label>
+                  <input
+                    className="input py-1 text-xs flex-1"
+                    value={rolesInput}
+                    onChange={(e) => setRolesInput(e.target.value)}
+                    placeholder="admin, user (comma-separated)"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Metrics */}
+          <div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                className="flex items-center gap-1 flex-1 text-left"
+                onClick={() => setMetricsOpen((v) => !v)}
+              >
+                {metricsOpen ? <ChevronDown className="w-3.5 h-3.5 text-text-muted" /> : <ChevronRight className="w-3.5 h-3.5 text-text-muted" />}
+                <span className="label !mb-0 cursor-pointer">Metrics</span>
+              </button>
+              <button
+                type="button"
+                className="btn-icon !p-0.5"
+                title="Add metric"
+                onClick={() => { setMetricsOpen(true); setMetrics([...metrics, { name: '', type: 'counter', labels: [] }]); }}
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            {metricsOpen && (
+              <div className="mt-2 space-y-2 pl-4">
+                {metrics.length === 0 && <p className="text-xs text-text-muted">No metrics defined</p>}
+                {metrics.map((m, i) => (
+                  <div key={i} className="bg-bg-primary rounded p-2 space-y-1.5">
+                    <div className="flex items-center gap-1">
+                      <input
+                        className="input py-1 text-xs flex-1"
+                        value={m.name}
+                        onChange={(e) => { const u = [...metrics]; u[i] = { ...u[i], name: e.target.value }; setMetrics(u); }}
+                        placeholder="metric_name"
+                      />
+                      <select
+                        className="input py-1 text-xs w-28"
+                        value={m.type}
+                        onChange={(e) => { const u = [...metrics]; u[i] = { ...u[i], type: e.target.value as FlowMetric['type'] }; setMetrics(u); }}
+                      >
+                        <option value="counter">counter</option>
+                        <option value="gauge">gauge</option>
+                        <option value="histogram">histogram</option>
+                      </select>
+                      <button type="button" className="btn-icon !p-0.5" onClick={() => setMetrics(metrics.filter((_, j) => j !== i))}>
+                        <Trash2 className="w-3 h-3 text-text-muted hover:text-red-400" />
+                      </button>
+                    </div>
+                    <input
+                      className="input py-1 text-xs w-full"
+                      value={m.labels.join(', ')}
+                      onChange={(e) => { const u = [...metrics]; u[i] = { ...u[i], labels: e.target.value.split(',').map((l) => l.trim()).filter(Boolean) }; setMetrics(u); }}
+                      placeholder="Labels (comma-separated)"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

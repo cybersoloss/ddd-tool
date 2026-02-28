@@ -15,6 +15,8 @@ import type {
 
 interface ImplementationState {
   mappings: Record<string, FlowMapping>;
+  pageMappings: Record<string, FlowMapping>;
+  pendingChangeCount: number;
   driftItems: DriftInfo[];
   syncScore: SyncScore | null;
   ignoredDrifts: Set<string>;
@@ -33,6 +35,8 @@ interface ImplementationState {
 
 export const useImplementationStore = create<ImplementationState>((set, get) => ({
   mappings: {},
+  pageMappings: {},
+  pendingChangeCount: 0,
   driftItems: [],
   syncScore: null,
   ignoredDrifts: new Set<string>(),
@@ -42,15 +46,33 @@ export const useImplementationStore = create<ImplementationState>((set, get) => 
     const projectPath = useProjectStore.getState().projectPath;
     if (!projectPath) return;
 
+    // Load mapping.yaml (flows + pages sections)
     try {
       const content: string = await invoke('read_file', {
         path: `${projectPath}/.ddd/mapping.yaml`,
       });
-      const parsed = parse(content) as { flows?: Record<string, FlowMapping> };
-      set({ mappings: parsed.flows ?? {} });
+      const parsed = parse(content) as {
+        flows?: Record<string, FlowMapping>;
+        pages?: Record<string, FlowMapping>;
+      };
+      set({ mappings: parsed.flows ?? {}, pageMappings: parsed.pages ?? {} });
     } catch {
       // File doesn't exist yet — that's fine
-      set({ mappings: {} });
+      set({ mappings: {}, pageMappings: {} });
+    }
+
+    // Load change-history.yaml — count pending_implement entries
+    try {
+      const historyContent: string = await invoke('read_file', {
+        path: `${projectPath}/.ddd/change-history.yaml`,
+      });
+      const history = parse(historyContent) as Array<{ status?: string }>;
+      const pendingChangeCount = Array.isArray(history)
+        ? history.filter((e) => e?.status === 'pending_implement').length
+        : 0;
+      set({ pendingChangeCount });
+    } catch {
+      set({ pendingChangeCount: 0 });
     }
 
     // Load annotations after mappings
@@ -67,6 +89,7 @@ export const useImplementationStore = create<ImplementationState>((set, get) => 
     const annotations: Record<string, AnnotationFile> = {};
     const domainConfigs = useProjectStore.getState().domainConfigs;
 
+    // Load flow annotations (logic pillar)
     for (const domainId of Object.keys(domainConfigs)) {
       const domainFlows = domainConfigs[domainId]?.flows ?? [];
       for (const flow of domainFlows) {
@@ -83,6 +106,53 @@ export const useImplementationStore = create<ImplementationState>((set, get) => 
       }
     }
 
+    // Load UI page annotations (interface pillar)
+    const uiAnnotationFiles: string[] = await invoke<string[]>('list_directory', {
+      path: `${projectPath}/.ddd/annotations/ui`,
+    }).catch(() => [] as string[]);
+    for (const filename of uiAnnotationFiles) {
+      if (!filename.endsWith('.yaml')) continue;
+      const pageId = filename.replace(/\.yaml$/, '');
+      try {
+        const content: string = await invoke('read_file', {
+          path: `${projectPath}/.ddd/annotations/ui/${filename}`,
+        });
+        const parsed = parse(content) as AnnotationFile;
+        if (parsed) {
+          annotations[`ui/${pageId}`] = { ...parsed, flow: parsed.flow ?? `ui/${pageId}` };
+        }
+      } catch { /* ignore */ }
+    }
+
+    // Load schema annotations (data pillar)
+    const schemaAnnotationFiles: string[] = await invoke<string[]>('list_directory', {
+      path: `${projectPath}/.ddd/annotations/schemas`,
+    }).catch(() => [] as string[]);
+    for (const filename of schemaAnnotationFiles) {
+      if (!filename.endsWith('.yaml')) continue;
+      const modelId = filename.replace(/\.yaml$/, '');
+      try {
+        const content: string = await invoke('read_file', {
+          path: `${projectPath}/.ddd/annotations/schemas/${filename}`,
+        });
+        const parsed = parse(content) as AnnotationFile;
+        if (parsed) {
+          annotations[`schemas/${modelId}`] = { ...parsed, flow: parsed.flow ?? `schemas/${modelId}` };
+        }
+      } catch { /* ignore */ }
+    }
+
+    // Load infrastructure annotations (infrastructure pillar)
+    try {
+      const content: string = await invoke('read_file', {
+        path: `${projectPath}/.ddd/annotations/infrastructure.yaml`,
+      });
+      const parsed = parse(content) as AnnotationFile;
+      if (parsed) {
+        annotations['infrastructure'] = { ...parsed, flow: parsed.flow ?? 'infrastructure' };
+      }
+    } catch { /* ignore */ }
+
     set({ annotations });
   },
 
@@ -90,8 +160,12 @@ export const useImplementationStore = create<ImplementationState>((set, get) => 
     const projectPath = useProjectStore.getState().projectPath;
     if (!projectPath) return;
 
-    const { mappings } = get();
-    const content = stringify({ flows: mappings });
+    const { mappings, pageMappings } = get();
+    const doc: Record<string, unknown> = { flows: mappings };
+    if (Object.keys(pageMappings).length > 0) {
+      doc.pages = pageMappings;
+    }
+    const content = stringify(doc);
 
     try {
       await invoke('create_directory', {
@@ -203,9 +277,9 @@ export const useImplementationStore = create<ImplementationState>((set, get) => 
           const updatedMapping = { ...mapping, syncState: 'code_ahead' as const };
           set((s) => ({ mappings: { ...s.mappings, [flowKey]: updatedMapping } }));
         } else {
-          // No drift — synced
-          if (mapping.syncState !== 'synced') {
-            const updatedMapping = { ...mapping, syncState: 'synced' as const };
+          // No drift — in_sync
+          if (mapping.syncState !== 'in_sync') {
+            const updatedMapping = { ...mapping, syncState: 'in_sync' as const };
             set((s) => ({ mappings: { ...s.mappings, [flowKey]: updatedMapping } }));
           }
         }
@@ -410,6 +484,8 @@ export const useImplementationStore = create<ImplementationState>((set, get) => 
   reset: () => {
     set({
       mappings: {},
+      pageMappings: {},
+      pendingChangeCount: 0,
       driftItems: [],
       syncScore: null,
       ignoredDrifts: new Set<string>(),

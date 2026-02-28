@@ -1,5 +1,5 @@
 // Sync state classification for bidirectional drift detection
-export type SyncState = 'synced' | 'spec_ahead' | 'code_ahead' | 'diverged';
+export type SyncState = 'in_sync' | 'synced' | 'spec_ahead' | 'code_ahead' | 'diverged' | 'new_logic';
 
 // Annotation from .ddd/annotations/
 export interface FlowAnnotation {
