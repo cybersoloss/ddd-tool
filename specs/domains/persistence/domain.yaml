@@ -1,9 +1,6 @@
-domain:
-  id: persistence
-  name: "File Persistence"
-  role: entity
-  description: "Low-level file system operations via Tauri IPC commands — reading, writing, directory management, file watching, hashing, auto-save, crash recovery, and Mermaid export."
-
+name: "File Persistence"
+description: "Low-level file system operations via Tauri IPC commands — reading, writing, directory management, file watching, hashing, auto-save, crash recovery, and Mermaid export."
+role: entity
 flows:
   - id: read-file
     name: "Read File"
@@ -29,8 +26,7 @@ flows:
   - id: export-mermaid
     name: "Export Mermaid"
     description: "Transforms a flow into Mermaid markdown and writes to file"
-
-events:
-  emits:
-    - spec-files-changed
-  listens: []
+publishes_events:
+  - event: spec-files-changed
+    description: "Emitted by file watcher when YAML/JSON files change in specs/"
+consumes_events: []

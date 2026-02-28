@@ -1,9 +1,6 @@
-domain:
-  id: project
-  name: "Project Management"
-  role: entity
-  description: "Manages project lifecycle — creation, opening, cloning, settings, and sample generation. Owns the ddd-project.json config and project directory structure."
-
+name: "Project Management"
+description: "Manages project lifecycle — creation, opening, cloning, settings, and sample generation. Owns the ddd-project.json config and project directory structure."
+role: entity
 flows:
   - id: create-project
     name: "Create Project"
@@ -23,8 +20,7 @@ flows:
   - id: create-sample
     name: "Create Sample"
     description: "Generates a sample project with demo data for first-time users"
-
-events:
-  emits:
-    - domain-saved
-  listens: []
+publishes_events:
+  - event: domain-saved
+    description: "Emitted when a domain is created during project setup"
+consumes_events: []

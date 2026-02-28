@@ -1,9 +1,6 @@
-domain:
-  id: canvas
-  name: "Canvas & Navigation"
-  role: interface
-  description: "Manages the three-level canvas (System Map L1, Domain Map L2, Flow Canvas L3) and all user interactions for adding, deleting, and navigating domains, flows, and nodes."
-
+name: "Canvas Visualization"
+description: "Manages the three-level canvas (System Map L1, Domain Map L2, Flow Canvas L3) and all user interactions for adding, deleting, and navigating domains, flows, and nodes."
+role: interface
 flows:
   - id: view-system-map
     name: "View System Map"
@@ -32,11 +29,13 @@ flows:
   - id: wire-connection
     name: "Wire Connection"
     description: "Creates an edge between two nodes on the flow canvas"
-
-events:
-  emits:
-    - domain-saved
-    - flow-saved
-  listens:
-    - domain-saved
-    - flow-saved
+publishes_events:
+  - event: domain-saved
+    description: "Emitted when domain config is modified"
+  - event: flow-saved
+    description: "Emitted when flow YAML is saved"
+consumes_events:
+  - event: domain-saved
+    description: "Reloads domain data when another component saves domain changes"
+  - event: flow-saved
+    description: "Reloads flow data when another component saves flow changes"

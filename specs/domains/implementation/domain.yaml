@@ -1,9 +1,6 @@
-domain:
-  id: implementation
-  name: "Implementation Tracking"
-  role: process
-  description: "Tracks the mapping between DDD specs and implementation code. Detects drift via SHA-256 hash comparison, supports reconciliation workflows, and records change history."
-
+name: "Implementation Tracking"
+description: "Tracks the mapping between DDD specs and implementation code. Detects drift via SHA-256 hash comparison, supports reconciliation workflows, and records change history."
+role: process
 flows:
   - id: load-mappings
     name: "Load Mappings"
@@ -20,8 +17,7 @@ flows:
   - id: record-change
     name: "Record Change"
     description: "Records spec content changes with SHA-256 hashes for history tracking"
-
-events:
-  emits: []
-  listens:
-    - flow-saved
+publishes_events: []
+consumes_events:
+  - event: flow-saved
+    description: "Records change when a flow spec is saved"

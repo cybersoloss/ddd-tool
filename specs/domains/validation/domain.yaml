@@ -1,9 +1,6 @@
-domain:
-  id: validation
-  name: "Design Validation"
-  role: process
-  description: "Validates flow graphs, domain configurations, and system-level wiring. Provides real-time node indicators (green/amber/red), validation panel with scope tabs, and implementation gate checks."
-
+name: "Design Validation"
+description: "Validates flow graphs, domain configurations, and system-level wiring. Provides real-time node indicators (green/amber/red), validation panel with scope tabs, and implementation gate checks."
+role: process
 flows:
   - id: validate-flow
     name: "Validate Flow"
@@ -17,8 +14,7 @@ flows:
   - id: check-implement-gate
     name: "Check Implement Gate"
     description: "Aggregates all validation results to determine if a flow is ready for implementation"
-
-events:
-  emits: []
-  listens:
-    - flow-saved
+publishes_events: []
+consumes_events:
+  - event: flow-saved
+    description: "Triggers re-validation when a flow is saved"

@@ -1,9 +1,6 @@
-domain:
-  id: spec-editing
-  name: "Spec Editing"
-  role: process
-  description: "Handles editing of all specification types — node specs in the right panel, schemas, UI pages, infrastructure, and auto-layout. Manages the undo/redo stack for spec changes."
-
+name: "Spec Editing"
+description: "Handles editing of all specification types — node specs in the right panel, schemas, UI pages, infrastructure, and auto-layout. Manages the undo/redo stack for spec changes."
+role: process
 flows:
   - id: edit-node-spec
     name: "Edit Node Spec"
@@ -29,10 +26,11 @@ flows:
   - id: auto-layout
     name: "Auto Layout"
     description: "Computes and applies DAG-based layout to flow nodes"
-
-events:
-  emits:
-    - flow-saved
-    - domain-saved
-  listens:
-    - flow-saved
+publishes_events:
+  - event: flow-saved
+    description: "Emitted when spec changes trigger a flow save"
+  - event: domain-saved
+    description: "Emitted when schema or page changes save domain config"
+consumes_events:
+  - event: flow-saved
+    description: "Reloads spec editor when flow is saved externally"

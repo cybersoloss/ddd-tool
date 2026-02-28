@@ -1,9 +1,6 @@
-domain:
-  id: git
-  name: "Git Integration"
-  role: process
-  description: "Provides git operations via the git2 crate (libgit2) — status, staging, unstaging, committing, and log viewing. Exposed through the Git panel in the sidebar."
-
+name: "Git Integration"
+description: "Provides git operations via the git2 crate (libgit2) — status, staging, unstaging, committing, and log viewing. Exposed through the Git panel in the sidebar."
+role: process
 flows:
   - id: refresh-status
     name: "Refresh Status"
@@ -20,7 +17,5 @@ flows:
   - id: view-log
     name: "View Log"
     description: "Displays recent git commit history"
-
-events:
-  emits: []
-  listens: []
+publishes_events: []
+consumes_events: []
