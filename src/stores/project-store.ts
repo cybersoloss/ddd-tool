@@ -89,10 +89,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
             const parsed = parse(yamlContent) as DomainConfig;
             // Normalize groups: external YAML uses `flows` key; internal type uses `flow_ids`
             if (Array.isArray(parsed.groups)) {
-              parsed.groups = parsed.groups.map((g: Record<string, unknown>) => ({
+              parsed.groups = parsed.groups.map((g) => ({
                 ...g,
-                flow_ids: ((g.flow_ids ?? g.flows ?? []) as string[]),
-              })) as DomainConfig['groups'];
+                flow_ids: (g.flow_ids ?? (g as unknown as Record<string, unknown>).flows ?? []) as string[],
+              }));
             }
             // Normalize publishes_events/consumes_events: default to [] if missing
             if (!Array.isArray(parsed.publishes_events)) parsed.publishes_events = [];
@@ -212,7 +212,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       contents: newDomainYaml,
       level: 'L1',
       domain: domainId,
-      flow: null,
+      flow: undefined,
       pillar: null,
       action: 'created',
     });
@@ -459,7 +459,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       contents: '',
       level: 'L1',
       domain: domainId,
-      flow: null,
+      flow: undefined,
       pillar: null,
       action: 'deleted',
     });

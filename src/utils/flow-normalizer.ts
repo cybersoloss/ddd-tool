@@ -278,6 +278,7 @@ export function defaultLabel(type: DddNodeType): string {
     case 'batch': return 'Batch';
     case 'transaction': return 'Transaction';
     case 'ipc_call': return 'IPC Call';
+    case 'websocket_broadcast': return 'WebSocket Broadcast';
   }
 }
 
