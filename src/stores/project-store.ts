@@ -56,7 +56,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
     try {
       // Read or initialize ddd-project.json
-      let projectConfig: { domains: Array<{ name: string; description?: string }> };
+      let projectConfig: { domains: Array<{ id?: string; name: string; description?: string }> };
       const projectJsonPath = `${path}/ddd-project.json`;
       const projectExists: boolean = await invoke('path_exists', { path: projectJsonPath });
 
@@ -75,7 +75,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       // Load domain configs
       const domainConfigs: Record<string, DomainConfig> = {};
       for (const domain of projectConfig.domains) {
-        const domainId = domain.name.toLowerCase().replace(/\s+/g, '-');
+        const domainId = domain.id ?? domain.name.toLowerCase().replace(/\s+/g, '-');
         const domainYamlPath = `${path}/specs/domains/${domainId}/domain.yaml`;
 
         try {
