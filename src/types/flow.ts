@@ -126,6 +126,10 @@ export interface MemoryStoreDefinition {
   type: 'conversation_history' | 'vector_store' | 'key_value';
   max_tokens?: number;
   strategy?: string;
+  embedding_model?: string;
+  similarity_threshold?: number;
+  max_results?: number;
+  namespace?: string;
 }
 
 export interface AgentLoopSpec {
@@ -366,6 +370,7 @@ export interface EventNodeSpec {
   priority?: number;
   delay_ms?: number;
   dedup_key?: string;
+  correlation_id?: string;
   description?: string;
   [key: string]: unknown;
 }
@@ -437,6 +442,7 @@ export interface CacheSpec {
 }
 
 export interface TransformSpec {
+  mode?: 'schema' | 'expression';
   input_schema?: string;
   output_schema?: string;
   field_mappings?: Record<string, string>;
@@ -445,13 +451,17 @@ export interface TransformSpec {
 }
 
 export interface CollectionSpec {
-  operation?: 'filter' | 'sort' | 'deduplicate' | 'merge' | 'group_by' | 'aggregate' | 'reduce' | 'flatten';
+  operation?: 'filter' | 'sort' | 'deduplicate' | 'merge' | 'group_by' | 'aggregate' | 'reduce' | 'flatten' | 'first' | 'last' | 'join';
   input?: string;
   predicate?: string;
   key?: string;
   direction?: 'asc' | 'desc';
   accumulator?: { init?: unknown; expression?: string } | string;
   output?: string;
+  count?: number;
+  right?: string;
+  on?: string;
+  join_type?: 'inner' | 'left' | 'right' | 'full';
   description?: string;
   [key: string]: unknown;
 }
@@ -546,6 +556,12 @@ export type NodeSpec =
 
 // --- Flow node (persisted) ---
 
+export interface NodeLogConfig {
+  level: 'debug' | 'info' | 'warn' | 'error';
+  fields: string[];
+  condition?: string;
+}
+
 export interface DddFlowNode {
   id: string;
   type: DddNodeType;
@@ -564,6 +580,7 @@ export interface DddFlowNode {
   pattern_governed?: string;
   observability?: ObservabilityConfig;
   security?: SecurityConfig;
+  log?: NodeLogConfig;
 }
 
 // --- Flow document (YAML shape) ---
@@ -605,4 +622,5 @@ export interface DddNodeData extends Record<string, unknown> {
   observability?: ObservabilityConfig;
   security?: SecurityConfig;
   pattern_governed?: string;
+  log?: NodeLogConfig;
 }

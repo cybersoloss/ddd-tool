@@ -8,6 +8,10 @@ export interface DomainFlowEntry {
   tags?: string[];
   group?: string;
   keyboard_shortcut?: string;
+  criticality?: 'critical' | 'high' | 'normal' | 'low';
+  throughput?: string;
+  template?: string;
+  parameters?: Record<string, unknown>;
 }
 
 export interface EventWiring {
@@ -47,6 +51,13 @@ export interface EventGroup {
   name: string;
   description?: string;
   events: string[];
+  correlation_key?: string;
+}
+
+export interface DomainDependency {
+  domain: string;
+  type: 'sync' | 'async' | 'event';
+  description?: string;
 }
 
 export interface DomainConfig {
@@ -62,6 +73,9 @@ export interface DomainConfig {
   publishes_events: EventWiring[];
   consumes_events: EventWiring[];
   layout: DomainLayout;
+  sla_config?: Record<string, unknown>;
+  memory_stores?: Array<{ name: string; type: string }>;
+  depends_on?: DomainDependency[];
 }
 
 export interface SystemZone {

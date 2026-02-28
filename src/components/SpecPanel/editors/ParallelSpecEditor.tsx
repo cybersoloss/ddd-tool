@@ -1,5 +1,5 @@
 import { Plus, Trash2 } from 'lucide-react';
-import type { ParallelSpec } from '../../../types/flow';
+import type { ParallelSpec, ParallelMergeStrategy } from '../../../types/flow';
 import { ExtraFieldsEditor } from './ExtraFieldsEditor';
 
 interface Props {
@@ -20,7 +20,7 @@ export function ParallelSpecEditor({ spec, onChange }: Props) {
     onChange({ ...spec, branches: branches.filter((_, idx) => idx !== i) });
   const updateBranch = (i: number, val: string) =>
     onChange({ ...spec, branches: branches.map((b, idx) => (idx === i ? val : b)) });
-  const updateBranchField = (i: number, field: 'label' | 'condition' | 'id', val: string) =>
+  const updateBranchField = (i: number, field: 'label' | 'condition' | 'id' | 'output_key', val: string) =>
     onChange({
       ...spec,
       branches: branches.map((b, idx) => {
@@ -80,6 +80,12 @@ export function ParallelSpecEditor({ spec, onChange }: Props) {
                     onChange={(e) => updateBranchField(i, 'id', e.target.value)}
                     placeholder="ID"
                   />
+                  <input
+                    className="input text-xs col-span-2"
+                    value={branch.output_key ?? ''}
+                    onChange={(e) => updateBranchField(i, 'output_key', e.target.value)}
+                    placeholder="Output key"
+                  />
                 </div>
               )}
             </div>
@@ -120,6 +126,33 @@ export function ParallelSpecEditor({ spec, onChange }: Props) {
           value={spec.timeout_ms ?? 30000}
           onChange={(e) => onChange({ ...spec, timeout_ms: Number(e.target.value) })}
         />
+      </div>
+      <div>
+        <label className="label">Failure Policy</label>
+        <select
+          className="input"
+          value={spec.failure_policy ?? ''}
+          onChange={(e) => onChange({ ...spec, failure_policy: (e.target.value || undefined) as ParallelSpec['failure_policy'] })}
+        >
+          <option value="">Default</option>
+          <option value="all_required">All Required</option>
+          <option value="any_required">Any Required</option>
+          <option value="best_effort">Best Effort</option>
+        </select>
+      </div>
+      <div>
+        <label className="label">Merge Strategy</label>
+        <select
+          className="input"
+          value={spec.merge_strategy?.type ?? ''}
+          onChange={(e) => onChange({ ...spec, merge_strategy: e.target.value ? { type: e.target.value as ParallelMergeStrategy['type'] } : undefined })}
+        >
+          <option value="">Default</option>
+          <option value="keyed_by_output_key">Keyed by Output Key</option>
+          <option value="collect_success">Collect Success</option>
+          <option value="collect_all">Collect All</option>
+          <option value="first_success">First Success</option>
+        </select>
       </div>
       <div>
         <label className="label">Description</label>

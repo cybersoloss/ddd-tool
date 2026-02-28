@@ -10,6 +10,17 @@ export function TransformSpecEditor({ spec, onChange }: Props) {
   return (
     <div className="space-y-3">
       <div>
+        <label className="label">Mode</label>
+        <select
+          className="input"
+          value={spec.mode ?? 'schema'}
+          onChange={(e) => onChange({ ...spec, mode: e.target.value as TransformSpec['mode'] })}
+        >
+          <option value="schema">Schema</option>
+          <option value="expression">Expression</option>
+        </select>
+      </div>
+      <div>
         <label className="label">Input Schema</label>
         <input
           className="input"

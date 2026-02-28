@@ -24,6 +24,7 @@ export function CryptoSpecEditor({ spec, onChange }: Props) {
           <option value="sign">Sign</option>
           <option value="verify">Verify</option>
           <option value="generate_key">Generate Key</option>
+          <option value="generate_token">Generate Token</option>
         </select>
       </div>
       <div>
@@ -80,8 +81,22 @@ export function CryptoSpecEditor({ spec, onChange }: Props) {
         >
           <option value="base64">Base64</option>
           <option value="hex">Hex</option>
+          <option value="base64url">Base64url</option>
+          <option value="uuid">UUID</option>
         </select>
       </div>
+      {(spec.operation === 'generate_token' || spec.operation === 'generate_key') && (
+        <div>
+          <label className="label">Length</label>
+          <input
+            type="number"
+            className="input"
+            value={spec.length ?? ''}
+            onChange={(e) => onChange({ ...spec, length: e.target.value ? Number(e.target.value) : undefined })}
+            placeholder="e.g. 32, 64"
+          />
+        </div>
+      )}
       <div>
         <label className="label">Description</label>
         <textarea

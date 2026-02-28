@@ -30,6 +30,9 @@ export function CollectionSpecEditor({ spec, onChange }: Props) {
           <option value="aggregate">Aggregate</option>
           <option value="reduce">Reduce</option>
           <option value="flatten">Flatten</option>
+          <option value="first">First</option>
+          <option value="last">Last</option>
+          <option value="join">Join</option>
         </select>
       </div>
       <div>
@@ -75,6 +78,53 @@ export function CollectionSpecEditor({ spec, onChange }: Props) {
             <option value="desc">Descending</option>
           </select>
         </div>
+      )}
+      {(spec.operation === 'first' || spec.operation === 'last') && (
+        <div>
+          <label className="label">Count</label>
+          <input
+            type="number"
+            className="input"
+            value={spec.count ?? 1}
+            onChange={(e) => onChange({ ...spec, count: Number(e.target.value) })}
+            placeholder="Number of items"
+          />
+        </div>
+      )}
+      {spec.operation === 'join' && (
+        <>
+          <div>
+            <label className="label">Right Collection</label>
+            <input
+              className="input"
+              value={spec.right ?? ''}
+              onChange={(e) => onChange({ ...spec, right: e.target.value })}
+              placeholder="e.g. other_items"
+            />
+          </div>
+          <div>
+            <label className="label">Join On</label>
+            <input
+              className="input"
+              value={spec.on ?? ''}
+              onChange={(e) => onChange({ ...spec, on: e.target.value })}
+              placeholder="e.g. item.id === other.item_id"
+            />
+          </div>
+          <div>
+            <label className="label">Join Type</label>
+            <select
+              className="input"
+              value={spec.join_type ?? 'inner'}
+              onChange={(e) => onChange({ ...spec, join_type: e.target.value as CollectionSpec['join_type'] })}
+            >
+              <option value="inner">Inner</option>
+              <option value="left">Left</option>
+              <option value="right">Right</option>
+              <option value="full">Full</option>
+            </select>
+          </div>
+        </>
       )}
       {showAccumulator && (
         <>
