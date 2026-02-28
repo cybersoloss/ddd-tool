@@ -38,6 +38,7 @@ const TRADITIONAL_ITEMS: ToolbarItem[] = [
   { type: 'batch', label: 'Batch', icon: Layers, borderColor: 'border-l-rose-500', iconColor: 'text-rose-400' },
   { type: 'transaction', label: 'Transaction', icon: ShieldCheck, borderColor: 'border-l-amber-600', iconColor: 'text-amber-500' },
   { type: 'websocket_broadcast', label: 'WS Broadcast', icon: Radio, borderColor: 'border-l-blue-500', iconColor: 'text-blue-400' },
+  { type: 'guardrail', label: 'Guardrail', icon: Shield, borderColor: 'border-l-yellow-500', iconColor: 'text-yellow-400' },
   { type: 'terminal', label: 'Terminal', icon: Square, borderColor: 'border-l-red-500', iconColor: 'text-red-400' },
 ];
 

@@ -7,7 +7,7 @@ interface Props {
   onChange: (spec: GuardrailSpec) => void;
 }
 
-const CHECK_TYPES = ['content_filter', 'pii_detection', 'topic_restriction', 'prompt_injection', 'custom'];
+const CHECK_TYPES = ['content_filter', 'pii_detection', 'topic_restriction', 'prompt_injection', 'business_rule', 'required_fields', 'file_type', 'file_size', 'custom'];
 const CHECK_ACTIONS: GuardrailCheck['action'][] = ['block', 'warn', 'log'];
 
 export function GuardrailSpecEditor({ spec, onChange }: Props) {
@@ -74,28 +74,38 @@ export function GuardrailSpecEditor({ spec, onChange }: Props) {
         )}
         <div className="space-y-2">
           {checks.map((check, i) => (
-            <div key={i} className="bg-bg-primary rounded p-2 flex items-center gap-2">
-              <select
-                className="input py-1 text-xs flex-1"
-                value={check.type}
-                onChange={(e) => updateCheck(i, { type: e.target.value })}
-              >
-                {CHECK_TYPES.map((t) => (
-                  <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
-                ))}
-              </select>
-              <select
-                className="input py-1 text-xs w-20"
-                value={check.action}
-                onChange={(e) => updateCheck(i, { action: e.target.value as GuardrailCheck['action'] })}
-              >
-                {CHECK_ACTIONS.map((a) => (
-                  <option key={a} value={a}>{a}</option>
-                ))}
-              </select>
-              <button type="button" className="btn-icon !p-0.5" onClick={() => removeCheck(i)}>
-                <Trash2 className="w-3 h-3 text-text-muted hover:text-red-400" />
-              </button>
+            <div key={i} className="bg-bg-primary rounded p-2 space-y-1.5">
+              <div className="flex items-center gap-2">
+                <select
+                  className="input py-1 text-xs flex-1"
+                  value={check.type}
+                  onChange={(e) => updateCheck(i, { type: e.target.value })}
+                >
+                  {CHECK_TYPES.map((t) => (
+                    <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
+                  ))}
+                </select>
+                <select
+                  className="input py-1 text-xs w-20"
+                  value={check.action}
+                  onChange={(e) => updateCheck(i, { action: e.target.value as GuardrailCheck['action'] })}
+                >
+                  {CHECK_ACTIONS.map((a) => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </select>
+                <button type="button" className="btn-icon !p-0.5" onClick={() => removeCheck(i)}>
+                  <Trash2 className="w-3 h-3 text-text-muted hover:text-red-400" />
+                </button>
+              </div>
+              {check.type === 'business_rule' && (
+                <input
+                  className="input py-1 text-xs w-full"
+                  value={check.rule ?? ''}
+                  onChange={(e) => updateCheck(i, { rule: e.target.value })}
+                  placeholder="e.g. Every Goal must have at least one Objective"
+                />
+              )}
             </div>
           ))}
         </div>

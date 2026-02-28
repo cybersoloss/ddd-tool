@@ -147,6 +147,7 @@ export interface AgentLoopSpec {
 export interface GuardrailCheck {
   type: string;
   action: 'block' | 'warn' | 'log';
+  rule?: string;
 }
 
 export interface GuardrailSpec {
