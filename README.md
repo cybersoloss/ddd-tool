@@ -10,6 +10,10 @@ Built with Tauri 2.0 (Rust) + React 19 + TypeScript + Tailwind CSS v4.
 
 ![DDD Workflow Demo](https://raw.githubusercontent.com/cybersoloss/DDD/main/assets/ddd-demo.gif)
 
+**Full Feature Preview** — 9 domains, 53 flows, 28 node types (Vantage supply chain project):
+
+https://github.com/cybersoloss/ddd-tool/raw/main/demo/demo-feature-preview.mp4
+
 ## What It Does
 
 The Design Driven Development Tool is a visual editor for designing software as flow diagrams. You draw flows on a canvas, the tool outputs YAML specs, and Claude Code generates working code from those specs.
