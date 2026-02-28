@@ -313,11 +313,13 @@ flows:
     specHash: "cd6788a7a960045aa7f1c5a42e45c71e171940be4f2595d0ac84de738a4ca370"
     files:
       - src/utils/mermaid-generator.ts
+      - src/components/FlowCanvas/NodeToolbar.tsx
     fileHashes:
-      src/utils/mermaid-generator.ts: ""
-    implementedAt: "2026-02-28T00:00:00.000Z"
+      src/utils/mermaid-generator.ts: "f449cec8fbe142c14e4de7a1ff989fdf8fe3734c04e681cd30c4422be19bbbf7"
+      src/components/FlowCanvas/NodeToolbar.tsx: "c9b9ff192f403f88806fa66b4210e3fabff6fdc8f1eddc5b7c6b4f557dba7e02"
+    implementedAt: "2026-02-28T16:47:00.000Z"
     mode: new
-    syncState: spec_ahead
+    syncState: synced
     annotationCount: 0
 
   # ── canvas-views domain ─────────────────────────────────────────────────────

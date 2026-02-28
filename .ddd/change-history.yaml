@@ -950,3 +950,33 @@
   status: "pending_implement"
   implemented_at: null
   code_files: []
+
+- id: "chg-0091"
+  timestamp: "2026-02-28T16:47:00.000Z"
+  source: "ddd-implement"
+  scope:
+    level: L3
+    domain: flow-editor
+    flow: export-mermaid
+    pillar: logic
+  spec_file: "specs/domains/flow-editor/flows/export-mermaid.yaml"
+  spec_checksum: "cd6788a7a960"
+  status: "implemented"
+  implemented_at: "2026-02-28T16:47:00.000Z"
+  code_files:
+    - src/utils/mermaid-generator.ts
+    - src/components/FlowCanvas/NodeToolbar.tsx
+
+- id: "chg-0092"
+  timestamp: "2026-02-28T16:47:00.000Z"
+  source: "ddd-implement"
+  scope:
+    level: L1
+    domain: null
+    flow: null
+    pillar: infrastructure
+  spec_file: "specs/infrastructure.yaml"
+  spec_checksum: "138af1b62d01"
+  status: "implemented"
+  implemented_at: "2026-02-28T16:47:00.000Z"
+  code_files: []

@@ -1,0 +1,96 @@
+timestamp: "2026-02-28T16:46:01.000Z"
+type: sync
+triggered_by: ddd-sync
+
+summary:
+  total_flows: 49
+  total_pages: 9
+  total_schemas: 6
+  total_services: 6
+  specHash_matches: 58
+  specHash_mismatches: 0
+  fileHash_matches: 95
+  fileHash_mismatches: 0
+  overall_status: in_sync
+
+pillars:
+
+  logic:
+    flows_checked: 49
+    in_sync: 48
+    spec_ahead: 1
+    code_ahead: 0
+    diverged: 0
+    findings:
+      - flow: flow-editor/export-mermaid
+        status: spec_ahead
+        detail: >
+          Spec exists at specs/domains/flow-editor/flows/export-mermaid.yaml
+          but implementation file src/utils/mermaid-generator.ts is missing.
+          The file was removed or never created. specHash matches (spec unchanged);
+          no implementation file to hash-compare.
+        recommended_action: /ddd-implement flow-editor/export-mermaid
+    note: >
+      48 flows show syncState 'in_sync' (old vocabulary) rather than 'synced'.
+      This is expected — the Tauri app normalizes 'in_sync' → 'synced' lazily on
+      next load via implementation-store updateMapping(). Not a real drift issue.
+
+  interface:
+    pages_checked: 9
+    in_sync: 9
+    spec_ahead: 0
+    code_ahead: 0
+    diverged: 0
+    findings: []
+
+  data:
+    schemas_checked: 6
+    in_sync: 4
+    code_ahead: 2
+    findings:
+      - schema: domain-config
+        status: code_ahead
+        detail: >
+          TypeScript DomainConfig interface includes 6 optional fields not captured
+          in specs/schemas/domain-config.yaml: on_error (DomainOnError), event_groups
+          (EventGroup[]), groups (FlowGroup[]), sla_config, memory_stores, depends_on
+          (DomainDependency[]). All are optional DDD Usage Guide fields accepted by
+          the app but not documented in the schema spec. Low priority — the spec
+          describes the canonical/required fields; these are extension points.
+        recommended_action: /ddd-reflect --schema domain-config (if annotation desired)
+
+      - schema: flow-document
+        status: code_ahead
+        detail: >
+          TypeScript FlowDocument interface includes 5 optional flow-level fields
+          not captured in specs/schemas/flow-document.yaml:
+          flow.keyboard_shortcut (string), flow.template (boolean),
+          flow.parameters (Record), flow.contract ({inputs,outputs}),
+          flow.metrics (Array). These are valid DDD Usage Guide flow-level fields
+          supported by the tool. Low priority — template/parameters/contract/metrics
+          are advanced fields rarely used.
+        recommended_action: /ddd-reflect --schema flow-document (if annotation desired)
+
+  infrastructure:
+    services_checked: 6
+    in_sync: 5
+    code_ahead: 1
+    findings:
+      - service: tauri-app (scripts)
+        status: code_ahead
+        detail: >
+          package.json has 2 scripts not documented in specs/infrastructure.yaml:
+          demo:test command differs (spec says 'tsx tests/e2e/demo/demo-test.ts'
+          but actual is 'npx playwright test --config demo/playwright/...');
+          demo:lifecycle (npx playwright test lifecycle-demo.spec.ts) not in spec.
+          Minor — Playwright was adopted for demo testing instead of the originally
+          planned tsx runner.
+        recommended_action: Update scripts section in specs/infrastructure.yaml
+
+next_steps:
+  - action: "/ddd-implement flow-editor/export-mermaid"
+    reason: "mermaid-generator.ts is missing — spec_ahead flow with no implementation"
+  - action: "Update specs/infrastructure.yaml scripts.demo:test and add demo:lifecycle"
+    reason: "Minor code-ahead: Playwright used instead of tsx for demo tests"
+  - action: "Optional: /ddd-reflect --schema domain-config flow-document"
+    reason: "Optional: capture 11 code-ahead fields as schema annotations"

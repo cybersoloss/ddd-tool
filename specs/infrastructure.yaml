@@ -74,13 +74,15 @@ scripts:
   demo:dev: VITE_DEMO_MODE=true vite
   demo:build: VITE_DEMO_MODE=true vite build
   demo:preview: VITE_DEMO_MODE=true vite preview
-  demo:test: tsx tests/e2e/demo/demo-test.ts
+  demo:test: "npx playwright test --config demo/playwright/playwright.config.ts"
+  demo:lifecycle: "npx playwright test --config demo/playwright/playwright.config.ts demo/playwright/lifecycle-demo.spec.ts"
   notes: >
     These scripts are defined in package.json but not part of the main dev/build
     workflow above. typecheck validates TypeScript without emitting. test:specs
     runs the auto-test runner. test:roundtrip runs the end-to-end DDD round-trip
     test (requires Claude Code CLI); test:roundtrip:offline uses a fixture and is
-    CI-safe. demo:* scripts set VITE_DEMO_MODE=true for demo/showcase builds.
+    CI-safe. demo:test and demo:lifecycle use Playwright for end-to-end demo
+    validation. demo:* scripts set VITE_DEMO_MODE=true for demo/showcase builds.
 
 deployment:
   local:

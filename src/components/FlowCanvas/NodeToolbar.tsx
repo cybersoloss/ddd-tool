@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useReactFlow } from '@xyflow/react';
-import { FormInput, Cog, GitFork, Square, RotateCw, Shield, Hand, Network, GitBranch, ArrowLeftRight, Box, Undo2, Redo2, Database, ExternalLink, Zap, Repeat, Columns, GitMerge, BrainCircuit, Copy, Check, RotateCcw, Clock, HardDrive, Shuffle, Filter, FileText, Lock, Layers, ShieldCheck, LayoutGrid, Settings, Terminal, Save } from 'lucide-react';
+import { FormInput, Cog, GitFork, Square, RotateCw, Shield, Hand, Network, GitBranch, ArrowLeftRight, Box, Undo2, Redo2, Database, ExternalLink, Zap, Repeat, Columns, GitMerge, BrainCircuit, Copy, Check, RotateCcw, Clock, HardDrive, Shuffle, Filter, FileText, Lock, Layers, ShieldCheck, LayoutGrid, Settings, Terminal, Save, FileCode } from 'lucide-react';
+import { generateMermaidFromFlow } from '../../utils/mermaid-generator';
 import type { DddNodeType } from '../../types/flow';
 import { useSheetStore } from '../../stores/sheet-store';
 import { useUndoStore } from '../../stores/undo-store';
@@ -76,6 +77,7 @@ export function NodeToolbar({ pendingType, onSelectType, flowType = 'traditional
   const redoDesc = flowId ? getLastDescription(flowId, 'redo') : null;
 
   const [copied, setCopied] = useState(false);
+  const [mermaidCopied, setMermaidCopied] = useState(false);
   const [reloading, setReloading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -99,6 +101,16 @@ export function NodeToolbar({ pendingType, onSelectType, flowType = 'traditional
       setTimeout(() => setReloading(false), 600);
     }
   }, [reloadProject]);
+
+  const currentFlow = useFlowStore((s) => s.currentFlow);
+
+  const handleExportMermaid = useCallback(async () => {
+    if (!currentFlow) return;
+    const mermaidText = generateMermaidFromFlow(currentFlow);
+    await navigator.clipboard.writeText(mermaidText);
+    setMermaidCopied(true);
+    setTimeout(() => setMermaidCopied(false), 2000);
+  }, [currentFlow]);
 
   const saveNow = useFlowStore((s) => s.saveNow);
   const handleSave = useCallback(async () => {
@@ -167,6 +179,14 @@ export function NodeToolbar({ pendingType, onSelectType, flowType = 'traditional
       >
         <LayoutGrid className="w-4 h-4 text-text-secondary" />
         <span className="text-sm text-text-primary">Auto Layout</span>
+      </div>
+      <div
+        className="flex items-center gap-2 px-3 py-2 rounded cursor-pointer transition-colors hover:bg-bg-hover"
+        onClick={() => void handleExportMermaid()}
+        title="Export Mermaid diagram to clipboard"
+      >
+        {mermaidCopied ? <Check className="w-4 h-4 text-green-400" /> : <FileCode className="w-4 h-4 text-text-secondary" />}
+        <span className="text-sm text-text-primary">{mermaidCopied ? 'Copied!' : 'Export Mermaid'}</span>
       </div>
       <div
         className="flex items-center gap-2 px-3 py-2 rounded cursor-pointer transition-colors hover:bg-bg-hover"

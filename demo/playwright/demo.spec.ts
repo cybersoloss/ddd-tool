@@ -1,8 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
+import { renderTerminal } from './terminal';
 
 /**
  * Demo walkthrough test for DDD Tool.
- * Navigates through the sample project capturing screenshots at each level.
+ * Navigates through the expense-scanner project capturing screenshots at each level.
  *
  * Navigation strategy:
  * - Domain blocks: double-click on domain description text
@@ -31,50 +32,76 @@ async function dblclickText(page: Page, text: string) {
 test.describe('DDD Tool Demo Walkthrough', () => {
 
   test('full navigation demo', async ({ page }) => {
+    // --- 0. Intro card ---
+    await page.setContent(renderTerminal({
+      title: 'DDD Tool — Quick Walkthrough',
+      lines: [
+        '',
+        '  {bold}Building an Agent as an Expense Scanner{/bold}',
+        '',
+        '  {dim}A quick walkthrough of a small, everyday example:{/dim}',
+        '  {dim}designing and executing an AI agent with the DDD methodology.{/dim}',
+        '',
+        '  {dim}This is a deliberately brief overview showing how DDD Tool{/dim}',
+        '  {dim}lets you visually design agent flows — from system-level{/dim}',
+        '  {dim}domain mapping down to individual node specifications.{/dim}',
+        '',
+        '  {cyan}What you will see:{/cyan}',
+        '    System map with 3 domains and cross-domain events',
+        '    AI receipt scanning agent flow with guardrails',
+        '    Agent loop with tools, human gate, and spec details',
+        '    Smart approval routing with amount-based rules',
+        '',
+      ],
+    }));
+    await page.waitForTimeout(7000);
+    await page.screenshot({ path: 'test-results/demo/00-intro.png' });
+
     // --- 1. Launcher ---
     await page.goto('/');
     await waitForBoot(page);
-    await expect(page.getByText('ddd-sample-project', { exact: true })).toBeVisible({ timeout: 5_000 });
-    await page.waitForTimeout(500);
+    await expect(page.getByText('expense-scanner', { exact: true })).toBeVisible({ timeout: 5_000 });
+    await page.waitForTimeout(3000);
     await page.screenshot({ path: 'test-results/demo/01-launcher.png' });
 
     // --- 2. Open project -> System Map (L1) ---
-    await page.getByText('ddd-sample-project', { exact: true }).click();
-    await expect(page.getByText('Users')).toBeVisible({ timeout: 10_000 });
-    await page.waitForTimeout(1000);
+    await page.getByText('expense-scanner', { exact: true }).click();
+    await expect(page.getByText('Expenses', { exact: true })).toBeVisible({ timeout: 10_000 });
+    await page.waitForTimeout(3000);
     await page.screenshot({ path: 'test-results/demo/02-system-map.png' });
 
-    // --- 3. Navigate to Users domain (L2) ---
-    await dblclickText(page, 'User management and authentication');
-    await expect(page.getByText('User Register')).toBeVisible({ timeout: 5_000 });
-    await page.waitForTimeout(500);
-    await page.screenshot({ path: 'test-results/demo/03-users-domain.png' });
+    // --- 3. Navigate to Expenses domain (L2) ---
+    await dblclickText(page, 'Receipt scanning and expense submission');
+    await expect(page.getByText('Scan Receipt')).toBeVisible({ timeout: 5_000 });
+    await page.waitForTimeout(3000);
+    await page.screenshot({ path: 'test-results/demo/03-expenses-domain.png' });
 
-    // --- 4. Open user-register flow (L3) ---
-    await dblclickText(page, 'Validate and create new user accounts');
-    await expect(page.getByText('Registration Request')).toBeVisible({ timeout: 5_000 });
-    await page.waitForTimeout(500);
-    await page.screenshot({ path: 'test-results/demo/04-user-register-flow.png' });
+    // --- 4. Open scan-receipt flow (L3) ---
+    await dblclickText(page, 'AI-powered receipt OCR with human review');
+    await expect(page.getByText('Receipt Upload')).toBeVisible({ timeout: 5_000 });
+    await page.waitForTimeout(3000);
+    await page.screenshot({ path: 'test-results/demo/04-scan-receipt-flow.png' });
 
     // --- 5. Click a node to show spec ---
-    await page.getByText('Check Existing').first().click();
-    await page.waitForTimeout(500);
+    await page.getByText('Receipt Scanner').first().click();
+    await page.waitForTimeout(3000);
     await page.screenshot({ path: 'test-results/demo/05-node-selected.png' });
 
-    // --- 6. Navigate to Support domain ---
+    // --- 6. Navigate to Approvals domain ---
     await page.keyboard.press('Escape');
     await page.waitForTimeout(300);
     await page.keyboard.press('Escape');
     await page.waitForTimeout(500);
 
-    await dblclickText(page, 'Customer support and ticketing');
-    await expect(page.getByText('Support Ticket')).toBeVisible({ timeout: 5_000 });
-    await page.waitForTimeout(500);
-    await page.screenshot({ path: 'test-results/demo/06-support-domain.png' });
+    await dblclickText(page, 'Review workflows and reimbursement');
+    await expect(page.getByText('Review Expense')).toBeVisible({ timeout: 5_000 });
+    await page.waitForTimeout(3000);
+    await page.screenshot({ path: 'test-results/demo/06-approvals-domain.png' });
 
-    // --- 7. Open agent flow ---
-    await dblclickText(page, 'AI-powered ticket resolution with human review');
-    await page.waitForTimeout(1000);
-    await page.screenshot({ path: 'test-results/demo/07-agent-flow.png' });
+    // --- 7. Open review-expense flow ---
+    await dblclickText(page, 'Smart routing and approval by amount');
+    await expect(page.getByText('Route by Amount')).toBeVisible({ timeout: 5_000 });
+    await page.waitForTimeout(3000);
+    await page.screenshot({ path: 'test-results/demo/07-review-flow.png' });
   });
 });

@@ -19,22 +19,28 @@ npx playwright install chromium
 | `npm run demo:dev` | Start dev server on port 4173 with hot reload. Open `http://localhost:4173` in any browser. |
 | `npm run demo:build` | Production build to `dist/`. Embeds mock layer + sample project (~1MB). |
 | `npm run demo:preview` | Serve the production build locally for testing. |
-| `npm run demo:test` | Run Playwright walkthrough — auto-starts dev server, navigates through the app, captures 7 screenshots + video. |
+| `npm run demo:test` | Run all Playwright demos — quick walkthrough + lifecycle demo. |
+| `npm run demo:lifecycle` | Run just the lifecycle demo (terminal + app scenes). |
 
 ### Run the demo in a browser
 
 ```bash
 npm run demo:dev
 # Open http://localhost:4173
-# Click "ddd-sample-project" to open — browse domains, flows, nodes
+# Click "expense-scanner" to open — browse domains, flows, nodes
 ```
 
-### Record a demo video
+### Record demo videos
 
 ```bash
+# Run all demos (quick walkthrough + lifecycle)
 npm run demo:test
-# Screenshots saved to: test-results/demo/01-launcher.png ... 07-agent-flow.png
-# Video saved to:       test-results/demo/demo-DDD-Tool-Demo-Walkthrough-full-navigation-demo/video.webm
+# Screenshots: test-results/demo/01-launcher.png ... 07-review-flow.png
+# Lifecycle:   test-results/demo/lifecycle-01-title.png ... lifecycle-13-summary.png
+# Video:       test-results/demo/.../video.webm
+
+# Run just the lifecycle demo
+npm run demo:lifecycle
 ```
 
 ### Build for static hosting
@@ -85,37 +91,59 @@ When `VITE_DEMO_MODE=true`, Vite aliases redirect all `@tauri-apps/*` imports to
 
 The VFS is seeded on first import with sample project data from `data/seed-project.ts`.
 
-### Sample Project
+### Sample Project: AI Expense Scanner
 
-The seed data creates a complete DDD project at `/demo/ddd-sample-project` with:
+The seed data creates a complete DDD project at `/demo/expense-scanner` with:
 
-- **3 domains**: Users, Billing, Support
-- **5 flows**: user-register, user-login, create-subscription, payment-processing, support-ticket
-- **Event wiring**: UserRegistered (Users → Billing), PaymentFailed (Billing → Support)
-- **Node types demonstrated**: trigger, input, process, decision, terminal, event, data_store, service_call, guardrail, agent_loop, human_gate
+- **3 domains**: Expenses, Approvals, Reports
+- **5 flows**: scan-receipt (agent), submit-expense, review-expense, process-reimbursement, monthly-summary
+- **Event wiring**: ReceiptScanned, ExpenseSubmitted (Expenses → Approvals), ExpenseApproved, ReimbursementProcessed (Approvals → Reports)
+- **15+ node types demonstrated**: trigger, input, process, decision, terminal, event, data_store, service_call, guardrail, agent_loop, human_gate, smart_router, transaction, collection, transform
 - **Settings**: Pre-configured at `/demo/.ddd-tool/settings.json` (skips first-run wizard)
 
 The app is fully interactive in demo mode — you can create projects, add domains/flows, edit nodes. Changes persist in the VFS for the session but are lost on refresh.
 
-## Playwright Walkthrough
+## Playwright Tests
 
-`playwright/demo.spec.ts` navigates through the sample project in 7 steps:
+### Quick Walkthrough (`demo.spec.ts`)
+
+Navigates through the expense-scanner project in 7 steps:
 
 | Step | View | Screenshot |
 |---|---|---|
-| 1 | Launcher with sample project | `01-launcher.png` |
+| 1 | Launcher with expense-scanner project | `01-launcher.png` |
 | 2 | System Map — 3 domains with event arrows | `02-system-map.png` |
-| 3 | Users Domain — flow blocks | `03-users-domain.png` |
-| 4 | User Register Flow — 7-node traditional flow | `04-user-register-flow.png` |
-| 5 | Node selected — spec details visible | `05-node-selected.png` |
-| 6 | Support Domain — agent flow block with portal | `06-support-domain.png` |
-| 7 | Support Ticket Flow — agent loop with tools, human gate | `07-agent-flow.png` |
+| 3 | Expenses Domain — flow blocks | `03-expenses-domain.png` |
+| 4 | Scan Receipt Flow — agent flow with guardrail, agent_loop, human_gate | `04-scan-receipt-flow.png` |
+| 5 | Node selected — agent_loop spec details visible | `05-node-selected.png` |
+| 6 | Approvals Domain — review and reimbursement flows | `06-approvals-domain.png` |
+| 7 | Review Expense Flow — smart router with amount-based rules | `07-review-flow.png` |
+
+### Lifecycle Demo (`lifecycle-demo.spec.ts`)
+
+Full DDD lifecycle story alternating terminal and app scenes (~13 scenes):
+
+| # | Type | Scene | Screenshot |
+|---|------|-------|------------|
+| 1 | Terminal | Title card | `lifecycle-01-title.png` |
+| 2 | Terminal | `/ddd-create` output | `lifecycle-02-create.png` |
+| 3 | App | System Map — 3 domains | `lifecycle-03-system-map.png` |
+| 4 | App | Expenses domain — 2 flows | `lifecycle-04-expenses-domain.png` |
+| 5 | App | scan-receipt flow — agent flow | `lifecycle-05-scan-receipt-flow.png` |
+| 6 | App | agent_loop node selected | `lifecycle-06-agent-node.png` |
+| 7 | Terminal | `/ddd-implement --all` output | `lifecycle-07-implement.png` |
+| 8 | Terminal | `/ddd-test --all` results table | `lifecycle-08-test.png` |
+| 9 | App | Approvals domain — 2 flows | `lifecycle-09-approvals-domain.png` |
+| 10 | App | review-expense flow — smart router | `lifecycle-10-review-flow.png` |
+| 11 | Terminal | `/ddd-reflect --all` patterns | `lifecycle-11-reflect.png` |
+| 12 | Terminal | `/ddd-sync --verify` conformance | `lifecycle-12-sync.png` |
+| 13 | Terminal | Summary — lifecycle complete | `lifecycle-13-summary.png` |
 
 Screenshots are saved to `test-results/demo/`. Video is recorded as WebM.
 
 ## Creating Demo Videos
 
-The Playwright walkthrough produces raw materials (WebM video + PNG screenshots). Here's how to turn them into polished demo videos.
+The Playwright tests produce raw materials (WebM video + PNG screenshots). Here's how to turn them into polished demo videos.
 
 ### 1. Capture raw footage
 
@@ -124,18 +152,18 @@ npm run demo:test
 ```
 
 Output:
-- `test-results/demo/*.png` — 7 screenshots (one per step)
+- `test-results/demo/*.png` — screenshots (one per step)
 - `test-results/demo/.../video.webm` — full walkthrough recording
 
 ### 2. Convert WebM to MP4
 
 ```bash
 # Basic conversion
-ffmpeg -i test-results/demo/demo-DDD-Tool-Demo-Walkthrough-full-navigation-demo/video.webm \
+ffmpeg -i test-results/demo/.../video.webm \
   -c:v libx264 -preset slow -crf 22 demo-walkthrough.mp4
 
 # Slow down for readability (0.5x speed)
-ffmpeg -i test-results/demo/demo-DDD-Tool-Demo-Walkthrough-full-navigation-demo/video.webm \
+ffmpeg -i test-results/demo/.../video.webm \
   -filter:v "setpts=2.0*PTS" -c:v libx264 -preset slow -crf 22 demo-walkthrough-slow.mp4
 ```
 
@@ -196,7 +224,7 @@ sudo apt install ffmpeg
 ```
 demo/
 ├── data/
-│   └── seed-project.ts        # Sample project YAML/JSON embedded as static data
+│   └── seed-project.ts        # Expense-scanner project YAML/JSON embedded as static data
 ├── mocks/
 │   ├── vfs.ts                 # In-memory virtual file system
 │   ├── tauri-core.ts          # Mock invoke() — all 20 IPC commands
@@ -205,6 +233,8 @@ demo/
 │   └── tauri-dialog.ts        # Mock open() — returns demo project path
 ├── playwright/
 │   ├── playwright.config.ts   # Starts demo dev server, records video
-│   └── demo.spec.ts           # 7-step navigation walkthrough
+│   ├── demo.spec.ts           # 7-step quick navigation walkthrough
+│   ├── lifecycle-demo.spec.ts # 13-scene lifecycle demo (terminal + app)
+│   └── terminal.ts            # Terminal HTML renderer for lifecycle scenes
 └── README.md
 ```
