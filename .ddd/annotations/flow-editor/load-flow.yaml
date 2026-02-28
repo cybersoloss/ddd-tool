@@ -1,0 +1,40 @@
+flow: flow-editor/load-flow
+captured_at: "2026-02-28T00:30:00.000Z"
+captured_from: reflect
+patterns:
+  - id: uV3vG5xT
+    type: custom
+    description: >
+      Auto-save starts on flow load: immediately after setting flow-store state,
+      a periodic interval timer starts (startAutoSave) that writes flow state
+      to .ddd/autosave/{flowId}.yaml. Interval is configurable (default 30s).
+      The spec's load-flow terminal says "Flow Loaded" but doesn't capture
+      that auto-save is a side effect of the load operation.
+    applies_to_nodes: [terminal-success]
+    code_evidence:
+      file: src/stores/flow-store.ts
+      lines: "246"
+      snippet: >
+        // Start auto-save interval
+        startAutoSave(projectPath, flowId);
+    status: promoted
+
+  - id: wX5wH7yU
+    type: custom
+    description: >
+      Agent flow initialization: when a new flow is created for an agent flow type
+      (file doesn't exist), createDefaultFlow() auto-adds an agent_loop node and
+      wires it from the trigger. Traditional flows get only a trigger node.
+      The spec's init-empty-flow node says "Create minimal FlowDocument with
+      single trigger node" — this is incomplete for agent flows.
+    applies_to_nodes: [process-initEmptyFlow]
+    code_evidence:
+      file: src/stores/flow-store.ts
+      lines: "88-100"
+      snippet: >
+        if (flowType === 'agent') {
+          const agentNode = { id: 'agent_loop-' + nanoid(8), type: 'agent_loop', ... };
+          doc.nodes.push(agentNode);
+          doc.trigger.connections.push({ targetNodeId: agentNode.id });
+        }
+    status: promoted

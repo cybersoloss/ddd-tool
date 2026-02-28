@@ -1,57 +1,55 @@
 flow:
   id: validate-system
-  name: "Validate System"
+  name: Validate System
   type: traditional
   domain: validation
-  description: "Validates system-wide constraints — event wiring, portal targets, cross-pillar references"
+  description: Run L1 system-level validation — cross-domain event consumers exist, all domains have flows
 
 trigger:
-  id: trigger-qV8hB2dE
+  id: trigger-validateSystem
   type: trigger
-  position: { x: 300, y: 0 }
-  label: "Validate System"
+  position: { x: 250, y: 0 }
+  label: Validate System
   spec:
-    event: "ui:validate-system"
-    description: "User triggers system validation from the validation panel"
+    event: "ipc:validate-system"
+    description: Triggered after project load completes and when navigating to system map
   connections:
-    - targetNodeId: process-rW9iC3eF
+    - targetNodeId: process-runSystemRules
 
 nodes:
-  - id: process-rW9iC3eF
+  - id: process-runSystemRules
     type: process
-    position: { x: 300, y: 130 }
-    label: "Check Event Wiring"
+    position: { x: 250, y: 130 }
+    label: Run System Rules
     spec:
-      action: "Verify every emitted event has at least one listener across domains, and every listener has at least one emitter"
+      action: >
+        Apply L1 validation rules:
+        - Each event in publishes_events has at least one consumer in another domain's consumes_events
+        - Each event in consumes_events has a publisher in at least one other domain's publishes_events
+        - All domains referenced in ddd-project.json have existing domain.yaml files
+        - All domains have at least one flow
+        - No circular event dependencies
+        - system-layout.yaml position exists for all domains
     connections:
-      - targetNodeId: process-sX1jD4fG
+      - targetNodeId: process-updateStore
 
-  - id: process-sX1jD4fG
+  - id: process-updateStore
     type: process
-    position: { x: 300, y: 260 }
-    label: "Check Portal Targets"
+    position: { x: 250, y: 260 }
+    label: Update validation-store
     spec:
-      action: "Verify sub_flow and portal nodes reference valid existing flows in the project"
+      action: Set validation-store.systemIssues; update DomainBlock indicators on system map for domains with issues; update overall qualityScore
     connections:
-      - targetNodeId: process-tY2kE5gH
+      - targetNodeId: terminal-success
 
-  - id: process-tY2kE5gH
-    type: process
-    position: { x: 300, y: 390 }
-    label: "Check Cross-Pillar Refs"
-    spec:
-      action: "Verify schema references in flows exist in specs/schemas/, UI page refs exist in specs/ui/"
-    connections:
-      - targetNodeId: terminal-uZ3lF6hJ
-
-  - id: terminal-uZ3lF6hJ
+  - id: terminal-success
     type: terminal
-    position: { x: 300, y: 520 }
-    label: "System Result"
+    position: { x: 250, y: 390 }
+    label: System Validation Complete
     spec:
       outcome: success
-      description: "System validation results computed and stored in validation-store"
-    connections: []
+      status: 200
+      body: { issueCount: "{{systemIssues.length}}", qualityScore: "{{qualityScore}}" }
 
 metadata:
   created: "2026-02-28T00:00:00.000Z"

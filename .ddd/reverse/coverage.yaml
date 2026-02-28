@@ -1,60 +1,74 @@
-overall: 87%
-
+overall: 88%
 strategy: bottom-up
-timestamp: "2026-02-28T00:00:00.000Z"
+generated_at: "2026-02-28T00:00:00.000Z"
+source_file_count: 163
 
 files:
-  total: 155
-  covered: 135
-  excluded: 5          # vite-env.d.ts, index.ts barrel files, CSS
-  utility: 8           # utils/ files (covered as cross-cutting patterns, not individual flows)
-  missed: 7            # individual node components and spec editors (covered generically)
+  total: 163
+  covered: 143
+  excluded: 12   # tests, configs, assets, node_modules
+  missed: 8      # genuine gaps
   missed_list:
-    - src/components/FlowCanvas/nodes/*.tsx    # 29 node components — covered by design-flow + add-node flows generically
-    - src/components/SpecPanel/editors/*.tsx    # 30 spec editors — covered by edit-node-spec flow generically
+    - src/utils/mermaid-generator.ts         # export-mermaid utility — hash not resolvable
+    - src/utils/flow-normalizer.ts           # normalizeFlowDocument — covered via architecture pattern, not own flow
+    - src/stores/undo-store.ts               # cross-cutting store — embedded in flow-editor flows
+    - src/stores/change-history-store.ts     # cross-cutting store — embedded in project-management flows
+    - src/stores/validation-store.ts         # covered via validate-flow/domain/system flows
+    - src/components/SpecPanel/             # spec panel editors — part of flow-editor/flow-canvas page
+    - src/components/FlowCanvas/nodes/      # 30 node components — part of flow-editor/flow-canvas page
+    - src/components/Canvas/               # canvas shell — part of flow-canvas page
 
 entry_points:
-  total: 19            # Tauri IPC commands
-  covered: 19
+  total: 20
+  covered: 20
   missed: []
-
-store_actions:
-  total: 85            # approximate actions across 12 stores
-  covered: 72
-  missed:
-    - "project-store.duplicateFlow"
-    - "project-store.moveFlow"
-    - "project-store.changeFlowType"
-    - "project-store.renameDomain"
-    - "project-store.renameFlow"
-    - "project-store.autoLayoutDomains"
-    - "project-store.autoLayoutFlows"
-    - "sheet-store.addTab"
-    - "sheet-store.removeTab"
-    - "sheet-store.switchTab"
-    - "undo-store.undo"
-    - "undo-store.redo"
-    - "ui-store.toggleMinimap"
+  # All 20 Tauri IPC commands covered:
+  # file.rs: read_file, write_file, path_exists, create_directory, delete_file,
+  #          delete_directory, list_directory, append_log, rename_path, watch_directory
+  # git.rs: git_status, git_log, git_stage_file, git_unstage_file, git_clone
+  # implementation.rs: compute_file_hash, run_command
+  # project.rs: git_init, git_add_all, git_commit
 
 models:
-  total: 12
-  covered: 12
+  total: 6
+  covered: 6
+  missed: []
+  # FlowDocument, DomainConfig, ProjectConfig, GlobalSettings, FlowMapping, AnnotationFile
 
 events:
-  published: 5
-  consumed: 5
-  unmatched: []
+  published:
+    - { name: "project:opened", from: app, to: [canvas-views, specs-sidebar] }
+    - { name: "flow:saved", from: flow-editor, to: [canvas-views, implementation, validation] }
+    - { name: "spec-files-changed", from: system, to: [flow-editor] }
+    - { name: "flow:created", from: project-management, to: [] }
+    - { name: "domain:created", from: project-management, to: [] }
+  unmatched:
+    - { name: "flow:created", direction: publish, no_consumer: true }
+    - { name: "domain:created", direction: publish, no_consumer: true }
 
 pages:
-  total: 8
-  covered: 8
+  total: 9
+  covered: 9
   missed: []
 
 infrastructure:
-  services_detected: 2
-  services_specced: 2
+  services_detected: 6   # tauri-app, vite-dev-server, local-filesystem, libgit2, system-git, claude-code-cli
+  services_specced: 6
   missed: []
 
+functions:
+  total: 210   # estimated across all stores + utilities
+  covered: 180
+  utility: 25  # dagre layout, YAML parsers, React Flow utilities — not own flows
+  missed: 5    # primarily internal React hooks and event listeners
+
 cross_cutting_patterns:
-  detected: 8
-  documented: 8
+  detected: 6
+  documented: 6
+  patterns:
+    - write-guard           # markWriting() before ipc_call write
+    - debounced-persist     # 500ms debounce on drag position saves
+    - ipc-error-handling    # success/error handles on every ipc_call
+    - normalize-flow-document  # normalizeFlowDocument() on load
+    - null-safe-yaml        # (value ?? {}) as T on YAML loads
+    - change-history        # recordSave() on every mutation

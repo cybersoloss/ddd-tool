@@ -1,0 +1,63 @@
+flow:
+  id: get-status
+  name: Get Status
+  type: traditional
+  domain: git
+  description: Fetch git status (staged/unstaged/untracked files) via Tauri IPC and update git-store
+
+trigger:
+  id: trigger-getStatus
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Get Status
+  spec:
+    event: "ui:git-panel-open"
+    description: Git panel opened or 10-second polling timer fires; also triggered after stage/unstage/commit
+  connections:
+    - targetNodeId: ipc-gitStatus
+
+nodes:
+  - id: ipc-gitStatus
+    type: ipc_call
+    position: { x: 250, y: 130 }
+    label: Git Status
+    spec:
+      command: git_status
+      args: { path: "{{projectPath}}" }
+      return_type: "{ staged: string[], unstaged: string[], untracked: string[] }"
+    connections:
+      - targetNodeId: process-updateStore
+        sourceHandle: success
+      - targetNodeId: terminal-error
+        sourceHandle: error
+
+  - id: process-updateStore
+    type: process
+    position: { x: 250, y: 260 }
+    label: Update git-store
+    spec:
+      action: Set git-store.staged, unstaged, untracked from IPC result; set loading=false; set lastFetched=Date.now()
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 390 }
+    label: Status Updated
+    spec:
+      outcome: success
+      status: 200
+      body: { staged: "{{staged.length}}", unstaged: "{{unstaged.length}}", untracked: "{{untracked.length}}" }
+
+  - id: terminal-error
+    type: terminal
+    position: { x: 550, y: 260 }
+    label: Git Error
+    spec:
+      outcome: error
+      status: 500
+      body: { error: GIT_COMMAND_FAILED }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

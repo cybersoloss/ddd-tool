@@ -1,0 +1,49 @@
+flow:
+  id: add-connection
+  name: Add Connection
+  type: traditional
+  domain: flow-editor
+  description: Wire two nodes with an edge after user drag-connect; validate compatible sourceHandle
+
+trigger:
+  id: trigger-addConnection
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Add Connection
+  spec:
+    event: "ui:node-handle-drag-connect"
+    description: User drags from a node handle and drops on another node (React Flow onConnect callback)
+  connections:
+    - targetNodeId: process-buildEdge
+
+nodes:
+  - id: process-buildEdge
+    type: process
+    position: { x: 250, y: 130 }
+    label: Build Edge
+    spec:
+      action: Create Edge with id={source}-{sourceHandle}-{target}, source, target, sourceHandle from connection event; apply edge style (animated for agent flows)
+    connections:
+      - targetNodeId: process-addToStore
+
+  - id: process-addToStore
+    type: process
+    position: { x: 250, y: 260 }
+    label: Add to flow-store
+    spec:
+      action: Append new edge to flow-store.edges; push to undo-store; set isDirty=true; trigger debounced auto-save; trigger debounced validation
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 390 }
+    label: Connection Added
+    spec:
+      outcome: success
+      status: 201
+      body: { edgeId: "{{edgeId}}" }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

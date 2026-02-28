@@ -1,22 +1,90 @@
 services:
-  - id: frontend
+  - id: tauri-app
     type: server
-    runtime: node
-    framework: react-19
-    engine: vite-7
-    entry: src/main.tsx
-    port: 1420
-    dev_command: npm run dev
-  - id: backend
-    type: server
-    runtime: rust
-    framework: tauri-2
+    runtime: Rust + WebView
+    framework: Tauri 2.0
     entry: src-tauri/src/main.rs
-    depends_on: [frontend]
+    description: >
+      Desktop application shell. Tauri spawns a Rust process that manages the
+      WebView window, handles IPC commands, and exposes Rust APIs (file I/O, git,
+      hashing, file watch) to the React frontend.
     dev_command: npm run tauri dev
+    build_command: npm run tauri build
+    app_config:
+      identifier: com.ddd-tool.app
+      window:
+        default_width: 1280
+        default_height: 800
+      csp: null
+      targets: all
+      dev_url: http://localhost:1420
+      notes: >
+        csp: null is intentional — the app reads local YAML files via Tauri IPC,
+        not via fetch, so no CSP is needed. targets: all builds macOS, Windows,
+        and Linux bundles in CI.
 
-startup_order: [frontend, backend]
+  - id: vite-dev-server
+    type: server
+    runtime: Node.js
+    framework: Vite 7
+    port: 1420
+    dev_command: vite (called internally by tauri dev)
+    description: >
+      Hot-reload dev server for the React frontend. Only active in development;
+      production bundles are embedded into the Tauri binary.
+
+  - id: local-filesystem
+    type: datastore
+    engine: OS filesystem
+    description: >
+      All data storage uses the local filesystem. Projects are directories.
+      Specs are YAML files. Settings are JSON in ~/.ddd-tool/.
+      No database or network storage.
+
+  - id: libgit2
+    type: worker
+    runtime: Rust crate (git2 v0.20)
+    description: >
+      Embedded git library for all git operations except clone (which uses system git).
+      Provides: status, stage, unstage, commit, log, init, add_all.
+
+  - id: system-git
+    type: worker
+    description: >
+      System git binary (expected on PATH). Used only for git clone operations
+      to inherit user's full auth config (SSH keys, macOS Keychain, credential
+      helpers, SSH config).
+
+  - id: claude-code-cli
+    type: worker
+    description: >
+      External Claude Code CLI (`claude` binary, expected on PATH). Invoked via
+      run_command IPC to execute DDD commands (/ddd-scaffold, /ddd-implement, etc.).
+      Optional — app functions without it; Implementation features require it.
+
+startup_order:
+  - tauri-app
+  - vite-dev-server
+
+scripts:
+  typecheck: npx tsc --noEmit
+  test:specs: tsx tests/e2e/auto-test/auto-test-runner.ts
+  test:roundtrip: tsx tests/e2e/roundtrip/round-trip-test.ts
+  test:roundtrip:offline: tsx tests/e2e/roundtrip/round-trip-test.ts --offline
+  demo:dev: VITE_DEMO_MODE=true vite
+  demo:build: VITE_DEMO_MODE=true vite build
+  demo:preview: VITE_DEMO_MODE=true vite preview
+  demo:test: tsx tests/e2e/demo/demo-test.ts
+  notes: >
+    These scripts are defined in package.json but not part of the main dev/build
+    workflow above. typecheck validates TypeScript without emitting. test:specs
+    runs the auto-test runner. test:roundtrip runs the end-to-end DDD round-trip
+    test (requires Claude Code CLI); test:roundtrip:offline uses a fixture and is
+    CI-safe. demo:* scripts set VITE_DEMO_MODE=true for demo/showcase builds.
 
 deployment:
   local:
     strategy: process-manager
+    dev: npm run tauri dev
+    build: npm run tauri build
+    output: src-tauri/target/release/bundle/{platform}/

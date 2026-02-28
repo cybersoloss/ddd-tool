@@ -15,7 +15,13 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "test:specs": "tsx tests/e2e/auto-test-runner.ts"
+    "test:specs": "tsx tests/e2e/auto-test/auto-test-runner.ts",
+    "test:roundtrip": "tsx tests/e2e/roundtrip/round-trip-test.ts",
+    "test:roundtrip:offline": "tsx tests/e2e/roundtrip/round-trip-test.ts --offline",
+    "demo:dev": "VITE_DEMO_MODE=true vite",
+    "demo:build": "VITE_DEMO_MODE=true vite build",
+    "demo:preview": "VITE_DEMO_MODE=true vite preview",
+    "demo:test": "npx playwright test --config demo/playwright/playwright.config.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
@@ -37,6 +43,7 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/vite": "^4.1.18",
     "@tauri-apps/cli": "^2",
     "@types/react": "^19.1.8",

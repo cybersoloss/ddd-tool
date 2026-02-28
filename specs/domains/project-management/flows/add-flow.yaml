@@ -1,0 +1,83 @@
+flow:
+  id: add-flow
+  name: Add Flow
+  type: traditional
+  domain: project-management
+  description: Create flow YAML file, add entry to domain.yaml, optionally use template
+
+trigger:
+  id: trigger-addFlow
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Add Flow
+  spec:
+    event: "ui:add-flow-dialog"
+    description: User submits AddFlowDialog with flow name, type, and optional template
+  connections:
+    - targetNodeId: process-buildFlowDoc
+
+nodes:
+  - id: process-buildFlowDoc
+    type: process
+    position: { x: 250, y: 130 }
+    label: Build Flow Document
+    spec:
+      action: Create FlowDocument with trigger + optional template nodes; or apply selected flow template (REST API, CRUD, Webhook, Event Processor)
+    connections:
+      - targetNodeId: ipc-writeFlowYaml
+
+  - id: ipc-writeFlowYaml
+    type: ipc_call
+    position: { x: 250, y: 260 }
+    label: Write flow.yaml
+    spec:
+      command: write_file
+      args:
+        path: "{projectPath}/specs/domains/{domainId}/flows/{flowId}.yaml"
+        contents: stringify(flowDocument)
+      description: markWriting() called first to suppress file-watcher
+    connections:
+      - targetNodeId: process-updateDomainYaml
+        sourceHandle: success
+      - targetNodeId: terminal-error
+        sourceHandle: error
+
+  - id: process-updateDomainYaml
+    type: process
+    position: { x: 250, y: 390 }
+    label: Update domain.yaml
+    spec:
+      action: Append flow entry to domain.flows[], compute auto-position in layout, write domain.yaml
+    connections:
+      - targetNodeId: process-recordHistory
+
+  - id: process-recordHistory
+    type: process
+    position: { x: 250, y: 520 }
+    label: Record Change History
+    spec:
+      action: change-history-store.recordSave({specFile, level:L3, domain, flow, action:created})
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 650 }
+    label: Flow Added
+    spec:
+      outcome: success
+      status: 201
+      body: { flowId: "{{flowId}}", domainId: "{{domainId}}" }
+
+  - id: terminal-error
+    type: terminal
+    position: { x: 550, y: 390 }
+    label: Write Error
+    spec:
+      outcome: error
+      status: 500
+      body: { error: FILE_WRITE_FAILED }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

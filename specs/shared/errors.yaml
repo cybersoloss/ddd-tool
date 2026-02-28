@@ -1,70 +1,75 @@
 errors:
   - code: FILE_NOT_FOUND
-    status: 404
-    message: "File not found at specified path"
-    domain: persistence
+    message: "File not found"
+    http_status: 404
+    description: Requested file path does not exist
+
+  - code: FILE_READ_FAILED
+    message: "Failed to read file"
+    http_status: 500
+    description: OS-level failure reading file from disk
 
   - code: FILE_WRITE_FAILED
-    status: 500
-    message: "Failed to write file to disk"
-    domain: persistence
+    message: "Failed to write file"
+    http_status: 500
+    description: OS-level failure writing file to disk
 
-  - code: YAML_PARSE_ERROR
-    status: 400
-    message: "Failed to parse YAML content"
-    domain: persistence
-
-  - code: GIT_NOT_INITIALIZED
-    status: 400
-    message: "Project directory is not a git repository"
-    domain: git
-
-  - code: GIT_COMMIT_FAILED
-    status: 500
-    message: "Git commit operation failed"
-    domain: git
-
-  - code: PROJECT_NOT_FOUND
-    status: 404
-    message: "DDD project not found (missing ddd-project.json)"
-    domain: project
+  - code: PROJECT_NOT_LOADED
+    message: "No project loaded"
+    http_status: 400
+    description: An operation requiring a project was attempted with no project open
 
   - code: DOMAIN_NOT_FOUND
-    status: 404
-    message: "Domain not found in project"
-    domain: canvas
+    message: "Domain not found"
+    http_status: 404
+    description: Referenced domain ID does not exist in domainConfigs
 
   - code: FLOW_NOT_FOUND
-    status: 404
-    message: "Flow not found in domain"
-    domain: canvas
+    message: "Flow not found"
+    http_status: 404
+    description: Referenced flow ID does not exist in domain
 
-  - code: VALIDATION_FAILED
-    status: 422
-    message: "Flow validation failed with errors"
-    domain: validation
+  - code: GIT_INIT_FAILED
+    message: "Failed to init git repo"
+    http_status: 500
+    description: git2 Repository::init failed
 
-  - code: IMPLEMENT_GATE_BLOCKED
-    status: 422
-    message: "Implementation blocked due to validation errors"
-    domain: validation
+  - code: GIT_CLONE_FAILED
+    message: "Clone failed"
+    http_status: 500
+    description: System git clone returned non-zero exit code
 
-  - code: HASH_MISMATCH
-    status: 409
-    message: "Spec hash does not match implementation hash (drift detected)"
-    domain: implementation
+  - code: GIT_STATUS_FAILED
+    message: "Failed to get git status"
+    http_status: 500
+    description: git2 statuses() failed
 
-  - code: AUTOSAVE_RESTORE_FAILED
-    status: 500
-    message: "Failed to restore from autosave backup"
-    domain: persistence
+  - code: GIT_COMMIT_FAILED
+    message: "Failed to commit"
+    http_status: 500
+    description: git2 commit() failed (empty tree or other error)
 
-  - code: CLONE_FAILED
-    status: 500
-    message: "Git clone operation failed"
-    domain: git
+  - code: HASH_COMPUTE_FAILED
+    message: "Failed to compute file hash"
+    http_status: 500
+    description: SHA-256 computation failed (file unreadable)
 
-  - code: COMMAND_EXECUTION_FAILED
-    status: 500
-    message: "External command execution failed"
-    domain: persistence
+  - code: COMMAND_EXEC_FAILED
+    message: "Failed to execute command"
+    http_status: 500
+    description: run_command IPC failed to spawn subprocess
+
+  - code: YAML_PARSE_FAILED
+    message: "Failed to parse YAML"
+    http_status: 500
+    description: YAML content is malformed or incompatible with expected type
+
+  - code: VALIDATION_ERRORS
+    message: "Spec has validation errors"
+    http_status: 422
+    description: Flow or domain spec fails DDD validation rules
+
+  - code: UNSAVED_CHANGES
+    message: "Unsaved changes would be lost"
+    http_status: 409
+    description: Navigation attempted with dirty flow that has unsaved edits

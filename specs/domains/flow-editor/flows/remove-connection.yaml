@@ -1,0 +1,40 @@
+flow:
+  id: remove-connection
+  name: Remove Connection
+  type: traditional
+  domain: flow-editor
+  description: Delete an edge between nodes from flow-store
+
+trigger:
+  id: trigger-removeConnection
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Remove Connection
+  spec:
+    event: "ui:edge-delete"
+    description: User selects edge and presses Delete, or clicks edge delete button (React Flow onEdgesDelete callback)
+  connections:
+    - targetNodeId: process-removeFromStore
+
+nodes:
+  - id: process-removeFromStore
+    type: process
+    position: { x: 250, y: 130 }
+    label: Remove from flow-store
+    spec:
+      action: Filter out deleted edge(s) from flow-store.edges; push to undo-store; set isDirty=true; trigger debounced auto-save; trigger debounced validation
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 260 }
+    label: Connection Removed
+    spec:
+      outcome: success
+      status: 200
+      body: { edgeId: "{{edgeId}}" }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

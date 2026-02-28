@@ -1,0 +1,171 @@
+flow:
+  id: create-project
+  name: Create Project
+  type: traditional
+  domain: project-management
+  description: Create a new project directory with specs/ structure, ddd-project.json, domain.yaml files, and optional git init
+
+trigger:
+  id: trigger-createProject
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Create Project
+  spec:
+    event: "ui:new-project-form"
+    description: User submits NewProjectWizard form
+  connections:
+    - targetNodeId: input-projectConfig
+
+nodes:
+  - id: input-projectConfig
+    type: input
+    position: { x: 250, y: 130 }
+    label: Validate Project Config
+    spec:
+      fields:
+        - name: name
+          type: string
+          required: true
+        - name: location
+          type: string
+          required: true
+        - name: description
+          type: string
+          required: false
+        - name: initGit
+          type: boolean
+          required: false
+        - name: techStack
+          type: object
+          required: false
+        - name: domains
+          type: array
+          required: false
+    connections:
+      - targetNodeId: ipc-createProjectDir
+        sourceHandle: valid
+      - targetNodeId: terminal-validationError
+        sourceHandle: invalid
+
+  - id: ipc-createProjectDir
+    type: ipc_call
+    position: { x: 250, y: 260 }
+    label: Create Project Directory
+    spec:
+      command: create_directory
+      args: { path: "{location}/{name}" }
+    connections:
+      - targetNodeId: ipc-createSpecsDir
+        sourceHandle: success
+      - targetNodeId: terminal-createError
+        sourceHandle: error
+
+  - id: ipc-createSpecsDir
+    type: ipc_call
+    position: { x: 250, y: 390 }
+    label: Create Specs Directory
+    spec:
+      command: create_directory
+      args: { path: "{projectPath}/specs/domains" }
+    connections:
+      - targetNodeId: ipc-writeProjectJson
+        sourceHandle: success
+      - targetNodeId: terminal-createError
+        sourceHandle: error
+
+  - id: ipc-writeProjectJson
+    type: ipc_call
+    position: { x: 250, y: 520 }
+    label: Write ddd-project.json
+    spec:
+      command: write_file
+      args:
+        path: "{projectPath}/ddd-project.json"
+        contents: "JSON.stringify(projectConfig)"
+    connections:
+      - targetNodeId: loop-createDomains
+        sourceHandle: success
+      - targetNodeId: terminal-createError
+        sourceHandle: error
+
+  - id: loop-createDomains
+    type: loop
+    position: { x: 250, y: 650 }
+    label: Create Domain Files
+    spec:
+      collection: config.domains (filtered non-empty names)
+      iterator: domain
+      description: For each domain create directory + write domain.yaml with empty config
+      on_error: continue
+    connections:
+      - targetNodeId: decision-initGit
+        sourceHandle: done
+      - targetNodeId: decision-initGit
+        sourceHandle: body
+
+  - id: decision-initGit
+    type: decision
+    position: { x: 250, y: 780 }
+    label: Init Git?
+    spec:
+      condition: "config.initGit === true"
+    connections:
+      - targetNodeId: ipc-gitInit
+        sourceHandle: "true"
+      - targetNodeId: process-openProject
+        sourceHandle: "false"
+
+  - id: ipc-gitInit
+    type: ipc_call
+    position: { x: 250, y: 910 }
+    label: Git Init + Initial Commit
+    spec:
+      command: git_init
+      args: { path: projectPath }
+      description: Init repo, write .gitignore, git_add_all, git_commit "Initial DDD project setup"
+    connections:
+      - targetNodeId: process-openProject
+        sourceHandle: success
+      - targetNodeId: process-openProject
+        sourceHandle: error
+        label: silent fail
+
+  - id: process-openProject
+    type: process
+    position: { x: 250, y: 1040 }
+    label: Open Project
+    spec:
+      action: Call app-store.openProject(projectPath) → switches view to 'project'
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 1170 }
+    label: Project Created
+    spec:
+      outcome: success
+      status: 201
+      body: { projectPath: "{{projectPath}}" }
+
+  - id: terminal-validationError
+    type: terminal
+    position: { x: 550, y: 260 }
+    label: Validation Error
+    spec:
+      outcome: error
+      status: 422
+      body: { error: VALIDATION_ERRORS }
+
+  - id: terminal-createError
+    type: terminal
+    position: { x: 550, y: 520 }
+    label: Create Error
+    spec:
+      outcome: error
+      status: 500
+      body: { error: FILE_WRITE_FAILED }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

@@ -1,47 +1,57 @@
-name: flow-mapping
-description: "Implementation tracking entry from .ddd/mapping.yaml — links a flow spec to its implementation files with hash-based drift detection"
+name: FlowMapping
+description: >
+  Implementation tracking record for a single flow or page.
+  Stored in .ddd/mapping.yaml under flows.{domain}/{flow-id} or pages.{page-id}.
+
 fields:
   - name: spec
     type: string
     required: true
-    description: "Relative path to the flow spec YAML file from project root"
-  - name: spec_hash
+    description: Relative path to the spec YAML file
+
+  - name: specHash
     type: string
     required: true
-    description: "SHA-256 hash (first 12 chars) of the spec file at implementation time"
+    description: SHA-256 of the spec file at last sync
+
   - name: files
+    type: string[]
+    required: true
+    description: Implementation source files that implement this flow
+
+  - name: fileHashes
     type: json
     required: true
-    description: "Array of relative paths to implementation source files"
-  - name: file_hashes
-    type: json
-    required: false
-    description: "Map of file path to SHA-256 hash — used for reverse drift detection"
-  - name: implemented_at
+    description: Map of filePath → SHA-256 for each implementation file
+
+  - name: implementedAt
     type: datetime
     required: true
-    description: "ISO 8601 timestamp of when the flow was last implemented"
+    description: Timestamp of last implementation or sync
+
   - name: mode
     type: enum
-    required: true
-    description: "Whether this was a fresh implementation or an update to existing code"
     values: [new, update]
-  - name: sync_state
-    type: enum
     required: false
-    description: "Current synchronization state between spec and code"
+    description: Whether this was first implementation or an update
+
+  - name: syncState
+    type: enum
     values: [synced, spec_ahead, code_ahead, diverged]
-  - name: annotation_count
+    required: false
+    description: >
+      The TypeScript SyncState type uses 'synced' (not 'in_sync') as the in-sync value.
+      Mapping entries written by the app always contain 'synced'. Any external tool or
+      YAML editor writing 'in_sync' will be overwritten to 'synced' on next load via
+      implementation-store's updateMapping(). The detect-drift flow spec previously said
+      'in_sync' — this is the canonical corrected vocabulary.
+
+  - name: annotationCount
     type: number
     required: false
-    description: "Number of implementation annotations captured for this flow"
+    default: 0
+
 indexes:
   - fields: [spec]
     unique: true
-    description: "One mapping entry per spec file"
-  - fields: [sync_state]
-    unique: false
-    description: "Filter flows by their sync state for drift reports"
-  - fields: [implemented_at]
-    unique: false
-    description: "Sort flows by implementation recency"
+    description: Each spec has exactly one mapping entry

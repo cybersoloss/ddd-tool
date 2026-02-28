@@ -1,58 +1,154 @@
-project_structure:
-  root: "."
-  source_dir: src
-  types_dir: src/types
-  stores_dir: src/stores
-  components_dir: src/components
-  utils_dir: src/utils
-  rust_dir: src-tauri/src
-  specs_dir: specs
+project: ddd-tool
 
 conventions:
-  file_naming: kebab-case
-  component_naming: PascalCase
-  store_naming: "{name}-store.ts"
-  type_naming: "{name}.ts"
-  node_components: "src/components/FlowCanvas/nodes/{NodeType}Node.tsx"
-  spec_editors: "src/components/SpecPanel/editors/{NodeType}SpecEditor.tsx"
+  file_naming: kebab-case for spec files, PascalCase for React components
+  state_management: Zustand stores per domain area (10 stores total)
+  ipc_pattern: invoke() calls to Tauri Rust backend; all file I/O goes through Rust commands
+  yaml_io: read_file / write_file IPC for all YAML operations
+  error_handling: pushError() on app-store propagates to ErrorToasts overlay
+  debounced_saves: position updates debounced 500ms before writing to disk
+  write_guard: markWriting() called before any write to suppress file-watcher re-reads
+  node_id_format: "{type}-{nanoid(8)}" — e.g. "trigger-xK9mR2vL"
+  flow_id_format: lowercase-hyphen derived from flow name
+
+project_structure:
+  frontend: src/
+  rust_commands: src-tauri/src/commands/
+  types: src/types/
+  stores: src/stores/
+  utils: src/utils/
+  components: src/components/
+  tests: tests/e2e/
 
 cross_cutting_patterns:
-  - id: write_guard
-    description: "Prevents self-triggered file watcher reloads by setting a 2-second guard window after writes"
+  - id: write-guard
+    name: Write Guard
+    description: >
+      markWriting() sets a flag that suppresses file-watcher re-reads for 2 seconds.
+      Prevents the app from re-loading YAML that it just wrote (circular update loop).
     utility: src/stores/write-guard.ts
-    used_by_domains: [canvas, spec-editing, persistence]
+    used_by_domains: [project-management, flow-editor]
 
-  - id: debounced_save
-    description: "500ms debounce on flow saves to batch rapid edits into single YAML writes"
-    utility: src/stores/flow-store.ts
-    used_by_domains: [canvas]
+  - id: debounced-persist
+    name: Debounced Persistence
+    description: >
+      Position updates (domain drag, flow drag) are debounced 500ms before writing
+      to disk. Reduces disk churn during rapid drag operations.
+    used_by_domains: [project-management, canvas-views]
 
-  - id: undo_coalescing
-    description: "Repeated same-description changes within 500ms coalesce into single undo entry"
-    utility: src/stores/undo-store.ts
-    used_by_domains: [canvas]
+  - id: ipc-error-handling
+    name: IPC Error Handling
+    description: >
+      All Tauri IPC calls (invoke()) are wrapped in try/catch. Errors are surfaced
+      via pushError() on app-store which triggers ErrorToasts overlay.
+    used_by_domains: [app, project-management, flow-editor, git, implementation]
 
-  - id: yaml_normalization
-    description: "Bridges external /ddd-create YAML format to internal FlowDocument format via normalizeFlowDocument()"
+  - id: normalize-flow-document
+    name: Flow Document Normalization
+    description: >
+      normalizeFlowDocument() in flow-normalizer.ts bridges external YAML format
+      (from /ddd-create, /ddd-reverse) to internal React Flow format. Handles
+      differing connection key names (target vs targetNodeId), spec location
+      (inlined vs spec: wrapper), node label (name vs label), trigger location
+      (inside nodes[] vs top-level trigger:), numeric vs array branches.
     utility: src/utils/flow-normalizer.ts
-    used_by_domains: [canvas, persistence]
+    used_by_domains: [flow-editor]
 
-  - id: known_keys_filtering
-    description: "ExtraFieldsEditor uses KNOWN_KEYS to separate typed fields from custom fields per node type"
-    utility: src/components/SpecPanel/editors/ExtraFieldsEditor.tsx
-    used_by_domains: [spec-editing]
+  - id: null-safe-yaml
+    name: Null-Safe YAML Loading
+    description: >
+      Never use bare "as SomeType" on YAML-loaded data. Always use
+      "(value ?? {}) as SomeType" or optional chaining. Properties that the UI
+      creates safely can be undefined in externally-generated YAML files.
+    used_by_domains: [project-management, flow-editor, canvas-views]
 
-  - id: auto_save
-    description: "Periodic auto-save to .ddd/autosave/ (not real spec files) for crash recovery"
-    utility: src/stores/flow-store.ts
-    used_by_domains: [canvas, persistence]
-
-  - id: hash_based_drift
-    description: "SHA-256 hash comparison between spec files and implementation files for drift detection"
-    utility: src/stores/implementation-store.ts
-    used_by_domains: [implementation]
-
-  - id: change_history_dedup
-    description: "Content-hash deduplication prevents redundant change-history entries for unchanged specs"
+  - id: change-history
+    name: Change History Recording
+    description: >
+      recordSave() on change-history-store appends to .ddd/change-history.yaml
+      after each spec write. Enables /ddd-implement to detect pending changes.
+      The pillar field in each change-history entry is auto-classified by
+      detectFlowPillar() — see detect-flow-pillar pattern.
     utility: src/stores/change-history-store.ts
-    used_by_domains: [implementation]
+    used_by_domains: [project-management, flow-editor, specs-sidebar]
+
+  - id: lazy-undo-registration
+    name: Lazy Undo Registration
+    description: >
+      Undo/redo callbacks (registerUndoPush, registerUndoClear) are registered
+      lazily at module level using closure variables to avoid circular ES module
+      imports between flow-store and undo-store. A module-level _skipUndo flag
+      prevents programmatic state updates (e.g., auto-layout, file-watcher reload)
+      from polluting the undo stack with non-user actions.
+    utility: src/stores/undo-store.ts
+    used_by_domains: [flow-editor]
+    convention: >
+      When a store needs to call into undo-store but importing it would create a
+      circular dependency, expose register* functions from undo-store that inject
+      push/clear callbacks into the dependent store at init time. Set _skipUndo=true
+      around any programmatic state mutation that should not be undoable.
+
+  - id: detect-flow-pillar
+    name: Flow Pillar Auto-Classification
+    description: >
+      detectFlowPillar() in flow-store.ts examines a FlowDocument's node types
+      and returns 'data' if any node has type 'data_store', otherwise 'logic'.
+      This pillar classification is passed to recordSave() in change-history-store
+      so change-history.yaml entries are categorized by pillar automatically.
+      Currently only distinguishes data vs logic; 'interface' and 'infrastructure'
+      are declared return types but are not yet auto-detected.
+    utility: src/stores/flow-store.ts
+    used_by_domains: [flow-editor]
+    convention: >
+      When recording a save in change-history, always pass pillar via
+      detectFlowPillar(currentFlow). Extend the function when additional pillar
+      signals are needed (e.g., service_call nodes → infrastructure).
+
+  - id: external-domain-yaml-normalization
+    name: External Domain YAML Normalization
+    description: >
+      domain.yaml files from external tools (/ddd-create, /ddd-reverse) may use
+      non-canonical key names. project-store normalizes on every domain load:
+      (1) groups[].flows → groups[].flow_ids key alias;
+      (2) publishes_events and consumes_events defaulted to [] if absent (guards
+          downstream .map()/.filter() calls);
+      (3) domain ID derived as domain.id ?? name.toLowerCase().replace(/\s+/g, '-')
+          ensuring stable IDs for filesystem paths even when 'id' is not set.
+    utility: src/stores/project-store.ts
+    used_by_domains: [project-management]
+    convention: >
+      When adding new domain.yaml array fields, add a guard in parseDomainConfig
+      to default to [] if absent. When adding new cross-tool-generated key aliases,
+      add normalization in the groups.map() call. Always derive entity IDs as
+      value ?? name.toLowerCase().replace(/\s+/g, '-').
+
+api_design:
+  ipc_commands:
+    file:
+      - read_file(path: String) → String
+      - write_file(path: String, contents: String) → ()
+      - path_exists(path: String) → bool
+      - create_directory(path: String) → ()
+      - delete_file(path: String) → ()
+      - delete_directory(path: String) → ()
+      - list_directory(path: String) → Vec<String>
+      - append_log(path, line, max_bytes, max_files) → ()
+      - rename_path(from: String, to: String) → ()
+      - watch_directory(window, path: String) → () [emits "spec-files-changed" event]
+    project:
+      - git_init(path: String) → ()
+      - git_add_all(path: String) → ()
+      - git_commit(path: String, message: String) → String
+    git:
+      - git_status(path: String) → GitStatusResult
+      - git_log(path: String, limit: usize) → Vec<GitLogEntry>
+      - git_stage_file(path: String, file_path: String) → ()
+      - git_unstage_file(path: String, file_path: String) → ()
+      - git_clone(url: String, path: String) → ()
+    implementation:
+      - compute_file_hash(path: String) → String (SHA-256 hex)
+      - run_command(command, args, cwd) → CommandOutput
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T01:00:00.000Z"

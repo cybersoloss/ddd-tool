@@ -1,0 +1,144 @@
+page: project-launcher
+route: /launcher
+
+sections:
+  - id: header
+    component: text-block
+    position: top
+    label: App Title
+    fields:
+      title: DDD Tool
+      subtitle: Design Driven Development
+
+  - id: recent-projects
+    component: list
+    label: Recent Projects
+    data_source: app/load-recent-projects
+    item_template:
+      primary: name
+      secondary: path
+      meta: lastOpenedAt
+    item_actions:
+      - label: Open
+        flow: app/open-project
+        args: { path: "{{item.path}}" }
+      - label: Remove
+        flow: app/remove-recent-project
+        args: { path: "{{item.path}}" }
+        confirm: true
+        confirm_message: Remove from recent projects?
+    empty_state:
+      message: No recent projects
+      description: Create a new project or clone one to get started
+    implementation:
+      max_items: 20
+      prune_on_load: true
+      prune_strategy: >
+        On each load, path_exists() is called concurrently (Promise.all) for every
+        entry. Entries whose paths no longer exist on disk are removed. The list is
+        then truncated to the most recent 20 entries before persisting back to
+        ~/.ddd-tool/recent-projects.json. Entries are prepended (newest first).
+
+  - id: actions
+    component: button-group
+    position: bottom
+    buttons:
+      - label: New Project
+        flow: project-management/create-project
+        variant: primary
+      - label: Clone Repository
+        navigate: /clone-dialog
+        variant: secondary
+      - label: Open Folder
+        flow: app/open-project-dialog
+        variant: ghost
+
+forms:
+  - id: new-project-wizard
+    label: New Project
+    position: modal
+    fields:
+      - name: name
+        type: text
+        label: Project Name
+        required: true
+        validation: "^[a-zA-Z0-9_-]+$"
+
+      - name: location
+        type: text
+        label: Location
+        required: true
+        placeholder: /Users/you/projects
+
+      - name: description
+        type: textarea
+        label: Description
+        required: false
+
+      - name: initGit
+        type: toggle
+        label: Initialize Git Repository
+        default: true
+
+      - name: language
+        type: select
+        label: Language
+        options: [TypeScript, JavaScript, Python, Rust, Go, Java]
+        required: true
+
+      - name: framework
+        type: text
+        label: Framework
+        required: false
+
+      - name: database
+        type: text
+        label: Database
+        required: false
+
+      - name: domains
+        type: repeating_group
+        label: Initial Domains
+        repeating_group:
+          columns: [name, description]
+          min_rows: 0
+          max_rows: 20
+          add_label: Add Domain
+          remove_label: Remove
+
+    submit:
+      flow: project-management/create-project
+      label: Create Project
+      loading_label: Creating...
+      success:
+        message: Project created
+        action: open-project
+
+  - id: clone-dialog
+    label: Clone Repository
+    position: modal
+    fields:
+      - name: url
+        type: text
+        label: Repository URL
+        required: true
+        placeholder: https://github.com/org/repo.git
+
+      - name: location
+        type: text
+        label: Clone Into
+        required: true
+
+    submit:
+      flow: git/clone-repository
+      label: Clone
+      loading_label: Cloning...
+      success:
+        message: Repository cloned
+        action: open-project
+
+state:
+  initial_fetch: [app/load-recent-projects]
+  local:
+    showNewProject: false
+    showCloneDialog: false

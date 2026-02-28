@@ -1,0 +1,98 @@
+flow:
+  id: add-schema
+  name: Add Schema
+  type: traditional
+  domain: specs-sidebar
+  description: Create new schema YAML file from minimal template and add to specs-store
+
+trigger:
+  id: trigger-addSchema
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Add Schema
+  spec:
+    event: "ui:add-schema-button"
+    description: User clicks Add Schema button in Data tab of Specs Sidebar
+  connections:
+    - targetNodeId: input-schemaName
+
+nodes:
+  - id: input-schemaName
+    type: input
+    position: { x: 250, y: 130 }
+    label: Get Schema Name
+    spec:
+      fields:
+        - name: name
+          type: string
+          required: true
+          validation: "alphanumeric, PascalCase, unique"
+    connections:
+      - targetNodeId: process-buildTemplate
+        sourceHandle: valid
+      - targetNodeId: terminal-validationError
+        sourceHandle: invalid
+
+  - id: process-buildTemplate
+    type: process
+    position: { x: 250, y: 260 }
+    label: Build Schema Template
+    spec:
+      action: Create minimal SchemaSpec with name, inherits:_base, empty fields/indexes arrays
+    connections:
+      - targetNodeId: ipc-writeSchemaYaml
+
+  - id: ipc-writeSchemaYaml
+    type: ipc_call
+    position: { x: 250, y: 390 }
+    label: Write schema YAML
+    spec:
+      command: write_file
+      args:
+        path: "{projectPath}/specs/schemas/{name}.yaml"
+        contents: stringify(schemaTemplate)
+    connections:
+      - targetNodeId: process-addToStore
+        sourceHandle: success
+      - targetNodeId: terminal-error
+        sourceHandle: error
+
+  - id: process-addToStore
+    type: process
+    position: { x: 250, y: 520 }
+    label: Add to specs-store
+    spec:
+      action: Add new schema to specs-store.schemas; select it in Data tab editor
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 650 }
+    label: Schema Added
+    spec:
+      outcome: success
+      status: 201
+      body: { schemaName: "{{name}}" }
+
+  - id: terminal-validationError
+    type: terminal
+    position: { x: 550, y: 260 }
+    label: Validation Error
+    spec:
+      outcome: error
+      status: 422
+      body: { error: VALIDATION_ERRORS }
+
+  - id: terminal-error
+    type: terminal
+    position: { x: 550, y: 520 }
+    label: Write Error
+    spec:
+      outcome: error
+      status: 500
+      body: { error: FILE_WRITE_FAILED }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

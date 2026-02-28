@@ -1,0 +1,58 @@
+flow:
+  id: load-all
+  name: Load All Specs
+  type: traditional
+  domain: specs-sidebar
+  description: Load all schemas, UI pages, and infrastructure spec from disk into specs-store
+
+trigger:
+  id: trigger-loadAll
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Load All Specs
+  spec:
+    event: "ipc:load-project"
+    description: Called by project-store.loadProject() as supplementary load (non-blocking)
+  connections:
+    - targetNodeId: process-loadSchemas
+
+nodes:
+  - id: process-loadSchemas
+    type: process
+    position: { x: 250, y: 130 }
+    label: Load Schemas
+    spec:
+      action: List specs/schemas/ directory; read each YAML file; parse to SchemaSpec; store in specs-store.schemas keyed by model name
+    connections:
+      - targetNodeId: process-loadUiPages
+
+  - id: process-loadUiPages
+    type: process
+    position: { x: 250, y: 260 }
+    label: Load UI Pages
+    spec:
+      action: Read specs/ui/pages.yaml into PagesConfig; read each per-page YAML; store in specs-store.uiPages
+    connections:
+      - targetNodeId: process-loadInfrastructure
+
+  - id: process-loadInfrastructure
+    type: process
+    position: { x: 250, y: 390 }
+    label: Load Infrastructure
+    spec:
+      action: Read specs/infrastructure.yaml into InfrastructureSpec; store in specs-store.infrastructure
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 520 }
+    label: All Specs Loaded
+    spec:
+      outcome: success
+      status: 200
+      body: { schemaCount: "{{schemas.length}}", pageCount: "{{uiPages.length}}" }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

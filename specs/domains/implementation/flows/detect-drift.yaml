@@ -1,79 +1,65 @@
 flow:
   id: detect-drift
-  name: "Detect Drift"
+  name: Detect Drift
   type: traditional
   domain: implementation
-  description: "Compares spec hashes against implementation file hashes to find drift"
+  description: Compute SHA-256 of current spec files and compare against stored specHash/fileHashes values; classify each mapping as synced, spec_ahead, code_ahead, or diverged using bidirectional hash comparison
 
 trigger:
-  id: trigger-jP8aV2wX
+  id: trigger-detectDrift
   type: trigger
-  position: { x: 300, y: 0 }
-  label: "Detect Drift"
+  position: { x: 250, y: 0 }
+  label: Detect Drift
   spec:
-    event: "ui:detect-drift"
-    description: "User clicks Detect Drift or it runs automatically on project open"
+    event: "ipc:detect-drift"
+    description: Called after load-mappings and after flow:saved events
   connections:
-    - targetNodeId: loop-kQ9bW3xY
+    - targetNodeId: loop-checkMappings
 
 nodes:
-  - id: loop-kQ9bW3xY
+  - id: loop-checkMappings
     type: loop
-    position: { x: 300, y: 130 }
-    label: "For Each Mapping"
+    position: { x: 250, y: 130 }
+    label: Check Each Mapping
     spec:
-      over: "mappings"
-      as: "mapping"
-      action: "Iterate over each flow mapping entry to check its hash"
+      collection: implementation-store.mappings
+      iterator: mapping
+      on_error: continue
+      description: >
+        For each mapping, performs bidirectional drift detection:
+        (1) Forward hash: SHA-256 of spec file vs stored specHash (spec changed?).
+        (2) Reverse hash: SHA-256 of each file in fileHashes vs stored values (code changed?).
+        4-way classification:
+          diverged   — both spec AND code changed (hasForwardDrift && hasReverseDrift)
+          spec_ahead — only spec changed (hasForwardDrift only) → needs /ddd-implement
+          code_ahead — only code changed (hasReverseDrift only) → needs /ddd-reflect
+          synced     — neither changed (neither drift) → mapping syncState set to 'synced'
+        Note: the SyncState type uses 'synced' (not 'in_sync'). Any mapping entry
+        containing 'in_sync' will be overwritten to 'synced' on next updateMapping() call.
     connections:
-      - targetNodeId: ipc-lR1cX4yZ
-        sourceHandle: "body"
-      - targetNodeId: terminal-pV5gB8cD
-        sourceHandle: "done"
+      - targetNodeId: process-computeSyncScore
+        sourceHandle: done
+      - targetNodeId: loop-checkMappings
+        sourceHandle: body
 
-  - id: ipc-lR1cX4yZ
-    type: ipc_call
-    position: { x: 600, y: 130 }
-    label: "Compute File Hash"
-    spec:
-      command: "compute_file_hash"
-      payload: "Implementation file path from mapping"
-    connections:
-      - targetNodeId: decision-mS2dY5zA
-        sourceHandle: "success"
-      - targetNodeId: process-nT3eZ6aB
-        sourceHandle: "error"
-
-  - id: decision-mS2dY5zA
-    type: decision
-    position: { x: 600, y: 260 }
-    label: "Hash Matches?"
-    spec:
-      condition: "computedHash === mapping.specHash"
-    connections:
-      - targetNodeId: loop-kQ9bW3xY
-        sourceHandle: "true"
-      - targetNodeId: process-nT3eZ6aB
-        sourceHandle: "false"
-
-  - id: process-nT3eZ6aB
+  - id: process-computeSyncScore
     type: process
-    position: { x: 600, y: 390 }
-    label: "Classify Sync State"
+    position: { x: 250, y: 260 }
+    label: Compute Sync Score
     spec:
-      action: "Mark mapping as drifted (hash mismatch), missing (file not found), or error (read failure)"
+      action: Count in_sync vs drifted mappings; compute overall sync percentage; update implementation-store.syncScore and driftResults
     connections:
-      - targetNodeId: loop-kQ9bW3xY
+      - targetNodeId: terminal-success
 
-  - id: terminal-pV5gB8cD
+  - id: terminal-success
     type: terminal
-    position: { x: 300, y: 390 }
-    label: "Drift Report"
+    position: { x: 250, y: 390 }
+    label: Drift Detected
     spec:
       outcome: success
-      description: "All mappings checked — drift report with sync states stored in implementation-store"
-    connections: []
+      status: 200
+      body: { syncScore: "{{syncScore}}", driftCount: "{{driftResults.length}}" }
 
 metadata:
   created: "2026-02-28T00:00:00.000Z"
-  modified: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T01:00:00.000Z"

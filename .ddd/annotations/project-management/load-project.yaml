@@ -1,0 +1,55 @@
+flow: project-management/load-project
+captured_at: "2026-02-28T00:30:00.000Z"
+captured_from: reflect
+patterns:
+  - id: cD3zK4cC
+    type: custom
+    description: >
+      Groups key aliasing on load: domain.yaml files generated externally
+      (e.g., by /ddd-create or /ddd-reverse) may use a 'flows' key inside
+      groups entries instead of the internal 'flow_ids' key. The code normalizes
+      this by mapping groups[].flows → groups[].flow_ids on every domain load.
+      The load-project spec doesn't mention this normalization step.
+    applies_to_nodes: [process-parseDomainConfig]
+    code_evidence:
+      file: src/stores/project-store.ts
+      lines: "91-95"
+      snippet: >
+        parsed.groups = parsed.groups.map((g) => ({
+          ...g,
+          flow_ids: (g.flow_ids ?? (g as unknown as Record<string, unknown>).flows ?? []) as string[],
+        }));
+    status: promoted
+
+  - id: eF5aL6dD
+    type: custom
+    description: >
+      publishes_events and consumes_events are defaulted to [] if absent from
+      domain.yaml. External YAML may omit these arrays. The code guards:
+      if (!Array.isArray(parsed.publishes_events)) parsed.publishes_events = [];
+      Without this, downstream code that calls .map() or .filter() would crash.
+      Not mentioned in the load-project flow spec.
+    applies_to_nodes: [process-parseDomainConfig]
+    code_evidence:
+      file: src/stores/project-store.ts
+      lines: "97-99"
+      snippet: >
+        if (!Array.isArray(parsed.publishes_events)) parsed.publishes_events = [];
+        if (!Array.isArray(parsed.consumes_events)) parsed.consumes_events = [];
+    status: promoted
+
+  - id: gH7bM8eE
+    type: custom
+    description: >
+      Domain ID derivation: ddd-project.json domain entries can have either an
+      explicit 'id' field or just a 'name'. The code derives the ID as:
+      domain.id ?? domain.name.toLowerCase().replace(/\s+/g, '-').
+      This means domain IDs in the filesystem must match this derivation if
+      not explicitly set. Not captured in the load-project flow spec.
+    applies_to_nodes: [process-readProjectJson]
+    code_evidence:
+      file: src/stores/project-store.ts
+      lines: "78"
+      snippet: >
+        const domainId = domain.id ?? domain.name.toLowerCase().replace(/\s+/g, '-');
+    status: promoted

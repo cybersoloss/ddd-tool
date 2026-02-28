@@ -1,0 +1,20 @@
+schema: flow-mapping
+captured_at: "2026-02-28T00:30:00.000Z"
+captured_from: reflect
+patterns:
+  - id: aB3kR9vT
+    type: custom
+    description: >
+      SyncState vocabulary mismatch: the TypeScript type (src/types/implementation.ts)
+      defines SyncState as 'synced' | 'spec_ahead' | 'code_ahead' | 'diverged'.
+      The schema spec says values: [in_sync, spec_ahead, code_ahead, diverged].
+      The implementation-store code checks `mapping.syncState !== 'synced'`
+      and sets `syncState: 'synced'`. Any mapping.yaml file written with
+      `syncState: in_sync` will cause the store to re-update it to 'synced'
+      on next load. The schema and TypeScript type must be aligned on one value.
+    code_evidence:
+      file: src/types/implementation.ts
+      lines: "2"
+      snippet: >
+        export type SyncState = 'synced' | 'spec_ahead' | 'code_ahead' | 'diverged';
+    status: promoted

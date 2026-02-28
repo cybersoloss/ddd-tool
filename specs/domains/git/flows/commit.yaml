@@ -1,0 +1,90 @@
+flow:
+  id: commit
+  name: Commit
+  type: traditional
+  domain: git
+  description: Commit all staged files with user-provided message via Tauri IPC git_commit; refresh status and log
+
+trigger:
+  id: trigger-commit
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Commit
+  spec:
+    event: "ui:commit-form-submit"
+    description: User enters commit message and clicks Commit button in Git panel
+  connections:
+    - targetNodeId: input-validateMessage
+
+nodes:
+  - id: input-validateMessage
+    type: input
+    position: { x: 250, y: 130 }
+    label: Validate Commit Message
+    spec:
+      fields:
+        - name: message
+          type: string
+          required: true
+          validation: "min length 1, max length 512"
+    connections:
+      - targetNodeId: ipc-gitCommit
+        sourceHandle: valid
+      - targetNodeId: terminal-validationError
+        sourceHandle: invalid
+
+  - id: ipc-gitCommit
+    type: ipc_call
+    position: { x: 250, y: 260 }
+    label: Git Commit
+    spec:
+      command: git_commit
+      args:
+        path: "{{projectPath}}"
+        message: "{{message}}"
+      description: Uses libgit2 with "DDD Tool" author signature
+    connections:
+      - targetNodeId: process-refreshAll
+        sourceHandle: success
+      - targetNodeId: terminal-error
+        sourceHandle: error
+
+  - id: process-refreshAll
+    type: process
+    position: { x: 250, y: 390 }
+    label: Refresh Status and Log
+    spec:
+      action: Trigger get-status and get-log flows to update git-store; clear commit message form
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 520 }
+    label: Committed
+    spec:
+      outcome: success
+      status: 200
+      body: { message: "{{message}}" }
+
+  - id: terminal-validationError
+    type: terminal
+    position: { x: 550, y: 260 }
+    label: Validation Error
+    spec:
+      outcome: error
+      status: 422
+      body: { error: VALIDATION_ERRORS }
+
+  - id: terminal-error
+    type: terminal
+    position: { x: 550, y: 390 }
+    label: Commit Error
+    spec:
+      outcome: error
+      status: 500
+      body: { error: GIT_COMMIT_FAILED }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

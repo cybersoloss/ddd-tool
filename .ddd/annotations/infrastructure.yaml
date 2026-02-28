@@ -1,75 +1,43 @@
 infrastructure: true
-captured_at: "2026-02-28T00:00:00.000Z"
+captured_at: "2026-02-28T00:30:00.000Z"
 captured_from: reflect
 patterns:
-  - id: log-rotat
-    type: configuration
+  - id: oP7sD1uQ
+    type: dev_tooling
     description: >
-      Log rotation is implemented in the append_log Tauri command. When a log
-      file exceeds max_bytes, files are rotated (current -> .1, .1 -> .2, etc.)
-      up to max_files rotated copies. The caller passes max_bytes and max_files
-      as parameters; the typical invocation uses 1MB (1048576) per file and 3
-      rotated files.
-    applies_to_services: [file-system]
+      Package.json contains test and demo scripts not captured in infrastructure spec:
+      'test:specs' runs auto-test-runner (tsx tests/e2e/auto-test/auto-test-runner.ts),
+      'test:roundtrip' and 'test:roundtrip:offline' run round-trip E2E tests,
+      'demo:dev', 'demo:build', 'demo:preview', 'demo:test' enable demo mode
+      (VITE_DEMO_MODE=true). These represent a testing and demo subsystem
+      that the infrastructure spec doesn't capture.
+    applies_to_services: [vite-dev-server, tauri-app]
     code_evidence:
-      file: src-tauri/src/commands/file.rs
-      lines: "55-93"
-    status: candidate
+      file: package.json
+      lines: "scripts block"
+      snippet: >
+        "test:specs": "tsx tests/e2e/auto-test/auto-test-runner.ts",
+        "test:roundtrip": "tsx tests/e2e/roundtrip/round-trip-test.ts",
+        "demo:dev": "VITE_DEMO_MODE=true vite",
+    status: promoted
 
-  - id: watch-ext
-    type: filtering
+  - id: qR9tE2vR
+    type: custom
     description: >
-      The file watcher (notify crate, RecursiveMode::Recursive) only emits
-      spec-files-changed events for files ending in .yaml, .yml, or .json.
-      All other file changes (e.g., .ts, .rs, .lock) are silently filtered
-      out at the Rust level before reaching the frontend. Events are emitted
-      for Create, Modify, and Remove event kinds.
-    applies_to_services: [file-watcher]
+      Tauri app config details not in infrastructure spec:
+      - App identifier: "com.ddd-tool.app" (macOS bundle ID)
+      - Default window size: 1280x800
+      - CSP: null (disabled, needed for local IPC and dev)
+      - Version: managed in tauri.conf.json (must match package.json and Cargo.toml)
+      - Bundle targets: "all" (builds for macOS, Windows, Linux)
+      - Dev URL: http://localhost:1420 (matches vite-dev-server port 1420)
+    applies_to_services: [tauri-app, vite-dev-server]
     code_evidence:
-      file: src-tauri/src/commands/file.rs
-      lines: "135-151"
-    status: candidate
-
-  - id: git-ident
-    type: hardcoded_value
-    description: >
-      Git commits created by the DDD Tool use a hardcoded identity:
-      name="DDD Tool", email="ddd-tool@local". This is set via
-      git2::Signature::now() in the git_commit Tauri command. The user's
-      system git config (user.name / user.email) is NOT used. This is
-      intentional — DDD Tool commits are machine-generated and should be
-      distinguishable from the developer's manual commits.
-    applies_to_services: [git]
-    code_evidence:
-      file: src-tauri/src/commands/project.rs
-      lines: "38-39"
-    status: candidate
-
-  - id: writ-gard
-    type: timing
-    description: >
-      The write guard prevents self-triggered reloads by setting a 2-second
-      window (writeGuardUntil = Date.now() + 2000) after any file write
-      from the tool. When the file watcher fires a spec-files-changed event,
-      isOwnWrite() returns true if we are still within the 2s window,
-      causing the reload handler to skip processing. This is a timestamp-
-      based approach (no counter/lock) — simple but effective for the
-      single-threaded JS event loop.
-    applies_to_services: [file-watcher]
-    code_evidence:
-      file: src/stores/write-guard.ts
-      lines: "10-18"
-    status: candidate
-
-  - id: ext-debou
-    type: timing
-    description: >
-      External file change events from the watcher are debounced with a
-      1-second (1000ms) timer in AppShell.tsx before triggering project
-      reload or flow reload. This coalesces rapid file-system events
-      (e.g., from git checkout or batch saves) into a single reload.
-    applies_to_services: [file-watcher]
-    code_evidence:
-      file: src/AppShell.tsx
-      lines: "126-129"
-    status: candidate
+      file: src-tauri/tauri.conf.json
+      lines: "1-35"
+      snippet: >
+        "identifier": "com.ddd-tool.app",
+        "build": { "devUrl": "http://localhost:1420" },
+        "app": { "windows": [{ "width": 1280, "height": 800 }], "security": { "csp": null } },
+        "bundle": { "targets": "all" }
+    status: promoted

@@ -1,0 +1,49 @@
+flow:
+  id: auto-layout
+  name: Auto Layout
+  type: traditional
+  domain: flow-editor
+  description: Run Dagre graph layout algorithm to auto-position all nodes vertically with 130px spacing
+
+trigger:
+  id: trigger-autoLayout
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Auto Layout
+  spec:
+    event: "ui:auto-layout-button"
+    description: User clicks Auto Layout button in flow canvas toolbar
+  connections:
+    - targetNodeId: process-runDagre
+
+nodes:
+  - id: process-runDagre
+    type: process
+    position: { x: 250, y: 130 }
+    label: Run Dagre Layout
+    spec:
+      action: Build dagre.graphlib.Graph from current nodes/edges; run dagre.layout() with rankdir=TB, ranksep=130; extract new x/y positions
+    connections:
+      - targetNodeId: process-updatePositions
+
+  - id: process-updatePositions
+    type: process
+    position: { x: 250, y: 260 }
+    label: Update Node Positions
+    spec:
+      action: Update position on each node in flow-store.nodes; call React Flow fitView; push to undo-store; set isDirty=true; trigger debounced auto-save
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 390 }
+    label: Layout Applied
+    spec:
+      outcome: success
+      status: 200
+      body: { nodeCount: "{{nodeCount}}" }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

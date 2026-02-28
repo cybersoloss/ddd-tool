@@ -1,0 +1,74 @@
+flow:
+  id: run-claude-command
+  name: Run Claude Command
+  type: traditional
+  domain: implementation
+  description: Execute a DDD CLI command (ddd-implement, ddd-sync, ddd-reflect, etc.) via shell subprocess using run_command IPC
+
+trigger:
+  id: trigger-runClaudeCommand
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Run Claude Command
+  spec:
+    event: "ui:run-ddd-command-button"
+    description: User clicks a DDD command button in the implementation panel or flow canvas toolbar
+  connections:
+    - targetNodeId: process-buildCommand
+
+nodes:
+  - id: process-buildCommand
+    type: process
+    position: { x: 250, y: 130 }
+    label: Build Command
+    spec:
+      action: Compose claude -p "{command}" shell command string with project path and any arguments; validate Claude Code CLI is configured
+    connections:
+      - targetNodeId: ipc-runCommand
+
+  - id: ipc-runCommand
+    type: ipc_call
+    position: { x: 250, y: 260 }
+    label: Run Command
+    spec:
+      command: run_command
+      args:
+        command: "claude -p \"{{dddCommand}}\""
+        cwd: "{{projectPath}}"
+      description: Streams stdout to terminal panel; timeout 15 minutes for long-running commands
+    connections:
+      - targetNodeId: process-handleResult
+        sourceHandle: success
+      - targetNodeId: terminal-error
+        sourceHandle: error
+
+  - id: process-handleResult
+    type: process
+    position: { x: 250, y: 390 }
+    label: Handle Result
+    spec:
+      action: Show command output in terminal panel; if command modified specs, trigger load-project reload; update drift detection
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 520 }
+    label: Command Complete
+    spec:
+      outcome: success
+      status: 200
+      body: { command: "{{dddCommand}}", exitCode: 0 }
+
+  - id: terminal-error
+    type: terminal
+    position: { x: 550, y: 390 }
+    label: Command Failed
+    spec:
+      outcome: error
+      status: 500
+      body: { error: CLAUDE_COMMAND_FAILED }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

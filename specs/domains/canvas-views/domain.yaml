@@ -1,0 +1,62 @@
+name: Canvas Views
+description: Renders the L1 system map and L2 domain map canvases. Handles breadcrumb navigation between levels and drag-to-reposition persistence for domain/flow blocks. Owns the sheet-store and ui-store.
+role: interface
+
+stores:
+  - name: sheet-store
+    shape:
+      currentLevel: "\"L1\" | \"L2\" | \"L3\""
+      currentDomainId: "string | null"
+      currentFlowId: "string | null"
+      breadcrumbs: "BreadcrumbItem[]"
+    access_pattern: read_write
+
+  - name: ui-store
+    shape:
+      minimapVisible: boolean
+      specsPanel: "\"data\" | \"interface\" | \"infrastructure\" | null"
+      canvasLocked: boolean
+    access_pattern: read_write
+
+flows:
+  - id: render-system-map
+    name: Render System Map
+    description: Display L1 canvas with DomainBlock nodes, EventArrow edges; handle domain block click
+    type: traditional
+
+  - id: render-domain-map
+    name: Render Domain Map
+    description: Display L2 canvas with FlowBlock nodes, PortalNode nodes for cross-domain flows
+    type: traditional
+
+  - id: navigate-to-level
+    name: Navigate to Level
+    description: Breadcrumb navigation — update sheet-store level and ID, trigger appropriate canvas load
+    type: traditional
+
+  - id: update-domain-position
+    name: Update Domain Position
+    description: User drags DomainBlock — update systemLayout.domains position and debounced-persist to system-layout.yaml
+    type: traditional
+
+  - id: update-flow-position
+    name: Update Flow Position
+    description: User drags FlowBlock — update domain.layout.flows position and debounced-persist to domain.yaml
+    type: traditional
+
+consumes_events:
+  - event: project:opened
+    handled_by_flow: render-system-map
+    description: Project loaded — show system map
+  - event: flow:saved
+    handled_by_flow: render-domain-map
+    description: Flow saved — refresh flow block in domain map
+
+layout:
+  flows:
+    render-system-map: { x: 100, y: 100 }
+    render-domain-map: { x: 400, y: 100 }
+    navigate-to-level: { x: 700, y: 100 }
+    update-domain-position: { x: 100, y: 280 }
+    update-flow-position: { x: 400, y: 280 }
+  portals: {}

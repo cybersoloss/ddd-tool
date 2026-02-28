@@ -1,0 +1,107 @@
+name: Project Management
+description: CRUD operations for projects, domains, flows, and event wiring. Owns the project-store Zustand store.
+role: entity
+
+owns_schemas:
+  - ProjectConfig
+  - DomainConfig
+
+stores:
+  - name: project-store
+    shape:
+      projectPath: "string | null"
+      domainConfigs: "Record<string, DomainConfig>"
+      systemLayout: SystemLayout
+      loading: boolean
+      loaded: boolean
+    access_pattern: read_write
+
+flows:
+  - id: load-project
+    name: Load Project
+    description: Load ddd-project.json, all domain.yaml files, and system-layout.yaml
+    type: traditional
+
+  - id: create-project
+    name: Create Project
+    description: Create a new project directory with specs/ structure, optional git init
+    type: traditional
+
+  - id: add-domain
+    name: Add Domain
+    description: Create new domain directory, write domain.yaml, update ddd-project.json
+    type: traditional
+
+  - id: delete-domain
+    name: Delete Domain
+    description: Delete domain directory and all flows, update ddd-project.json
+    type: traditional
+
+  - id: rename-domain
+    name: Rename Domain
+    description: Rename domain directory and update domain.yaml and ddd-project.json
+    type: traditional
+
+  - id: add-flow
+    name: Add Flow
+    description: Create flow YAML file, add entry to domain.yaml, optionally use template
+    type: traditional
+
+  - id: delete-flow
+    name: Delete Flow
+    description: Delete flow YAML file, remove from domain.yaml
+    type: traditional
+
+  - id: rename-flow
+    name: Rename Flow
+    description: Update flow name in domain.yaml and flow YAML
+    type: traditional
+
+  - id: duplicate-flow
+    name: Duplicate Flow
+    description: Read flow, remap all node IDs, write as new flow, add to domain
+    type: traditional
+
+  - id: move-flow
+    name: Move Flow
+    description: Move flow from one domain to another — update domain reference, migrate event wiring
+    type: traditional
+
+  - id: change-flow-type
+    name: Change Flow Type
+    description: Toggle flow between traditional and agent types, add/remove agent_loop node
+    type: traditional
+
+  - id: add-event-arrow
+    name: Add Event Arrow
+    description: Wire event from source domain (publish) to target domain (consume)
+    type: traditional
+
+publishes_events:
+  - event: flow:created
+    from_flow: add-flow
+    description: New flow added to domain
+  - event: domain:created
+    from_flow: add-domain
+    description: New domain added to project
+
+consumes_events:
+  - event: project:opened
+    handled_by_flow: load-project
+    description: Triggered by app/open-project after view switches to 'project'
+
+layout:
+  flows:
+    load-project: { x: 100, y: 100 }
+    create-project: { x: 400, y: 100 }
+    add-domain: { x: 700, y: 100 }
+    delete-domain: { x: 100, y: 280 }
+    rename-domain: { x: 400, y: 280 }
+    add-flow: { x: 700, y: 280 }
+    delete-flow: { x: 100, y: 460 }
+    rename-flow: { x: 400, y: 460 }
+    duplicate-flow: { x: 700, y: 460 }
+    move-flow: { x: 100, y: 640 }
+    change-flow-type: { x: 400, y: 640 }
+    add-event-arrow: { x: 700, y: 640 }
+  portals: {}

@@ -1,0 +1,47 @@
+flow: flow-editor/save-flow
+captured_at: "2026-02-28T00:30:00.000Z"
+captured_from: reflect
+patterns:
+  - id: yZ7xI9zA
+    type: custom
+    description: >
+      Save applies three cross-cutting patterns in sequence that the flow spec
+      nodes don't explicitly reference: (1) markWriting() is called before
+      write_file to suppress the file-watcher re-read for 2 seconds (write-guard
+      pattern); (2) after write, recordSave() appends to .ddd/change-history.yaml
+      (change-history pattern); (3) save is triggered via 500ms debounced timer
+      on any state mutation, not direct user action (debounced-persist pattern).
+      The spec's save-flow nodes describe the write operation but not these
+      surrounding patterns. All three are documented in architecture.yaml but
+      not referenced from within the flow spec nodes.
+    applies_to_nodes: [ipc-writeYaml, process-recordSave]
+    code_evidence:
+      file: src/stores/flow-store.ts
+      lines: "131-148"
+      snippet: >
+        markWriting();
+        await invoke('write_file', { path: ..., contents });
+        useChangeHistoryStore.getState().recordSave({
+          projectPath, specFile, contents, level: 'L3', domain, flow,
+          pillar: detectFlowPillar(currentFlow),
+        });
+    status: promoted
+
+  - id: aB1yJ2bB
+    type: custom
+    description: >
+      detectFlowPillar() auto-classifies a flow as 'data' if it contains any
+      data_store nodes, otherwise 'logic'. This pillar classification is passed
+      to recordSave() and influences how change-history.yaml categorizes the
+      change. Not captured anywhere in the spec.
+    applies_to_nodes: [process-recordSave]
+    code_evidence:
+      file: src/stores/flow-store.ts
+      lines: "116-119"
+      snippet: >
+        function detectFlowPillar(flow: FlowDocument): 'logic' | 'data' | 'interface' | 'infrastructure' {
+          const nodeTypes = new Set(flow.nodes.map((n) => n.type));
+          if (nodeTypes.has('data_store')) return 'data';
+          return 'logic';
+        }
+    status: promoted

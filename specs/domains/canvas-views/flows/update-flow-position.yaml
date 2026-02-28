@@ -1,0 +1,49 @@
+flow:
+  id: update-flow-position
+  name: Update Flow Position
+  type: traditional
+  domain: canvas-views
+  description: User drags a FlowBlock — update domain.layout.flows position in project-store and debounced-persist to domain.yaml
+
+trigger:
+  id: trigger-updateFlowPosition
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Update Flow Position
+  spec:
+    event: "ui:flow-block-drag-stop"
+    description: React Flow onNodeDragStop callback for FlowBlock nodes in domain map
+  connections:
+    - targetNodeId: process-updateStorePosition
+
+nodes:
+  - id: process-updateStorePosition
+    type: process
+    position: { x: 250, y: 130 }
+    label: Update Store Position
+    spec:
+      action: Update project-store.domainConfigs[domainId].layout.flows[flowId] with new {x, y} from drag event
+    connections:
+      - targetNodeId: process-debouncedPersist
+
+  - id: process-debouncedPersist
+    type: process
+    position: { x: 250, y: 260 }
+    label: Debounced Persist
+    spec:
+      action: Debounced 500ms write of updated domain config (including layout) to domain.yaml via write_file IPC (write-guard pattern applied)
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 390 }
+    label: Position Updated
+    spec:
+      outcome: success
+      status: 200
+      body: { domainId: "{{domainId}}", flowId: "{{flowId}}", x: "{{x}}", y: "{{y}}" }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

@@ -1,20 +1,42 @@
-name: "Design Validation"
-description: "Validates flow graphs, domain configurations, and system-level wiring. Provides real-time node indicators (green/amber/red), validation panel with scope tabs, and implementation gate checks."
+name: Validation
+description: Real-time design validation across all three levels (flow, domain, system). Runs 20+ validation rules, emits per-node indicators, manages the implementation gate. Owns the validation-store Zustand store.
 role: process
+
+stores:
+  - name: validation-store
+    shape:
+      flowIssues: "ValidationIssue[]"
+      domainIssues: "ValidationIssue[]"
+      systemIssues: "ValidationIssue[]"
+      implementGateOpen: boolean
+      qualityScore: number
+      lastValidated: "number | null"
+    access_pattern: read_write
+
 flows:
   - id: validate-flow
-    name: "Validate Flow"
-    description: "Runs all flow-scope validation rules on save — trigger, paths, orphans, branches, extended nodes, agent patterns"
+    name: Validate Flow
+    description: Run L3 flow validation rules — trigger count, connection completeness, node required fields, dead-end detection
+    type: traditional
+
   - id: validate-domain
-    name: "Validate Domain"
-    description: "Checks domain-level rules — duplicate flow IDs, event groups, schema references"
+    name: Validate Domain
+    description: Run L2 domain validation rules — event wiring consistency, orphaned flows, duplicate flow IDs
+    type: traditional
+
   - id: validate-system
-    name: "Validate System"
-    description: "Validates system-wide constraints — event wiring, portal targets, cross-pillar references"
-  - id: check-implement-gate
-    name: "Check Implement Gate"
-    description: "Aggregates all validation results to determine if a flow is ready for implementation"
-publishes_events: []
+    name: Validate System
+    description: Run L1 system validation — cross-domain event consumers exist, all domains have at least one flow
+    type: traditional
+
 consumes_events:
-  - event: flow-saved
-    description: "Triggers re-validation when a flow is saved"
+  - event: flow:saved
+    handled_by_flow: validate-flow
+    description: Flow changed — re-validate
+
+layout:
+  flows:
+    validate-flow: { x: 100, y: 100 }
+    validate-domain: { x: 400, y: 100 }
+    validate-system: { x: 700, y: 100 }
+  portals: {}

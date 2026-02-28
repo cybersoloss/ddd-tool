@@ -1,82 +1,53 @@
-name: domain-config
-description: "Domain definition — a bounded context owning flows, schemas, stores, and event contracts"
+name: DomainConfig
+description: >
+  The persisted YAML structure for a domain spec file.
+  Written to specs/domains/{domain}/domain.yaml.
+
 fields:
   - name: name
     type: string
     required: true
-    description: "Unique domain name used as identifier throughout the project"
+
   - name: description
-    type: text
+    type: string
     required: false
-    description: "Human-readable description of the domain's purpose"
+
   - name: role
     type: enum
-    required: false
-    description: "The architectural role this domain plays"
     values: [entity, process, interface, orchestration]
+    required: false
+
   - name: owns_schemas
-    type: json
+    type: string[]
     required: false
-    description: "Array of schema names this domain is responsible for"
+    description: Schema names owned by this domain
+
   - name: stores
-    type: json
+    type: json[]
     required: false
-    description: "Array of store definitions — each has name, shape?, initial_state?, selectors?, access_pattern?"
-  - name: on_error
-    type: json
-    required: false
-    description: "Domain-level error handling — {emit_event?, description?}"
-  - name: event_groups
-    type: json
-    required: false
-    description: "Array of event groups — each has name, description?, events[], correlation_key?"
-  - name: groups
-    type: json
-    required: false
-    description: "Array of flow groups for visual organization — each has id, name, flow_ids[]"
+    description: Zustand store definitions for this domain
+
   - name: flows
+    type: json[]
+    required: true
+    description: Array of DomainFlowEntry — flow registry for the domain
+
+  - name: publishes_events
+    type: json[]
+    required: true
+    description: Events published by this domain (EventWiring objects)
+
+  - name: consumes_events
+    type: json[]
+    required: true
+    description: Events consumed by this domain (EventWiring objects)
+
+  - name: layout.flows
     type: json
     required: true
-    description: "Array of flow entries — each has id, name, description?, type?, tags?, group?, keyboard_shortcut?, criticality?, throughput?, template?, parameters?"
-  - name: publishes_events
+    description: Map of flowId → {x,y} canvas positions
+
+  - name: layout.portals
     type: json
-    required: false
-    description: "Array of event wirings this domain publishes — each has event, schema?, from_flow?, description?, payload?"
-  - name: consumes_events
-    type: json
-    required: false
-    description: "Array of event wirings this domain consumes — each has event, schema?, handled_by_flow?, description?, payload?"
-  - name: layout
-    type: json
-    required: false
-    description: "Canvas layout data — {flows: Record<id, {x,y}>, portals: Record<id, {x,y}>}"
-  - name: sla_config
-    type: json
-    required: false
-    description: "Service level agreement configuration for the domain"
-  - name: memory_stores
-    type: json
-    required: false
-    description: "Array of memory stores for agent domains — each has name, type"
-  - name: depends_on
-    type: json
-    required: false
-    description: "Array of domain dependencies — each has domain, type (sync|async|event), description?"
-relationships:
-  - name: flows
-    type: has_many
-    target: flow-document
-    foreign_key: flow_domain
-    description: "A domain contains many flow documents"
-  - name: schemas
-    type: has_many
-    target: schema-spec
-    foreign_key: domain_name
-    description: "A domain owns the schemas listed in owns_schemas"
-indexes:
-  - fields: [name]
-    unique: true
-    description: "Domain names must be unique within a project"
-  - fields: [role]
-    unique: false
-    description: "Lookup domains by architectural role"
+    required: true
+    description: Map of portalId → {x,y} for cross-domain portal nodes

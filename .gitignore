@@ -25,3 +25,9 @@ src-tauri/target/
 
 # Logs
 *.log
+
+# Test artifacts
+playwright-report/
+test-results/
+spec-quality-report.yaml
+tool-compatibility-report.yaml

@@ -1,0 +1,93 @@
+flow:
+  id: load-flow
+  name: Load Flow
+  type: traditional
+  domain: flow-editor
+  description: Load flow YAML from disk, normalize to internal React Flow format, set flow-store state
+
+trigger:
+  id: trigger-loadFlow
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Load Flow
+  spec:
+    event: "ui:flow-block-double-click"
+    description: User double-clicks a flow block in domain map, or file-watcher detects external YAML change
+  connections:
+    - targetNodeId: ipc-readFlowYaml
+
+nodes:
+  - id: ipc-readFlowYaml
+    type: ipc_call
+    position: { x: 250, y: 130 }
+    label: Read flow.yaml
+    spec:
+      command: read_file
+      args:
+        path: "{projectPath}/specs/domains/{domainId}/flows/{flowId}.yaml"
+    connections:
+      - targetNodeId: process-normalizeFlow
+        sourceHandle: success
+      - targetNodeId: process-initEmptyFlow
+        sourceHandle: error
+        label: file missing, init empty
+
+  - id: process-initEmptyFlow
+    type: process
+    position: { x: 550, y: 130 }
+    label: Init Empty Flow
+    spec:
+      action: Create minimal FlowDocument; for agent flows also add agent_loop node wired from trigger
+      description: >
+        For traditional flows: creates a single trigger node only.
+        For agent flows (flowType === 'agent'): createDefaultFlow() auto-adds an
+        agent_loop node and wires trigger.connections to the agent_loop node.
+        The flow type is determined from the domain's flow entry in domain.yaml.
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: process-normalizeFlow
+    type: process
+    position: { x: 250, y: 260 }
+    label: Normalize Flow Document
+    spec:
+      action: Call normalizeFlowDocument() — convert external YAML format to internal React Flow format (targetNodeId→target, spec: wrapping, label vs name, numeric→array fields)
+    connections:
+      - targetNodeId: process-setFlowStore
+
+  - id: process-setFlowStore
+    type: process
+    position: { x: 250, y: 390 }
+    label: Set flow-store State
+    spec:
+      action: Set flow-store nodes, edges, currentFlowId, currentDomainId; push to undo-store as initial state; set isDirty=false
+    connections:
+      - targetNodeId: process-triggerValidation
+
+  - id: process-triggerValidation
+    type: process
+    position: { x: 250, y: 520 }
+    label: Trigger Validation
+    spec:
+      action: Debounced call to validation-store.validateFlow() with new nodes/edges
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 650 }
+    label: Flow Loaded
+    spec:
+      outcome: success
+      status: 200
+      body: { flowId: "{{flowId}}", nodeCount: "{{nodes.length}}" }
+      description: >
+        Flow Loaded is the terminal for both the normal path and the init-empty path.
+        As a side effect of reaching this terminal, startAutoSave() is called with
+        projectPath and flowId — this starts the periodic auto-save timer (default 30s)
+        that writes to .ddd/autosave/{flowId}.yaml for crash recovery. This is not a
+        separate flow step but an implicit lifecycle action of the load operation.
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T01:00:00.000Z"

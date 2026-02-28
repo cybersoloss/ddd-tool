@@ -1,0 +1,123 @@
+flow:
+  id: load-project
+  name: Load Project
+  type: traditional
+  domain: project-management
+  description: Load ddd-project.json, all domain.yaml files, and system-layout.yaml into project-store
+
+trigger:
+  id: trigger-loadProject
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Load Project
+  spec:
+    event: "ipc:load-project"
+    description: Called by app-store openProject() after project path is set
+  connections:
+    - targetNodeId: ipc-readProjectJson
+
+nodes:
+  - id: ipc-readProjectJson
+    type: ipc_call
+    position: { x: 250, y: 130 }
+    label: Read ddd-project.json
+    spec:
+      command: read_file
+      args: { path: "{projectPath}/ddd-project.json" }
+      description: Read project config; if missing, initialize empty project
+    connections:
+      - targetNodeId: loop-loadDomains
+        sourceHandle: success
+      - targetNodeId: process-initEmpty
+        sourceHandle: error
+        label: no project.json, init empty
+
+  - id: process-initEmpty
+    type: process
+    position: { x: 550, y: 130 }
+    label: Initialize Empty Project
+    spec:
+      action: Create empty project config with domains:[], write to ddd-project.json
+    connections:
+      - targetNodeId: loop-loadDomains
+
+  - id: loop-loadDomains
+    type: loop
+    position: { x: 250, y: 260 }
+    label: Load Domain Configs
+    spec:
+      collection: projectConfig.domains
+      iterator: domain
+      on_error: continue
+      description: >
+        For each domain entry, read specs/domains/{domainId}/domain.yaml; fallback
+        to minimal config on error. After parsing, three normalizations are applied
+        to handle external-tool YAML variations:
+        (1) groups[].flows → groups[].flow_ids key alias — external tools may use
+            'flows' inside group objects instead of 'flow_ids';
+        (2) publishes_events and consumes_events defaulted to [] if absent — prevents
+            downstream .map()/.filter() crashes when these arrays are missing;
+        (3) domain ID derived as domain.id ?? name.toLowerCase().replace(/\s+/g, '-')
+            — allows domains without an explicit 'id' field to have a stable ID.
+        See external-domain-yaml-normalization pattern in architecture.yaml.
+    connections:
+      - targetNodeId: ipc-readSystemLayout
+        sourceHandle: done
+      - targetNodeId: ipc-readSystemLayout
+        sourceHandle: body
+
+  - id: ipc-readSystemLayout
+    type: ipc_call
+    position: { x: 250, y: 390 }
+    label: Read System Layout
+    spec:
+      command: read_file
+      args: { path: "{projectPath}/specs/system-layout.yaml" }
+      description: Load L1 canvas positions; auto-generate if missing
+    connections:
+      - targetNodeId: process-setLoadedState
+        sourceHandle: success
+      - targetNodeId: process-autoGenerateLayout
+        sourceHandle: error
+
+  - id: process-autoGenerateLayout
+    type: process
+    position: { x: 550, y: 390 }
+    label: Auto-Generate Layout
+    spec:
+      action: generateAutoLayout(domainIds) → write to system-layout.yaml
+      description: Grid-based auto layout for all domains; writes file to disk
+    connections:
+      - targetNodeId: process-setLoadedState
+
+  - id: process-setLoadedState
+    type: process
+    position: { x: 250, y: 520 }
+    label: Set Loaded State
+    spec:
+      action: Update project-store — set domainConfigs, systemLayout, loading=false, loaded=true
+    connections:
+      - targetNodeId: process-loadSupplementary
+
+  - id: process-loadSupplementary
+    type: process
+    position: { x: 250, y: 650 }
+    label: Load Supplementary Specs
+    spec:
+      action: Trigger specs-store.loadAll(path) and change-history-store.load(path) — both are silent (non-blocking)
+      description: Load schemas, UI pages, infrastructure specs, and change history
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 780 }
+    label: Project Loaded
+    spec:
+      outcome: success
+      status: 200
+      body: { domainCount: "{{domainConfigs.length}}", loaded: true }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T01:00:00.000Z"

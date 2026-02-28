@@ -1,0 +1,49 @@
+flow:
+  id: update-domain-position
+  name: Update Domain Position
+  type: traditional
+  domain: canvas-views
+  description: User drags a DomainBlock — update systemLayout.domains position in project-store and debounced-persist to system-layout.yaml
+
+trigger:
+  id: trigger-updateDomainPosition
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Update Domain Position
+  spec:
+    event: "ui:domain-block-drag-stop"
+    description: React Flow onNodeDragStop callback for DomainBlock nodes
+  connections:
+    - targetNodeId: process-updateStorePosition
+
+nodes:
+  - id: process-updateStorePosition
+    type: process
+    position: { x: 250, y: 130 }
+    label: Update Store Position
+    spec:
+      action: Update project-store.systemLayout.domains[domainId] with new {x, y} from drag event
+    connections:
+      - targetNodeId: process-debouncedPersist
+
+  - id: process-debouncedPersist
+    type: process
+    position: { x: 250, y: 260 }
+    label: Debounced Persist
+    spec:
+      action: Debounced 500ms write of updated systemLayout to system-layout.yaml via write_file IPC (write-guard pattern applied)
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 390 }
+    label: Position Updated
+    spec:
+      outcome: success
+      status: 200
+      body: { domainId: "{{domainId}}", x: "{{x}}", y: "{{y}}" }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

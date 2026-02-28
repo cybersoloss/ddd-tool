@@ -1,0 +1,62 @@
+flow:
+  id: list-schemas
+  name: List Schemas
+  type: traditional
+  domain: specs-sidebar
+  description: Read specs/schemas/ directory listing and return schema file names for the Data tab
+
+trigger:
+  id: trigger-listSchemas
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: List Schemas
+  spec:
+    event: "ui:specs-panel-data-tab"
+    description: User switches to Data tab in Specs Sidebar, or specs-store is refreshed
+  connections:
+    - targetNodeId: ipc-listDirectory
+
+nodes:
+  - id: ipc-listDirectory
+    type: ipc_call
+    position: { x: 250, y: 130 }
+    label: List schemas/ Directory
+    spec:
+      command: list_directory
+      args: { path: "{projectPath}/specs/schemas" }
+    connections:
+      - targetNodeId: process-filterYaml
+        sourceHandle: success
+      - targetNodeId: terminal-error
+        sourceHandle: error
+
+  - id: process-filterYaml
+    type: process
+    position: { x: 250, y: 260 }
+    label: Filter YAML Files
+    spec:
+      action: Filter file list to only .yaml files; extract schema names (remove .yaml extension); update specs-store schema list
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 390 }
+    label: Schemas Listed
+    spec:
+      outcome: success
+      status: 200
+      body: { schemas: "{{schemaNames}}" }
+
+  - id: terminal-error
+    type: terminal
+    position: { x: 550, y: 260 }
+    label: Directory Error
+    spec:
+      outcome: error
+      status: 500
+      body: { error: FILE_NOT_FOUND }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

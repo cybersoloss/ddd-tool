@@ -1,0 +1,72 @@
+flow:
+  id: delete-flow
+  name: Delete Flow
+  type: traditional
+  domain: project-management
+  description: Delete flow YAML file and remove entry from domain.yaml
+
+trigger:
+  id: trigger-deleteFlow
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Delete Flow
+  spec:
+    event: "ui:delete-flow-dialog"
+    description: User confirms flow deletion in DeleteFlowDialog
+  connections:
+    - targetNodeId: ipc-deleteFlowYaml
+
+nodes:
+  - id: ipc-deleteFlowYaml
+    type: ipc_call
+    position: { x: 250, y: 130 }
+    label: Delete flow.yaml
+    spec:
+      command: delete_file
+      args:
+        path: "{projectPath}/specs/domains/{domainId}/flows/{flowId}.yaml"
+    connections:
+      - targetNodeId: process-updateDomainYaml
+        sourceHandle: success
+      - targetNodeId: terminal-error
+        sourceHandle: error
+
+  - id: process-updateDomainYaml
+    type: process
+    position: { x: 250, y: 260 }
+    label: Update domain.yaml
+    spec:
+      action: Remove flow entry from domain.flows[], remove from layout, write domain.yaml
+    connections:
+      - targetNodeId: process-recordHistory
+
+  - id: process-recordHistory
+    type: process
+    position: { x: 250, y: 390 }
+    label: Record Change History
+    spec:
+      action: change-history-store.recordSave({specFile:domain.yaml, level:L2, domain, flow, action:deleted})
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 520 }
+    label: Flow Deleted
+    spec:
+      outcome: success
+      status: 200
+      body: { flowId: "{{flowId}}", domainId: "{{domainId}}" }
+
+  - id: terminal-error
+    type: terminal
+    position: { x: 550, y: 260 }
+    label: Delete Error
+    spec:
+      outcome: error
+      status: 500
+      body: { error: FILE_WRITE_FAILED }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

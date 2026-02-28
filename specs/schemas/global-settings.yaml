@@ -1,44 +1,69 @@
-name: global-settings
-description: "Application-wide settings persisted across sessions — Claude Code integration, editor preferences, and git conventions"
+name: GlobalSettings
+description: >
+  User-level settings persisted to ~/.ddd-tool/settings.json.
+  Can be partially overridden per-project via {project}/.ddd/config.yaml.
+
 fields:
-  - name: claude_code_enabled
+  - name: claudeCode.enabled
     type: boolean
     required: true
-    description: "Whether Claude Code integration is active"
-  - name: claude_code_command
+    default: true
+
+  - name: claudeCode.command
     type: string
     required: true
-    description: "CLI command to invoke Claude Code (e.g., 'claude')"
-  - name: editor_grid_snap
+    default: claude
+    description: Shell command to invoke Claude Code CLI
+
+  - name: editor.gridSnap
     type: boolean
     required: true
-    description: "Whether nodes snap to the canvas grid when dragged"
-  - name: editor_auto_save
+    default: true
+
+  - name: editor.autoSave
     type: boolean
     required: true
-    description: "Whether auto-save is enabled (saves to .ddd/autosave/)"
-  - name: editor_auto_save_interval
+    default: false
+
+  - name: editor.autoSaveInterval
     type: number
     required: true
-    description: "Auto-save interval in milliseconds"
-  - name: editor_theme
+    default: 30
+    description: Auto-save interval in seconds
+
+  - name: editor.theme
     type: enum
-    required: true
-    description: "Application color theme"
     values: [light, dark, system]
-  - name: editor_font_size
+    required: true
+    default: dark
+
+  - name: editor.fontSize
     type: number
     required: true
-    description: "Base font size in pixels for the editor UI"
-  - name: editor_save_notification
+    default: 14
+
+  - name: editor.saveNotification
     type: boolean
     required: true
-    description: "Whether to show a toast notification after saving"
-  - name: git_auto_commit_message
+    default: true
+
+  - name: git.autoCommitMessage
     type: string
-    required: false
-    description: "Template for auto-generated commit messages (supports {flow}, {domain} placeholders)"
-  - name: git_branch_naming
+    required: true
+    default: "DDD: {action} in {flow_id}"
+
+  - name: git.branchNaming
     type: string
-    required: false
-    description: "Template for branch naming conventions"
+    required: true
+    default: "ddd/{flow_id}"
+
+storage:
+  settings_file: ~/.ddd-tool/settings.json
+  recent_projects_file: ~/.ddd-tool/recent-projects.json
+  merge_strategy: >
+    On load, DEFAULT_SETTINGS is deep-merged with persisted JSON so new fields
+    added between app versions always have a safe fallback. Missing keys fall back
+    to DEFAULT_SETTINGS values; explicit persisted values override defaults.
+  notes: >
+    The ~/.ddd-tool/ directory is created on first run if it does not exist.
+    Both files are read at boot in the load-settings flow.

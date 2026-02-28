@@ -1,0 +1,58 @@
+flow:
+  id: render-domain-map
+  name: Render Domain Map
+  type: traditional
+  domain: canvas-views
+  description: Display L2 canvas with FlowBlock nodes and PortalNode nodes for the current domain
+
+trigger:
+  id: trigger-renderDomainMap
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Render Domain Map
+  spec:
+    event: "ui:navigate-to-L2"
+    description: Sheet-store sets currentLevel=L2 and currentDomainId; triggered on domain block click
+  connections:
+    - targetNodeId: process-buildFlowNodes
+
+nodes:
+  - id: process-buildFlowNodes
+    type: process
+    position: { x: 250, y: 130 }
+    label: Build Flow Nodes
+    spec:
+      action: For each flow in domainConfig.flows[], create FlowBlock React Flow node using domain.layout.flows[id] position; show flow name, type badge, node count, drift indicator
+    connections:
+      - targetNodeId: process-buildPortalNodes
+
+  - id: process-buildPortalNodes
+    type: process
+    position: { x: 250, y: 260 }
+    label: Build Portal Nodes
+    spec:
+      action: For each consumed event from external domains, create PortalNode at edge of canvas to show event entry points
+    connections:
+      - targetNodeId: process-renderCanvas
+
+  - id: process-renderCanvas
+    type: process
+    position: { x: 250, y: 390 }
+    label: Render React Flow Canvas
+    spec:
+      action: Set React Flow nodes/edges; call fitView(); enable flow drag (onNodeDragStop → update-flow-position); enable flow double-click (→ navigate-to-level with L3); show Add Flow button
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 520 }
+    label: Domain Map Rendered
+    spec:
+      outcome: success
+      status: 200
+      body: { domainId: "{{domainId}}", flowCount: "{{flowCount}}" }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

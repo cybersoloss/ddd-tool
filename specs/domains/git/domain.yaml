@@ -1,21 +1,55 @@
-name: "Git Integration"
-description: "Provides git operations via the git2 crate (libgit2) — status, staging, unstaging, committing, and log viewing. Exposed through the Git panel in the sidebar."
+name: Git
+description: Git integration — status, staging, unstaging, commit, log, and clone. Wraps Tauri IPC git commands. Owns the git-store Zustand store.
 role: process
+
+stores:
+  - name: git-store
+    shape:
+      staged: "string[]"
+      unstaged: "string[]"
+      untracked: "string[]"
+      log: "GitLogEntry[]"
+      loading: boolean
+      lastFetched: "number | null"
+    access_pattern: read_write
+
 flows:
-  - id: refresh-status
-    name: "Refresh Status"
-    description: "Fetches current git status and recent log entries"
+  - id: get-status
+    name: Get Status
+    description: Fetch git status (staged/unstaged/untracked files) via Tauri IPC and update git-store
+    type: traditional
+
+  - id: get-log
+    name: Get Log
+    description: Fetch git commit history via Tauri IPC and update git-store
+    type: traditional
+
   - id: stage-file
-    name: "Stage File"
-    description: "Stages a single file for the next commit"
+    name: Stage File
+    description: Stage a file path via Tauri IPC git_stage_file; refresh status
+    type: traditional
+
   - id: unstage-file
-    name: "Unstage File"
-    description: "Removes a file from the staging area"
-  - id: commit-changes
-    name: "Commit Changes"
-    description: "Commits staged changes with a message"
-  - id: view-log
-    name: "View Log"
-    description: "Displays recent git commit history"
-publishes_events: []
-consumes_events: []
+    name: Unstage File
+    description: Unstage a file path via Tauri IPC git_unstage_file; refresh status
+    type: traditional
+
+  - id: commit
+    name: Commit
+    description: Commit all staged changes with user-provided message via Tauri IPC git_commit
+    type: traditional
+
+  - id: clone-repository
+    name: Clone Repository
+    description: Clone a remote git repository to a local path using system git binary
+    type: traditional
+
+layout:
+  flows:
+    get-status: { x: 100, y: 100 }
+    get-log: { x: 400, y: 100 }
+    stage-file: { x: 100, y: 280 }
+    unstage-file: { x: 400, y: 280 }
+    commit: { x: 100, y: 460 }
+    clone-repository: { x: 400, y: 460 }
+  portals: {}

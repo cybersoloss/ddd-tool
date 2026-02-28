@@ -1,0 +1,53 @@
+flow:
+  id: open-project
+  name: Open Project
+  type: traditional
+  domain: app
+  description: Open a project folder, add to recent projects, switch view to project
+
+trigger:
+  id: trigger-openProject
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Open Project
+  spec:
+    event: "ui:open-project"
+    description: User selects a project from recent list or folder picker
+  connections:
+    - targetNodeId: process-setProject
+      label: path provided
+
+nodes:
+  - id: process-setProject
+    type: process
+    position: { x: 250, y: 130 }
+    label: Set Project Path
+    spec:
+      action: Set currentProjectPath in app-store, set view to 'project'
+      description: Triggers AppShell to mount and project-store to loadProject
+    connections:
+      - targetNodeId: process-addRecent
+
+  - id: process-addRecent
+    type: process
+    position: { x: 250, y: 260 }
+    label: Add to Recent Projects
+    spec:
+      action: Prepend project to recentProjects (max 20), prune duplicates, write to recent-projects.json
+      description: Uses addRecentProject on app-store
+    connections:
+      - targetNodeId: terminal-success
+        sourceHandle: ~
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 390 }
+    label: Project Opened
+    spec:
+      outcome: success
+      status: 200
+      body: { view: project, currentProjectPath: "{{path}}" }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

@@ -1,0 +1,50 @@
+page: first-run-wizard
+route: /first-run
+
+sections:
+  - id: welcome-header
+    component: text-block
+    position: top
+    fields:
+      title: Welcome to DDD Tool
+      subtitle: Let's set up your workspace
+
+  - id: step-claude-code
+    component: form-section
+    label: Step 1 — Claude Code Setup
+    fields:
+      heading: "Do you have Claude Code installed?"
+      description: "Claude Code CLI enables /ddd-scaffold, /ddd-implement and other AI commands."
+
+  - id: step-workspace
+    component: form-section
+    label: Step 2 — Start Working
+
+forms:
+  - id: claude-setup
+    label: Claude Code Configuration
+    position: inline
+    fields:
+      - name: claudeEnabled
+        type: toggle
+        label: Enable Claude Code integration
+        default: true
+
+      - name: claudeCommand
+        type: text
+        label: Claude Code command
+        default: claude
+        required: false
+        visible_when: "claudeEnabled === true"
+
+    submit:
+      flow: app/complete-first-run
+      label: Get Started
+      loading_label: Saving...
+      success:
+        message: Setup complete
+        redirect: /launcher
+
+state:
+  local:
+    step: 1

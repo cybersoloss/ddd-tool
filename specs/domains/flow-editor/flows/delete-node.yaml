@@ -1,0 +1,49 @@
+flow:
+  id: delete-node
+  name: Delete Node
+  type: traditional
+  domain: flow-editor
+  description: Remove selected node and all its connected edges from flow-store
+
+trigger:
+  id: trigger-deleteNode
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Delete Node
+  spec:
+    event: "ui:delete-key"
+    description: User presses Delete/Backspace with node selected, or clicks delete in context menu
+  connections:
+    - targetNodeId: process-removeFromStore
+
+nodes:
+  - id: process-removeFromStore
+    type: process
+    position: { x: 250, y: 130 }
+    label: Remove from flow-store
+    spec:
+      action: Remove node from flow-store.nodes; remove all edges where source or target is the deleted node; push to undo-store; set isDirty=true; trigger debounced auto-save
+    connections:
+      - targetNodeId: process-clearSelection
+
+  - id: process-clearSelection
+    type: process
+    position: { x: 250, y: 260 }
+    label: Clear Selection
+    spec:
+      action: If spec panel was showing deleted node, clear spec panel selection
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 390 }
+    label: Node Deleted
+    spec:
+      outcome: success
+      status: 200
+      body: { nodeId: "{{nodeId}}" }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

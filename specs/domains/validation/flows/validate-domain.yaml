@@ -1,57 +1,55 @@
 flow:
   id: validate-domain
-  name: "Validate Domain"
+  name: Validate Domain
   type: traditional
   domain: validation
-  description: "Checks domain-level rules — duplicate flow IDs, event groups, schema references"
+  description: Run L2 domain-level validation rules — event wiring consistency, orphaned flows, duplicate IDs
 
 trigger:
-  id: trigger-kQ3cW6yZ
+  id: trigger-validateDomain
   type: trigger
-  position: { x: 300, y: 0 }
-  label: "Validate Domain"
+  position: { x: 250, y: 0 }
+  label: Validate Domain
   spec:
-    event: "ui:validate-domain"
-    description: "User triggers domain validation from the validation panel"
+    event: "ipc:validate-domain"
+    description: Triggered when navigating to domain map or when domain config changes (add/delete/rename flow)
   connections:
-    - targetNodeId: process-lR4dX7zA
+    - targetNodeId: process-runDomainRules
 
 nodes:
-  - id: process-lR4dX7zA
+  - id: process-runDomainRules
     type: process
-    position: { x: 300, y: 130 }
-    label: "Check Duplicate Flow IDs"
+    position: { x: 250, y: 130 }
+    label: Run Domain Rules
     spec:
-      action: "Ensure no two flows within the domain share the same ID"
+      action: >
+        Apply L2 validation rules:
+        - All flows in domain.yaml have corresponding flow YAML files
+        - No duplicate flow IDs within domain
+        - All from_flow in publishes_events reference valid flow IDs
+        - All handled_by_flow in consumes_events reference valid flow IDs
+        - Domain has at least one flow
+        - Event payload shapes are defined for published events
     connections:
-      - targetNodeId: process-mS5eY8aB
+      - targetNodeId: process-updateStore
 
-  - id: process-mS5eY8aB
+  - id: process-updateStore
     type: process
-    position: { x: 300, y: 260 }
-    label: "Check Event Groups"
+    position: { x: 250, y: 260 }
+    label: Update validation-store
     spec:
-      action: "Verify domain.events.emits and listens are consistent with actual flow events"
+      action: Set validation-store.domainIssues; update FlowBlock indicators in domain map for flows with issues
     connections:
-      - targetNodeId: process-nT6fZ9bC
+      - targetNodeId: terminal-success
 
-  - id: process-nT6fZ9bC
-    type: process
-    position: { x: 300, y: 390 }
-    label: "Check Schema References"
-    spec:
-      action: "Verify data_store nodes reference valid schemas from specs/schemas/"
-    connections:
-      - targetNodeId: terminal-pU7gA1cD
-
-  - id: terminal-pU7gA1cD
+  - id: terminal-success
     type: terminal
-    position: { x: 300, y: 520 }
-    label: "Domain Result"
+    position: { x: 250, y: 390 }
+    label: Domain Validation Complete
     spec:
       outcome: success
-      description: "Domain validation results computed and stored in validation-store"
-    connections: []
+      status: 200
+      body: { domainId: "{{domainId}}", issueCount: "{{domainIssues.length}}" }
 
 metadata:
   created: "2026-02-28T00:00:00.000Z"

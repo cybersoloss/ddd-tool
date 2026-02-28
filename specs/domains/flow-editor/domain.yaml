@@ -1,0 +1,80 @@
+name: Flow Editor
+description: Manages the L3 flow canvas state — loading, saving, and mutating flow nodes and connections in the React Flow editor. Owns the flow-store Zustand store.
+role: entity
+
+owns_schemas:
+  - FlowDocument
+
+stores:
+  - name: flow-store
+    shape:
+      currentFlowId: "string | null"
+      currentDomainId: "string | null"
+      nodes: "DddFlowNode[]"
+      edges: "Edge[]"
+      isDirty: boolean
+      isSaving: boolean
+    access_pattern: read_write
+
+flows:
+  - id: load-flow
+    name: Load Flow
+    description: Load flow YAML from disk, normalize to internal React Flow format, set flow-store
+    type: traditional
+
+  - id: save-flow
+    name: Save Flow
+    description: Serialize flow-store nodes/edges to FlowDocument YAML and write to disk
+    type: traditional
+
+  - id: add-node
+    name: Add Node
+    description: Create new node at toolbar drop position, add to flow-store with default spec
+    type: traditional
+
+  - id: delete-node
+    name: Delete Node
+    description: Remove node and all its connections from flow-store
+    type: traditional
+
+  - id: add-connection
+    name: Add Connection
+    description: Wire two nodes with an edge after user drag-connect; validate sourceHandle
+    type: traditional
+
+  - id: remove-connection
+    name: Remove Connection
+    description: Delete an edge between nodes from flow-store
+    type: traditional
+
+  - id: auto-layout
+    name: Auto Layout
+    description: Run Dagre layout algorithm to auto-position all nodes vertically
+    type: traditional
+
+  - id: export-mermaid
+    name: Export Mermaid
+    description: Generate Mermaid flowchart diagram from current flow nodes and connections
+    type: traditional
+
+publishes_events:
+  - event: flow:saved
+    from_flow: save-flow
+    description: Flow YAML was saved to disk
+
+consumes_events:
+  - event: spec-files-changed
+    handled_by_flow: load-flow
+    description: File watcher detected external change to flow YAML — reload
+
+layout:
+  flows:
+    load-flow: { x: 100, y: 100 }
+    save-flow: { x: 400, y: 100 }
+    add-node: { x: 700, y: 100 }
+    delete-node: { x: 100, y: 280 }
+    add-connection: { x: 400, y: 280 }
+    remove-connection: { x: 700, y: 280 }
+    auto-layout: { x: 100, y: 460 }
+    export-mermaid: { x: 400, y: 460 }
+  portals: {}

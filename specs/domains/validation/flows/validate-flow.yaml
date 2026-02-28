@@ -1,84 +1,61 @@
 flow:
   id: validate-flow
-  name: "Validate Flow"
+  name: Validate Flow
   type: traditional
   domain: validation
-  description: "Runs all flow-scope validation rules on save — trigger, paths, orphans, branches, extended nodes, agent patterns"
+  description: Run L3 flow validation rules against current flow-store nodes and connections; emit per-node validation indicators
 
 trigger:
-  id: trigger-bG4uN7qR
+  id: trigger-validateFlow
   type: trigger
-  position: { x: 300, y: 0 }
-  label: "Flow Saved"
+  position: { x: 250, y: 0 }
+  label: Validate Flow
   spec:
-    event: "event:flow-saved"
-    description: "Fires after any flow change is saved (debounced 500ms)"
+    event: "ipc:validate-flow"
+    description: Debounced 500ms after any node/edge change in flow-store; also triggered on flow load
   connections:
-    - targetNodeId: process-cH5vP8rS
+    - targetNodeId: process-runFlowRules
 
 nodes:
-  - id: process-cH5vP8rS
+  - id: process-runFlowRules
     type: process
-    position: { x: 300, y: 130 }
-    label: "Check Trigger Exists"
+    position: { x: 250, y: 130 }
+    label: Run Flow Rules
     spec:
-      action: "Verify flow has exactly one trigger node with a non-empty event"
+      action: >
+        Apply 12+ L3 validation rules:
+        - Exactly one trigger node
+        - All paths from trigger reach a terminal (no dead ends)
+        - No orphaned nodes (all reachable from trigger)
+        - input nodes have both valid/invalid connections
+        - decision nodes have both true/false connections
+        - data_store/service_call/ipc_call nodes have success/error connections
+        - loop nodes have body/done connections
+        - agent flows have agent_loop node
+        - terminal nodes have outcome, status, body
+        - input nodes have at least one field
+        - data_store nodes have operation and model
+        - No duplicate node IDs
     connections:
-      - targetNodeId: process-dJ6wQ9sT
+      - targetNodeId: process-emitNodeIndicators
 
-  - id: process-dJ6wQ9sT
+  - id: process-emitNodeIndicators
     type: process
-    position: { x: 300, y: 260 }
-    label: "Check All Paths Reach Terminal"
+    position: { x: 250, y: 260 }
+    label: Emit Node Indicators
     spec:
-      action: "Walk all outgoing edges from trigger; every path must reach a terminal node"
+      action: For each node, set ValidationDot color (green=valid, amber=warning, red=error); update validation-store.flowIssues; update qualityScore; check implementGate threshold
     connections:
-      - targetNodeId: process-eK7xR1tU
+      - targetNodeId: terminal-success
 
-  - id: process-eK7xR1tU
-    type: process
-    position: { x: 300, y: 390 }
-    label: "Check Orphaned Nodes"
-    spec:
-      action: "Find nodes with no incoming edges and no outgoing edges (excluding trigger)"
-    connections:
-      - targetNodeId: process-fL8yS2uV
-
-  - id: process-fL8yS2uV
-    type: process
-    position: { x: 300, y: 520 }
-    label: "Check Decision Branches"
-    spec:
-      action: "Verify all decision nodes have both true and false handles wired"
-    connections:
-      - targetNodeId: process-gM9zT3vW
-
-  - id: process-gM9zT3vW
-    type: process
-    position: { x: 300, y: 650 }
-    label: "Check Extended Nodes"
-    spec:
-      action: "Validate branching nodes (input, data_store, service_call, ipc_call, loop, parallel, cache, collection, guardrail, etc.) have all required handles wired"
-    connections:
-      - targetNodeId: process-hN1aU4wX
-
-  - id: process-hN1aU4wX
-    type: process
-    position: { x: 300, y: 780 }
-    label: "Check Agent Flow"
-    spec:
-      action: "If flow type is agent, verify agent_loop exists, tools are wired, guardrails are optional but complete if present"
-    connections:
-      - targetNodeId: terminal-jP2bV5xY
-
-  - id: terminal-jP2bV5xY
+  - id: terminal-success
     type: terminal
-    position: { x: 300, y: 910 }
-    label: "Validation Result"
+    position: { x: 250, y: 390 }
+    label: Validation Complete
     spec:
       outcome: success
-      description: "Flow validation results computed — errors, warnings, and per-node indicators stored in validation-store"
-    connections: []
+      status: 200
+      body: { issueCount: "{{flowIssues.length}}", gateOpen: "{{implementGateOpen}}" }
 
 metadata:
   created: "2026-02-28T00:00:00.000Z"

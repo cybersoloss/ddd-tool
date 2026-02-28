@@ -1,0 +1,35 @@
+flow: app/boot
+captured_at: "2026-02-28T00:30:00.000Z"
+captured_from: reflect
+patterns:
+  - id: sT1uF3wS
+    type: custom
+    description: >
+      Home directory resolution uses window.__HOME_DIR__ global injection
+      rather than Tauri's homeDir() API. The spec says "Call Tauri path API
+      to get home directory, set window.__HOME_DIR__" but doesn't clarify
+      that the global is read by app-store helper functions (getHomePath(),
+      settingsPath(), recentPath()) — not stored in Zustand state.
+      All subsequent file paths depend on this window global being set first.
+    applies_to_nodes: [process-resolveHome]
+    code_evidence:
+      file: src/stores/app-store.ts
+      lines: "17-27"
+      snippet: >
+        function getHomePath(): string {
+          return (
+            (typeof window !== 'undefined' &&
+              (window as unknown as Record<string, unknown>).__HOME_DIR__) || ''
+          ) as string;
+        }
+    status: promoted
+implementation_details:
+  - node_id: ipc-loadRecentProjects
+    detail: >
+      Pruning is concurrent (Promise.all over path_exists), then filters,
+      then silently re-persists. Errors in the prune-persist step are swallowed.
+      Settings load deep-merges with DEFAULT_SETTINGS using spread:
+      { ...DEFAULT_SETTINGS, ...loaded } — top-level key merge only (not deep).
+    code_evidence:
+      file: src/stores/app-store.ts
+      lines: "128-200"

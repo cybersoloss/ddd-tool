@@ -1,0 +1,93 @@
+flow:
+  id: clone-repository
+  name: Clone Repository
+  type: traditional
+  domain: git
+  description: Clone a remote git repository to a local path using system git binary via run_command IPC
+
+trigger:
+  id: trigger-cloneRepository
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Clone Repository
+  spec:
+    event: "ui:clone-dialog-submit"
+    description: User submits CloneDialog with remote URL and local path
+  connections:
+    - targetNodeId: input-validateCloneConfig
+
+nodes:
+  - id: input-validateCloneConfig
+    type: input
+    position: { x: 250, y: 130 }
+    label: Validate Clone Config
+    spec:
+      fields:
+        - name: url
+          type: string
+          required: true
+          validation: "valid git URL format"
+        - name: localPath
+          type: string
+          required: true
+    connections:
+      - targetNodeId: ipc-cloneRepo
+        sourceHandle: valid
+      - targetNodeId: terminal-validationError
+        sourceHandle: invalid
+
+  - id: ipc-cloneRepo
+    type: ipc_call
+    position: { x: 250, y: 260 }
+    label: Clone Repository
+    spec:
+      command: git_clone
+      args:
+        url: "{{url}}"
+        path: "{{localPath}}"
+      description: Uses system git binary for authentication; streams progress output
+    connections:
+      - targetNodeId: process-openCloned
+        sourceHandle: success
+      - targetNodeId: terminal-error
+        sourceHandle: error
+
+  - id: process-openCloned
+    type: process
+    position: { x: 250, y: 390 }
+    label: Open Cloned Project
+    spec:
+      action: Call app-store.openProject(localPath) if cloned directory contains ddd-project.json
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 520 }
+    label: Repository Cloned
+    spec:
+      outcome: success
+      status: 201
+      body: { localPath: "{{localPath}}" }
+
+  - id: terminal-validationError
+    type: terminal
+    position: { x: 550, y: 260 }
+    label: Validation Error
+    spec:
+      outcome: error
+      status: 422
+      body: { error: VALIDATION_ERRORS }
+
+  - id: terminal-error
+    type: terminal
+    position: { x: 550, y: 390 }
+    label: Clone Error
+    spec:
+      outcome: error
+      status: 500
+      body: { error: GIT_CLONE_FAILED }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

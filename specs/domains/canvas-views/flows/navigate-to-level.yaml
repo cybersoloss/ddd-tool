@@ -1,0 +1,82 @@
+flow:
+  id: navigate-to-level
+  name: Navigate to Level
+  type: traditional
+  domain: canvas-views
+  description: Handle breadcrumb and canvas click navigation between L1, L2, and L3 levels
+
+trigger:
+  id: trigger-navigateToLevel
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Navigate to Level
+  spec:
+    event: "ui:breadcrumb-click"
+    description: User clicks breadcrumb item, domain block, or flow block — or presses Escape to go up a level
+  connections:
+    - targetNodeId: decision-targetLevel
+
+nodes:
+  - id: decision-targetLevel
+    type: decision
+    position: { x: 250, y: 130 }
+    label: Target Level?
+    spec:
+      condition: "targetLevel === 'L3'"
+    connections:
+      - targetNodeId: process-setL3State
+        sourceHandle: "true"
+      - targetNodeId: decision-isL2
+        sourceHandle: "false"
+
+  - id: decision-isL2
+    type: decision
+    position: { x: 550, y: 130 }
+    label: Is L2?
+    spec:
+      condition: "targetLevel === 'L2'"
+    connections:
+      - targetNodeId: process-setL2State
+        sourceHandle: "true"
+      - targetNodeId: process-setL1State
+        sourceHandle: "false"
+
+  - id: process-setL3State
+    type: process
+    position: { x: 100, y: 260 }
+    label: Set L3 State
+    spec:
+      action: Update sheet-store — currentLevel=L3, currentDomainId, currentFlowId; trigger flow-editor.loadFlow()
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: process-setL2State
+    type: process
+    position: { x: 350, y: 260 }
+    label: Set L2 State
+    spec:
+      action: Update sheet-store — currentLevel=L2, currentDomainId, currentFlowId=null; trigger render-domain-map
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: process-setL1State
+    type: process
+    position: { x: 600, y: 260 }
+    label: Set L1 State
+    spec:
+      action: Update sheet-store — currentLevel=L1, currentDomainId=null, currentFlowId=null; trigger render-system-map
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 390 }
+    label: Navigation Complete
+    spec:
+      outcome: success
+      status: 200
+      body: { level: "{{targetLevel}}", domainId: "{{domainId}}", flowId: "{{flowId}}" }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

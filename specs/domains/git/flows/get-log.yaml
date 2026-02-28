@@ -1,0 +1,65 @@
+flow:
+  id: get-log
+  name: Get Log
+  type: traditional
+  domain: git
+  description: Fetch recent git commit history via Tauri IPC and update git-store log
+
+trigger:
+  id: trigger-getLog
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Get Log
+  spec:
+    event: "ui:git-history-tab-open"
+    description: User switches to history tab in Git panel, or history is refreshed after commit
+  connections:
+    - targetNodeId: ipc-gitLog
+
+nodes:
+  - id: ipc-gitLog
+    type: ipc_call
+    position: { x: 250, y: 130 }
+    label: Git Log
+    spec:
+      command: git_log
+      args:
+        path: "{{projectPath}}"
+        limit: 50
+      return_type: "GitLogEntry[]"
+    connections:
+      - targetNodeId: process-updateStore
+        sourceHandle: success
+      - targetNodeId: terminal-error
+        sourceHandle: error
+
+  - id: process-updateStore
+    type: process
+    position: { x: 250, y: 260 }
+    label: Update git-store
+    spec:
+      action: Set git-store.log from IPC result
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 390 }
+    label: Log Loaded
+    spec:
+      outcome: success
+      status: 200
+      body: { commitCount: "{{log.length}}" }
+
+  - id: terminal-error
+    type: terminal
+    position: { x: 550, y: 260 }
+    label: Git Error
+    spec:
+      outcome: error
+      status: 500
+      body: { error: GIT_COMMAND_FAILED }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

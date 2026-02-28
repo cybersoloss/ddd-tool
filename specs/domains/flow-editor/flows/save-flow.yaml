@@ -1,0 +1,90 @@
+flow:
+  id: save-flow
+  name: Save Flow
+  type: traditional
+  domain: flow-editor
+  description: Serialize flow-store nodes and edges to FlowDocument YAML and write to disk
+
+trigger:
+  id: trigger-saveFlow
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Save Flow
+  spec:
+    event: "ui:cmd-s"
+    description: >
+      User presses Cmd+S, or the 500ms debounced persist timer fires after any
+      flow-store state mutation (node add/move/edit). The debounced-persist
+      cross-cutting pattern governs this — see architecture.yaml.
+  connections:
+    - targetNodeId: process-serializeFlow
+
+nodes:
+  - id: process-serializeFlow
+    type: process
+    position: { x: 250, y: 130 }
+    label: Serialize Flow Document
+    spec:
+      action: Convert flow-store nodes/edges back to FlowDocument YAML format; update metadata.modified timestamp; compute specHash
+    connections:
+      - targetNodeId: ipc-writeFlowYaml
+
+  - id: ipc-writeFlowYaml
+    type: ipc_call
+    position: { x: 250, y: 260 }
+    label: Write flow.yaml
+    spec:
+      command: write_file
+      args:
+        path: "{projectPath}/specs/domains/{domainId}/flows/{flowId}.yaml"
+        contents: stringify(flowDocument)
+      description: markWriting() called first to suppress file-watcher; isSaving=true during write
+    connections:
+      - targetNodeId: process-updateMapping
+        sourceHandle: success
+      - targetNodeId: terminal-error
+        sourceHandle: error
+
+  - id: process-updateMapping
+    type: process
+    position: { x: 250, y: 390 }
+    label: Update Mapping
+    spec:
+      action: Update specHash in .ddd/mapping.yaml for this flow; set isDirty=false; emit flow:saved event
+    connections:
+      - targetNodeId: process-recordHistory
+
+  - id: process-recordHistory
+    type: process
+    position: { x: 250, y: 520 }
+    label: Record Change History
+    spec:
+      action: change-history-store.recordSave({specFile, level:L3, domain, flow, action:updated, pillar})
+      description: >
+        detectFlowPillar(currentFlow) is called to auto-classify the flow as 'data'
+        (has data_store nodes) or 'logic' (default). The pillar is included in the
+        change-history.yaml entry. See detect-flow-pillar pattern in architecture.yaml.
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 650 }
+    label: Flow Saved
+    spec:
+      outcome: success
+      status: 200
+      body: { flowId: "{{flowId}}", specHash: "{{specHash}}" }
+
+  - id: terminal-error
+    type: terminal
+    position: { x: 550, y: 390 }
+    label: Save Error
+    spec:
+      outcome: error
+      status: 500
+      body: { error: FILE_WRITE_FAILED }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T01:00:00.000Z"

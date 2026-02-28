@@ -1,43 +1,57 @@
-name: ddd-tool
-description: "Design Driven Development desktop app for visual flow-based software design"
-version: "0.2.32-alpha"
+project: ddd-tool
+name: DDD Tool
+description: >
+  Design Driven Development desktop app. Lets users design software visually
+  using flow diagrams (YAML specs), then invoke Claude Code to implement those
+  specs as real code.
+
 tech_stack:
-  language: TypeScript / Rust
-  frontend: React 19
-  desktop: Tauri 2.0
-  canvas: React Flow (@xyflow/react 12)
-  state: Zustand 5
-  ui: Tailwind CSS 4 + Radix UI
-  build: Vite 7
-  rust_deps: git2, tokio, notify, sha2
-zones:
-  - id: frontend
-    name: Frontend (React)
-    domain_ids: [canvas, spec-editing, project, navigation, git, validation]
-    color: "#3b82f6"
-  - id: backend
-    name: Backend (Rust)
-    domain_ids: [persistence]
-    color: "#f97316"
-events:
-  - name: spec-files-changed
-    description: "File watcher emits when YAML/JSON files change in specs/ directory"
-    publisher: persistence
-    consumers: [canvas, spec-editing]
-  - name: flow-saved
-    description: "Flow store saves flow YAML, triggers change history recording"
-    publisher: canvas
-    consumers: [implementation]
-  - name: validation-triggered
-    description: "Flow changes trigger async validation after 300ms debounce"
-    publisher: canvas
-    consumers: [validation]
-  - name: domain-saved
-    description: "Domain config saved, triggers change history recording"
-    publisher: canvas
-    consumers: [implementation]
-  - name: navigate
-    description: "Sheet store navigates between L1/L2/L3 views"
-    publisher: navigation
-    consumers: [canvas]
-integrations: []
+  frontend:
+    language: TypeScript
+    version: "5.8"
+    framework: React
+    framework_version: "19"
+    bundler: Vite 7
+    ui_library: Tailwind CSS 4 + Radix UI
+    canvas: "@xyflow/react 12 (React Flow)"
+    state: Zustand 5
+    yaml_parser: js-yaml (yaml 2)
+    id_generation: nanoid
+  backend:
+    language: Rust
+    edition: "2021"
+    framework: Tauri 2.0
+    git_binding: git2 (libgit2)
+    hashing: sha2 (SHA-256)
+    file_watch: notify 7
+    async_runtime: tokio
+  storage:
+    type: local-filesystem
+    format: YAML (specs) + JSON (config)
+    no_database: true
+  deployment:
+    type: desktop-app
+    target: macOS / Windows / Linux (via Tauri)
+
+environments:
+  development:
+    command: npm run tauri dev
+    hot_reload: true
+  production:
+    command: npm run tauri build
+    output: src-tauri/target/release/bundle
+
+integrations:
+  - name: Claude Code CLI
+    purpose: Invoke /ddd-scaffold, /ddd-implement, /ddd-reverse, /ddd-sync etc.
+    how: run_command IPC → shell subprocess
+  - name: System Git
+    purpose: Clone repositories (uses user auth config)
+    how: git_clone IPC → system git binary
+  - name: libgit2
+    purpose: All other git operations (status, stage, commit, log)
+    how: git2 Rust crate directly
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

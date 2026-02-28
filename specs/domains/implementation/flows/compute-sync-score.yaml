@@ -1,0 +1,49 @@
+flow:
+  id: compute-sync-score
+  name: Compute Sync Score
+  type: traditional
+  domain: implementation
+  description: Calculate quality/sync score across all mapped flows based on drift state and validation results
+
+trigger:
+  id: trigger-computeSyncScore
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Compute Sync Score
+  spec:
+    event: "ipc:compute-sync-score"
+    description: Called by detect-drift after hash comparison; also called when validation results change
+  connections:
+    - targetNodeId: process-aggregateResults
+
+nodes:
+  - id: process-aggregateResults
+    type: process
+    position: { x: 250, y: 130 }
+    label: Aggregate Results
+    spec:
+      action: Count total mappings, in-sync count, validation-passing flows; compute weighted score = (in_sync/total * 50%) + (validation_passing/total * 50%)
+    connections:
+      - targetNodeId: process-updateStore
+
+  - id: process-updateStore
+    type: process
+    position: { x: 250, y: 260 }
+    label: Update Store
+    spec:
+      action: Set implementation-store.syncScore; update FlowBlock drift indicators in canvas-views
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 390 }
+    label: Score Computed
+    spec:
+      outcome: success
+      status: 200
+      body: { syncScore: "{{syncScore}}" }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

@@ -1,0 +1,65 @@
+flow:
+  id: edit-infrastructure
+  name: Edit Infrastructure
+  type: traditional
+  domain: specs-sidebar
+  description: User edits infrastructure services/startup/deployment in InfrastructureEditor; persist changes to disk
+
+trigger:
+  id: trigger-editInfrastructure
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Edit Infrastructure
+  spec:
+    event: "ui:infrastructure-editor-change"
+    description: User modifies a service, port, or startup_order in InfrastructureEditor; debounced 500ms
+  connections:
+    - targetNodeId: process-updateStore
+
+nodes:
+  - id: process-updateStore
+    type: process
+    position: { x: 250, y: 130 }
+    label: Update specs-store
+    spec:
+      action: Apply the service/port change to specs-store.infrastructure in memory
+    connections:
+      - targetNodeId: ipc-writeInfraYaml
+
+  - id: ipc-writeInfraYaml
+    type: ipc_call
+    position: { x: 250, y: 260 }
+    label: Write infrastructure.yaml
+    spec:
+      command: write_file
+      args:
+        path: "{projectPath}/specs/infrastructure.yaml"
+        contents: stringify(updatedInfrastructure)
+      description: markWriting() called first
+    connections:
+      - targetNodeId: terminal-success
+        sourceHandle: success
+      - targetNodeId: terminal-error
+        sourceHandle: error
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 390 }
+    label: Infrastructure Saved
+    spec:
+      outcome: success
+      status: 200
+      body: { serviceCount: "{{services.length}}" }
+
+  - id: terminal-error
+    type: terminal
+    position: { x: 550, y: 260 }
+    label: Save Error
+    spec:
+      outcome: error
+      status: 500
+      body: { error: FILE_WRITE_FAILED }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

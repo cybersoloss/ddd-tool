@@ -1,0 +1,100 @@
+flow:
+  id: move-flow
+  name: Move Flow
+  type: traditional
+  domain: project-management
+  description: Move flow YAML from source domain to target domain, update both domain.yaml files, migrate event wiring
+
+trigger:
+  id: trigger-moveFlow
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Move Flow
+  spec:
+    event: "ui:move-flow-dialog"
+    description: User selects target domain in MoveFlowDialog
+  connections:
+    - targetNodeId: ipc-moveFlowFile
+
+nodes:
+  - id: ipc-moveFlowFile
+    type: ipc_call
+    position: { x: 250, y: 130 }
+    label: Move flow.yaml File
+    spec:
+      command: rename_path
+      args:
+        old_path: "{projectPath}/specs/domains/{sourceDomainId}/flows/{flowId}.yaml"
+        new_path: "{projectPath}/specs/domains/{targetDomainId}/flows/{flowId}.yaml"
+    connections:
+      - targetNodeId: process-updateFlowDomain
+        sourceHandle: success
+      - targetNodeId: terminal-error
+        sourceHandle: error
+
+  - id: process-updateFlowDomain
+    type: process
+    position: { x: 250, y: 260 }
+    label: Update flow.yaml Domain Field
+    spec:
+      action: Read moved flow.yaml, update flow.domain to targetDomainId, write back
+    connections:
+      - targetNodeId: process-updateSourceDomain
+
+  - id: process-updateSourceDomain
+    type: process
+    position: { x: 250, y: 390 }
+    label: Update Source domain.yaml
+    spec:
+      action: Remove flow entry from source domain.flows[], remove from layout, write source domain.yaml
+    connections:
+      - targetNodeId: process-updateTargetDomain
+
+  - id: process-updateTargetDomain
+    type: process
+    position: { x: 250, y: 520 }
+    label: Update Target domain.yaml
+    spec:
+      action: Append flow entry to target domain.flows[], compute position in target layout, write target domain.yaml
+    connections:
+      - targetNodeId: process-migrateEventWiring
+
+  - id: process-migrateEventWiring
+    type: process
+    position: { x: 250, y: 650 }
+    label: Migrate Event Wiring
+    spec:
+      action: If flow has event consumes/publishes, update from_flow or handled_by_flow references in both domain.yaml files
+    connections:
+      - targetNodeId: process-recordHistory
+
+  - id: process-recordHistory
+    type: process
+    position: { x: 250, y: 780 }
+    label: Record Change History
+    spec:
+      action: change-history-store.recordSave({specFile, level:L2, domain:targetDomainId, flow, action:moved})
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 910 }
+    label: Flow Moved
+    spec:
+      outcome: success
+      status: 200
+      body: { flowId: "{{flowId}}", from: "{{sourceDomainId}}", to: "{{targetDomainId}}" }
+
+  - id: terminal-error
+    type: terminal
+    position: { x: 550, y: 260 }
+    label: Move Error
+    spec:
+      outcome: error
+      status: 500
+      body: { error: FILE_WRITE_FAILED }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

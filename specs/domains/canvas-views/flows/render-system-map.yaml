@@ -1,0 +1,58 @@
+flow:
+  id: render-system-map
+  name: Render System Map
+  type: traditional
+  domain: canvas-views
+  description: Display L1 canvas with DomainBlock nodes and EventArrow edges; handle domain block click to drill into domain
+
+trigger:
+  id: trigger-renderSystemMap
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Render System Map
+  spec:
+    event: "ui:navigate-to-L1"
+    description: Sheet-store sets currentLevel=L1; triggered on project open or breadcrumb navigation
+  connections:
+    - targetNodeId: process-buildDomainNodes
+
+nodes:
+  - id: process-buildDomainNodes
+    type: process
+    position: { x: 250, y: 130 }
+    label: Build Domain Nodes
+    spec:
+      action: For each domain in project-store.domainConfigs, create DomainBlock React Flow node using systemLayout.domains[id] position; show domain name, role badge, and flow count
+    connections:
+      - targetNodeId: process-buildEventArrows
+
+  - id: process-buildEventArrows
+    type: process
+    position: { x: 250, y: 260 }
+    label: Build Event Arrows
+    spec:
+      action: For each domain's publishes_events, find consuming domains via consumes_events; create EventArrow edges between DomainBlock nodes with event name labels
+    connections:
+      - targetNodeId: process-renderCanvas
+
+  - id: process-renderCanvas
+    type: process
+    position: { x: 250, y: 390 }
+    label: Render React Flow Canvas
+    spec:
+      action: Set React Flow nodes/edges; call fitView(); enable domain drag (onNodeDragStop → update-domain-position); enable domain click (→ navigate-to-level)
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 520 }
+    label: System Map Rendered
+    spec:
+      outcome: success
+      status: 200
+      body: { domainCount: "{{domainCount}}", eventArrows: "{{arrowCount}}" }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

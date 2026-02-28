@@ -1,0 +1,44 @@
+schema: global-settings
+captured_at: "2026-02-28T00:30:00.000Z"
+captured_from: reflect
+patterns:
+  - id: cD5mX2wQ
+    type: custom
+    description: >
+      Concrete DEFAULT_SETTINGS object not captured in schema spec. The schema
+      defines field names and types but not their default values. Code defines:
+      claudeCode.command='claude', claudeCode.enabled=true,
+      editor.gridSnap=true, editor.autoSave=false, editor.autoSaveInterval=30,
+      editor.theme='dark', editor.fontSize=14, editor.saveNotification=true,
+      git.autoCommitMessage='DDD: {action} in {flow_id}',
+      git.branchNaming='ddd/{flow_id}'.
+    code_evidence:
+      file: src/stores/app-store.ts
+      lines: "34-51"
+      snippet: >
+        export const DEFAULT_SETTINGS: GlobalSettings = {
+          claudeCode: { enabled: true, command: 'claude' },
+          editor: { gridSnap: true, autoSave: false, autoSaveInterval: 30, theme: 'dark', fontSize: 14 },
+          git: { autoCommitMessage: 'DDD: {action} in {flow_id}', branchNaming: 'ddd/{flow_id}' },
+        };
+    status: promoted
+
+  - id: eF7nY4pL
+    type: custom
+    description: >
+      Storage paths not captured in schema. Settings are stored at
+      {homeDir}/.ddd-tool/settings.json and recent projects at
+      {homeDir}/.ddd-tool/recent-projects.json. The home directory is resolved
+      via the window.__HOME_DIR__ global (injected on boot). On settings load,
+      the code deep-merges with DEFAULT_SETTINGS: { ...DEFAULT_SETTINGS, ...loaded }
+      — loaded values override defaults but missing keys fall back to defaults.
+    code_evidence:
+      file: src/stores/app-store.ts
+      lines: "14-27"
+      snippet: >
+        const SETTINGS_FILE = '.ddd-tool/settings.json';
+        const RECENT_FILE = '.ddd-tool/recent-projects.json';
+        function getHomePath(): string {
+          return window.__HOME_DIR__ || '';
+        }
+    status: promoted

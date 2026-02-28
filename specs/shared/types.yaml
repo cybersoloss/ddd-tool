@@ -1,6 +1,9 @@
-types:
-  node_type:
-    description: "All 29 DDD node types"
+enums:
+  AppView:
+    values: [launcher, first-run, project]
+    description: Top-level view rendered by App.tsx
+
+  DddNodeType:
     values:
       - trigger
       - input
@@ -9,7 +12,6 @@ types:
       - terminal
       - data_store
       - service_call
-      - ipc_call
       - event
       - loop
       - parallel
@@ -23,6 +25,7 @@ types:
       - crypto
       - batch
       - transaction
+      - ipc_call
       - agent_loop
       - guardrail
       - human_gate
@@ -31,43 +34,51 @@ types:
       - handoff
       - agent_group
       - websocket_broadcast
+    description: All 29 DDD node types supported by the tool
 
-  flow_type:
-    description: "Flow classification"
+  FlowType:
     values: [traditional, agent]
+    description: Flow execution model — traditional sequential vs agent loop
 
-  domain_role:
-    description: "Domain role in the system"
+  DomainRole:
     values: [entity, process, interface, orchestration]
+    description: Semantic role of a domain in the system
 
-  sync_state:
-    description: "Implementation sync state"
-    values: [synced, spec_ahead, code_ahead, diverged]
-
-  validation_severity:
-    description: "Validation issue severity"
+  ValidationSeverity:
     values: [error, warning, info]
+    description: Severity level of a validation issue
 
-  validation_scope:
-    description: "Validation scope level"
-    values: [flow, domain, system]
+  DriftType:
+    values: [spec_ahead, code_ahead, both_changed, in_sync, not_implemented]
+    description: Drift state between spec and implementation
 
-  app_view:
-    description: "Main app view states"
-    values: [launcher, first-run, project]
+  ErrorSeverity:
+    values: [info, warning, error, fatal]
+    description: App error severity levels
 
-  sheet_level:
-    description: "Navigation hierarchy levels"
-    values: [system, domain, flow]
+  EditorTheme:
+    values: [light, dark, system]
+    description: DDD Tool editor color theme
 
-  git_file_status:
-    description: "Git file change status"
+  GitFileStatus:
     values: [new, modified, deleted]
+    description: Git file change status (staged or unstaged)
 
-  annotation_status:
-    description: "Annotation lifecycle status"
-    values: [candidate, approved, promoted, dismissed]
-
-  reconciliation_action:
-    description: "Actions for resolving drift"
-    values: [accept, reimpl, ignore]
+  DataStoreOperation:
+    values:
+      - create
+      - read
+      - update
+      - delete
+      - upsert
+      - create_many
+      - update_many
+      - delete_many
+      - get
+      - set
+      - merge
+      - reset
+      - subscribe
+      - update_where
+      - aggregate
+    description: Data store node operation types

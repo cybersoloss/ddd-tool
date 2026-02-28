@@ -1,0 +1,67 @@
+flow:
+  id: add-event-arrow
+  name: Add Event Arrow
+  type: traditional
+  domain: project-management
+  description: Wire event from source domain (publish) to target domain (consume) by updating both domain.yaml files
+
+trigger:
+  id: trigger-addEventArrow
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Add Event Arrow
+  spec:
+    event: "ui:add-event-wiring-dialog"
+    description: User submits EventWiringDialog specifying event name, source domain, target domain
+  connections:
+    - targetNodeId: process-updateSourceDomain
+
+nodes:
+  - id: process-updateSourceDomain
+    type: process
+    position: { x: 250, y: 130 }
+    label: Update Source domain.yaml
+    spec:
+      action: Append to publishes_events[] in source domain.yaml; write file
+    connections:
+      - targetNodeId: process-updateTargetDomain
+
+  - id: process-updateTargetDomain
+    type: process
+    position: { x: 250, y: 260 }
+    label: Update Target domain.yaml
+    spec:
+      action: Append to consumes_events[] in target domain.yaml; write file
+    connections:
+      - targetNodeId: process-updateSystemLayout
+
+  - id: process-updateSystemLayout
+    type: process
+    position: { x: 250, y: 390 }
+    label: Update System Layout
+    spec:
+      action: Add event arrow edge to systemLayout.eventArrows (source→target), write system-layout.yaml
+    connections:
+      - targetNodeId: process-recordHistory
+
+  - id: process-recordHistory
+    type: process
+    position: { x: 250, y: 520 }
+    label: Record Change History
+    spec:
+      action: change-history-store.recordSave for both domain.yaml files (level:L2, action:updated)
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 650 }
+    label: Event Arrow Added
+    spec:
+      outcome: success
+      status: 201
+      body: { event: "{{eventName}}", from: "{{sourceDomainId}}", to: "{{targetDomainId}}" }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

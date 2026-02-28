@@ -1,0 +1,84 @@
+page: specs-sidebar-panel
+route: /project/specs
+
+sections:
+  - id: pillars-tabs
+    component: tabs
+    label: Four Pillars
+    fields:
+      tabs:
+        - id: data-tab
+          label: Data
+          icon: database
+        - id: interface-tab
+          label: Interface
+          icon: layout
+        - id: infra-tab
+          label: Infrastructure
+          icon: server
+
+  - id: schema-list
+    component: list
+    label: Schemas
+    visible_when: activeTab === 'data'
+    data_source: specs-sidebar/list-schemas
+    item_template:
+      primary: name
+      secondary: field count
+    item_actions:
+      - label: Edit
+        flow: specs-sidebar/edit-schema
+      - label: Delete
+        flow: specs-sidebar/delete-schema
+        confirm: true
+    buttons:
+      - label: Add Schema
+        flow: specs-sidebar/add-schema
+    empty_state:
+      message: No schemas defined
+      action:
+        label: Add Schema
+        flow: specs-sidebar/add-schema
+
+  - id: schema-editor
+    component: form-editor
+    label: Schema Editor
+    visible_when: activeTab === 'data' && selectedSchema !== null
+    data_source: specs-sidebar/get-schema
+    description: Edit schema fields, relationships, indexes, transitions, and seed data
+
+  - id: ui-pages-list
+    component: list
+    label: UI Pages
+    visible_when: activeTab === 'interface'
+    data_source: specs-sidebar/list-ui-pages
+    item_template:
+      primary: page id
+      secondary: route
+    item_actions:
+      - label: Edit
+        flow: specs-sidebar/edit-ui-page
+    buttons:
+      - label: Edit Pages Config
+        flow: specs-sidebar/edit-pages-config
+
+  - id: ui-page-editor
+    component: form-editor
+    label: Page Editor
+    visible_when: activeTab === 'interface' && selectedPage !== null
+    description: Edit page sections, forms, state config
+
+  - id: infrastructure-editor
+    component: form-editor
+    label: Infrastructure Editor
+    visible_when: activeTab === 'infrastructure'
+    data_source: specs-sidebar/get-infrastructure
+    description: Edit services, startup order, deployment config
+
+state:
+  store: specs-store
+  initial_fetch: [specs-sidebar/load-all]
+  local:
+    activeTab: data
+    selectedSchema: null
+    selectedPage: null

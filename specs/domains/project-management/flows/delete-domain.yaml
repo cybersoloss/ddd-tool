@@ -1,0 +1,91 @@
+flow:
+  id: delete-domain
+  name: Delete Domain
+  type: traditional
+  domain: project-management
+  description: Delete domain directory and all flows, remove from ddd-project.json and system-layout.yaml
+
+trigger:
+  id: trigger-deleteDomain
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Delete Domain
+  spec:
+    event: "ui:delete-domain-dialog"
+    description: User confirms domain deletion in DeleteDomainDialog
+  connections:
+    - targetNodeId: ipc-deleteDomainDir
+
+nodes:
+  - id: ipc-deleteDomainDir
+    type: ipc_call
+    position: { x: 250, y: 130 }
+    label: Delete Domain Directory
+    spec:
+      command: delete_directory
+      args:
+        path: "{projectPath}/specs/domains/{domainId}"
+      description: Recursively deletes domain directory and all flow YAML files
+    connections:
+      - targetNodeId: process-updateProjectJson
+        sourceHandle: success
+      - targetNodeId: terminal-error
+        sourceHandle: error
+
+  - id: process-updateProjectJson
+    type: process
+    position: { x: 250, y: 260 }
+    label: Update ddd-project.json
+    spec:
+      action: Read project.json, filter out deleted domain, write back
+    connections:
+      - targetNodeId: process-updateSystemLayout
+
+  - id: process-updateSystemLayout
+    type: process
+    position: { x: 250, y: 390 }
+    label: Update System Layout
+    spec:
+      action: Remove domain position from systemLayout.domains, write system-layout.yaml
+    connections:
+      - targetNodeId: process-updateStore
+
+  - id: process-updateStore
+    type: process
+    position: { x: 250, y: 520 }
+    label: Update Store
+    spec:
+      action: Remove domain from project-store.domainConfigs, clear selection if deleted domain was active
+    connections:
+      - targetNodeId: process-recordHistory
+
+  - id: process-recordHistory
+    type: process
+    position: { x: 250, y: 650 }
+    label: Record Change History
+    spec:
+      action: change-history-store.recordSave({specFile, level:L1, domain, action:deleted})
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 780 }
+    label: Domain Deleted
+    spec:
+      outcome: success
+      status: 200
+      body: { domainId: "{{domainId}}" }
+
+  - id: terminal-error
+    type: terminal
+    position: { x: 550, y: 260 }
+    label: Delete Error
+    spec:
+      outcome: error
+      status: 500
+      body: { error: FILE_WRITE_FAILED }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

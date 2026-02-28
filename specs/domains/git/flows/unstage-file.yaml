@@ -1,61 +1,63 @@
 flow:
   id: unstage-file
-  name: "Unstage File"
+  name: Unstage File
   type: traditional
   domain: git
-  description: "Removes a file from the staging area"
+  description: Unstage a specific file via Tauri IPC git_unstage_file; refresh git status
 
 trigger:
-  id: trigger-kQ6cV8yZ
+  id: trigger-unstageFile
   type: trigger
-  position: { x: 300, y: 0 }
-  label: "Unstage File"
+  position: { x: 250, y: 0 }
+  label: Unstage File
   spec:
-    event: "ui:unstage-file"
-    description: "User clicks the unstage button on a staged file entry"
+    event: "ui:unstage-file-button"
+    description: User clicks unstage button on a file in git panel staged list
   connections:
-    - targetNodeId: ipc-lR7dW9zA
+    - targetNodeId: ipc-unstageFile
 
 nodes:
-  - id: ipc-lR7dW9zA
+  - id: ipc-unstageFile
     type: ipc_call
-    position: { x: 300, y: 130 }
-    label: "Git Unstage File"
+    position: { x: 250, y: 130 }
+    label: Unstage File
     spec:
-      command: "git_unstage_file"
-      payload: "File path relative to project root"
+      command: git_unstage_file
+      args:
+        path: "{{projectPath}}"
+        file: "{{filePath}}"
     connections:
-      - targetNodeId: process-mS8eX1aB
-        sourceHandle: "success"
-      - targetNodeId: terminal-pU1hA4dE
-        sourceHandle: "error"
+      - targetNodeId: process-refreshStatus
+        sourceHandle: success
+      - targetNodeId: terminal-error
+        sourceHandle: error
 
-  - id: process-mS8eX1aB
+  - id: process-refreshStatus
     type: process
-    position: { x: 300, y: 260 }
-    label: "Refresh Status"
+    position: { x: 250, y: 260 }
+    label: Refresh Status
     spec:
-      action: "Trigger refresh-status flow to update git-store with new staging state"
+      action: Trigger get-status flow to reload staged/unstaged lists
     connections:
-      - targetNodeId: terminal-nT9fY2bC
+      - targetNodeId: terminal-success
 
-  - id: terminal-nT9fY2bC
+  - id: terminal-success
     type: terminal
-    position: { x: 300, y: 390 }
-    label: "File Unstaged"
+    position: { x: 250, y: 390 }
+    label: File Unstaged
     spec:
       outcome: success
-      description: "File removed from staging area and status refreshed"
-    connections: []
+      status: 200
+      body: { file: "{{filePath}}" }
 
-  - id: terminal-pU1hA4dE
+  - id: terminal-error
     type: terminal
     position: { x: 550, y: 260 }
-    label: "Unstage Error"
+    label: Unstage Error
     spec:
-      outcome: failure
-      description: "Failed to unstage file"
-    connections: []
+      outcome: error
+      status: 500
+      body: { error: GIT_UNSTAGE_FAILED }
 
 metadata:
   created: "2026-02-28T00:00:00.000Z"

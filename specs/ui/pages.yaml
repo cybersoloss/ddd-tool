@@ -1,83 +1,121 @@
 app_type: desktop
-framework: react
-router: zustand-sheet-store  # custom navigation via sheet-store, not URL router
-state_management: zustand
-component_library: radix-ui
+framework: React 19
+router: none (Zustand view state)
+state_management: Zustand (10 stores)
+component_library: Radix UI + Tailwind CSS
+
 theme:
   color_scheme: dark
-  primary_color: blue
-  font_family: system-ui
-  border_radius: 8
+  primary_color: "#6366f1"
+  font_family: Inter, system-ui, sans-serif
+  border_radius: 6
+
 pages:
-  - id: launcher
-    route: /
+  - id: project-launcher
+    route: /launcher
     name: Project Launcher
-    description: Landing page to open, create, or clone projects
+    description: Default screen — create new project, clone, or open recent
     layout: centered
-  - id: first-run
+    auth_required: false
+
+  - id: first-run-wizard
     route: /first-run
     name: First Run Wizard
-    description: 2-step setup on first launch (Claude Code detection, get started)
+    description: One-time setup for Claude Code and workspace; shown on first launch
     layout: centered
+    auth_required: false
+
   - id: system-map
-    route: /project/system
+    route: /project/system-map
     name: System Map (L1)
-    description: Visual canvas showing all domains with event arrows and zone grouping
+    description: Top-level canvas showing all domains as blocks with event arrows
     layout: full
+    auth_required: false
+
   - id: domain-map
-    route: /project/domain/:domainId
+    route: /project/{domain}
     name: Domain Map (L2)
-    description: Visual canvas showing all flows in a domain with orchestration viz
+    description: Per-domain canvas showing flow blocks and cross-domain portals
     layout: full
+    auth_required: false
+
   - id: flow-canvas
-    route: /project/domain/:domainId/flow/:flowId
+    route: /project/{domain}/{flow}
     name: Flow Canvas (L3)
-    description: React Flow canvas for designing individual flow graphs with 29 node types
+    description: Node graph editor for a single DDD flow
     layout: full
-  - id: settings
-    route: /settings
-    name: Settings
-    description: Global and project settings (editor, Claude Code, git)
-    layout: centered
+    auth_required: false
+
   - id: git-panel
-    route: /project/git
+    route: /project/git (drawer)
     name: Git Panel
-    description: Git status, staging, commit, and history (docked right panel)
+    description: Git status, stage/unstage, commit, and log drawer
     layout: sidebar
-  - id: specs-sidebar
-    route: /project/specs
-    name: Project Specs
-    description: Left sidebar with Data/Interface/Infrastructure tabs for editing project specs
+    auth_required: false
+
+  - id: specs-sidebar-panel
+    route: /project/specs (drawer)
+    name: Specs Sidebar
+    description: Four-pillars sidebar with Data/Interface/Infrastructure spec editors
     layout: sidebar
+    auth_required: false
+
+  - id: validation-panel
+    route: /project/validation (panel)
+    name: Validation Panel
+    description: Real-time validation results across flow/domain/system scopes
+    layout: sidebar
+    auth_required: false
+
+  - id: settings-dialog
+    route: /settings (modal)
+    name: Settings
+    description: Global and project-level settings for editor, git, and Claude Code
+    layout: centered
+    auth_required: false
+
 navigation:
-  type: none  # Navigation is via breadcrumb bar, not sidebar/topbar
-  items:
-    - page: launcher
-      icon: Home
-      label: Home
-    - page: system-map
-      icon: Layout
-      label: System Map
-    - page: settings
-      icon: Settings
-      label: Settings
+  type: none
+  description: >
+    No persistent nav bar. Navigation is via breadcrumb (Breadcrumb.tsx + SheetTabs.tsx),
+    canvas double-click drill-down, and Escape key to navigate up.
+  keyboard:
+    - key: "Escape"
+      action: navigate-up (L3→L2→L1→launcher)
+    - key: "Cmd+Z"
+      action: undo
+    - key: "Cmd+Shift+Z"
+      action: redo
+    - key: "Cmd+S"
+      action: save-flow
+    - key: "Cmd+Shift+M"
+      action: toggle-minimap
+
 shared_components:
-  - id: breadcrumb
-    description: Top navigation bar with breadcrumbs, keyboard shortcuts, toggle buttons
-    used_by: [system-map, domain-map, flow-canvas]
-    props: [location, shortcuts, toggleButtons]
-  - id: zoom-controls
-    description: Pan/zoom/fit-view control buttons for canvas views
-    used_by: [system-map, domain-map, flow-canvas]
-    props: [onZoomIn, onZoomOut, onFitView]
-  - id: search-palette
-    description: Cmd+K search across domains, flows, and nodes
-    used_by: [system-map, domain-map, flow-canvas]
-    props: [open, onClose, onSelect]
   - id: error-toasts
-    description: Error/warning/info notification toasts
-    used_by: [launcher, system-map, domain-map, flow-canvas]
-    props: [errors]
+    description: Floating error/warning notification overlay
+    used_by: [system-map, domain-map, flow-canvas, project-launcher]
+
   - id: save-notification
-    description: Saving indicator during YAML writes
+    description: Brief "Saved" confirmation overlay after spec write
+    used_by: [flow-canvas]
+
+  - id: breadcrumb
+    description: Navigation breadcrumb showing current L1→L2→L3 position with git badge
     used_by: [system-map, domain-map, flow-canvas]
+
+  - id: search-palette
+    description: Command palette for searching flows and navigating
+    used_by: [system-map, domain-map, flow-canvas]
+
+  - id: zoom-controls
+    description: Canvas zoom in/out/fit controls
+    used_by: [system-map, domain-map, flow-canvas]
+
+  - id: crash-recovery-dialog
+    description: Dialog shown on startup if autosave file detected from crashed session
+    used_by: [flow-canvas]
+
+  - id: unsaved-changes-dialog
+    description: Confirmation dialog when navigating away from dirty flow
+    used_by: [flow-canvas]

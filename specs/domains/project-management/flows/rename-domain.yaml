@@ -1,0 +1,91 @@
+flow:
+  id: rename-domain
+  name: Rename Domain
+  type: traditional
+  domain: project-management
+  description: Rename domain directory and update domain.yaml and ddd-project.json
+
+trigger:
+  id: trigger-renameDomain
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Rename Domain
+  spec:
+    event: "ui:rename-domain-dialog"
+    description: User submits RenameDomainDialog with new name
+  connections:
+    - targetNodeId: ipc-renameDomainDir
+
+nodes:
+  - id: ipc-renameDomainDir
+    type: ipc_call
+    position: { x: 250, y: 130 }
+    label: Rename Domain Directory
+    spec:
+      command: rename_path
+      args:
+        old_path: "{projectPath}/specs/domains/{oldDomainId}"
+        new_path: "{projectPath}/specs/domains/{newDomainId}"
+    connections:
+      - targetNodeId: process-updateDomainYaml
+        sourceHandle: success
+      - targetNodeId: terminal-error
+        sourceHandle: error
+
+  - id: process-updateDomainYaml
+    type: process
+    position: { x: 250, y: 260 }
+    label: Update domain.yaml
+    spec:
+      action: Read domain.yaml from new path, update name field, write back
+    connections:
+      - targetNodeId: process-updateProjectJson
+
+  - id: process-updateProjectJson
+    type: process
+    position: { x: 250, y: 390 }
+    label: Update ddd-project.json
+    spec:
+      action: Update domain entry in project.json with new id and name, write back
+    connections:
+      - targetNodeId: process-updateSystemLayout
+
+  - id: process-updateSystemLayout
+    type: process
+    position: { x: 250, y: 520 }
+    label: Update System Layout
+    spec:
+      action: Rename domain key in systemLayout.domains, write system-layout.yaml
+    connections:
+      - targetNodeId: process-updateStore
+
+  - id: process-updateStore
+    type: process
+    position: { x: 250, y: 650 }
+    label: Update Store
+    spec:
+      action: Update project-store.domainConfigs with new key, navigate to new domain ID if active
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 780 }
+    label: Domain Renamed
+    spec:
+      outcome: success
+      status: 200
+      body: { oldDomainId: "{{oldDomainId}}", newDomainId: "{{newDomainId}}" }
+
+  - id: terminal-error
+    type: terminal
+    position: { x: 550, y: 260 }
+    label: Rename Error
+    spec:
+      outcome: error
+      status: 500
+      body: { error: FILE_WRITE_FAILED }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

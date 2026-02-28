@@ -1,0 +1,26 @@
+page: project-launcher
+captured_at: "2026-02-28T00:30:00.000Z"
+captured_from: reflect
+patterns:
+  - id: gH9oZ6qM
+    type: data_fetching
+    description: >
+      Auto-prune recent projects on load: after reading recent-projects.json,
+      the code calls path_exists for each entry in parallel (Promise.all),
+      filters out entries whose paths no longer exist, and silently re-persists
+      the pruned list. The spec says "Load recent projects list" but doesn't
+      capture this cleanup step. Also enforces max 20 entries on add:
+      [...existing].slice(0, 20).
+    applies_to_sections: [recent-projects]
+    code_evidence:
+      file: src/stores/app-store.ts
+      lines: "128-148"
+      snippet: >
+        const checks = await Promise.all(
+          projects.map(async (p) => {
+            const pathExists = await invoke('path_exists', { path: p.path });
+            return pathExists;
+          })
+        );
+        const pruned = projects.filter((_, i) => checks[i]);
+    status: promoted

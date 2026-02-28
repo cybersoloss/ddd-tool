@@ -1,0 +1,49 @@
+flow:
+  id: export-mermaid
+  name: Export Mermaid
+  type: traditional
+  domain: flow-editor
+  description: Generate Mermaid flowchart diagram text from current flow nodes and connections; copy to clipboard
+
+trigger:
+  id: trigger-exportMermaid
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Export Mermaid
+  spec:
+    event: "ui:export-mermaid-button"
+    description: User clicks Export Mermaid button in flow canvas toolbar
+  connections:
+    - targetNodeId: process-buildMermaid
+
+nodes:
+  - id: process-buildMermaid
+    type: process
+    position: { x: 250, y: 130 }
+    label: Build Mermaid Diagram
+    spec:
+      action: Iterate flow-store nodes and edges; build "flowchart TD" with node labels and connection arrows; include node type annotations
+    connections:
+      - targetNodeId: process-copyToClipboard
+
+  - id: process-copyToClipboard
+    type: process
+    position: { x: 250, y: 260 }
+    label: Copy to Clipboard
+    spec:
+      action: Write generated Mermaid text to navigator.clipboard; show success toast "Mermaid diagram copied"
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 390 }
+    label: Mermaid Exported
+    spec:
+      outcome: success
+      status: 200
+      body: { format: mermaid }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

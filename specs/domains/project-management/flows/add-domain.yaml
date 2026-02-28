@@ -1,0 +1,92 @@
+flow:
+  id: add-domain
+  name: Add Domain
+  type: traditional
+  domain: project-management
+  description: Create new domain directory, write domain.yaml with empty config, update ddd-project.json, update system layout
+
+trigger:
+  id: trigger-addDomain
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Add Domain
+  spec:
+    event: "ui:add-domain-dialog"
+    description: User submits AddDomainDialog
+  connections:
+    - targetNodeId: process-buildDomainConfig
+
+nodes:
+  - id: process-buildDomainConfig
+    type: process
+    position: { x: 250, y: 130 }
+    label: Build Domain Config
+    spec:
+      action: Create DomainConfig with empty flows/events/layout; compute auto-position below last domain
+    connections:
+      - targetNodeId: ipc-writeDomainYaml
+
+  - id: ipc-writeDomainYaml
+    type: ipc_call
+    position: { x: 250, y: 260 }
+    label: Write domain.yaml
+    spec:
+      command: write_file
+      args:
+        path: "{projectPath}/specs/domains/{domainId}/domain.yaml"
+        contents: stringify(newDomain)
+      description: markWriting() called first to suppress file-watcher
+    connections:
+      - targetNodeId: process-updateProjectJson
+        sourceHandle: success
+      - targetNodeId: terminal-error
+        sourceHandle: error
+
+  - id: process-updateProjectJson
+    type: process
+    position: { x: 250, y: 390 }
+    label: Update ddd-project.json
+    spec:
+      action: Read project.json, append domain entry, write back
+    connections:
+      - targetNodeId: process-updateSystemLayout
+
+  - id: process-updateSystemLayout
+    type: process
+    position: { x: 250, y: 520 }
+    label: Update System Layout
+    spec:
+      action: Add domain position to systemLayout.domains, write system-layout.yaml
+    connections:
+      - targetNodeId: process-recordHistory
+
+  - id: process-recordHistory
+    type: process
+    position: { x: 250, y: 650 }
+    label: Record Change History
+    spec:
+      action: change-history-store.recordSave({specFile, level:L1, domain, action:created})
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 780 }
+    label: Domain Added
+    spec:
+      outcome: success
+      status: 201
+      body: { domainId: "{{domainId}}" }
+
+  - id: terminal-error
+    type: terminal
+    position: { x: 550, y: 390 }
+    label: Write Error
+    spec:
+      outcome: error
+      status: 500
+      body: { error: FILE_WRITE_FAILED }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

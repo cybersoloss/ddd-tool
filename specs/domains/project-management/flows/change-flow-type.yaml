@@ -1,0 +1,104 @@
+flow:
+  id: change-flow-type
+  name: Change Flow Type
+  type: traditional
+  domain: project-management
+  description: Toggle flow between traditional and agent types; add or remove agent_loop node
+
+trigger:
+  id: trigger-changeFlowType
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Change Flow Type
+  spec:
+    event: "ui:change-flow-type-toggle"
+    description: User toggles flow type (traditional ↔ agent) in FlowCanvas toolbar
+  connections:
+    - targetNodeId: process-readCurrentFlow
+
+nodes:
+  - id: process-readCurrentFlow
+    type: process
+    position: { x: 250, y: 130 }
+    label: Read Current Flow State
+    spec:
+      action: Get current FlowDocument from flow-store; determine current type and target type
+    connections:
+      - targetNodeId: decision-switchingToAgent
+
+  - id: decision-switchingToAgent
+    type: decision
+    position: { x: 250, y: 260 }
+    label: Switching to Agent?
+    spec:
+      condition: "targetType === 'agent'"
+    connections:
+      - targetNodeId: process-addAgentLoop
+        sourceHandle: "true"
+      - targetNodeId: process-removeAgentLoop
+        sourceHandle: "false"
+
+  - id: process-addAgentLoop
+    type: process
+    position: { x: 100, y: 390 }
+    label: Add agent_loop Node
+    spec:
+      action: Insert agent_loop node with default model/tools config; rewire trigger to connect to agent_loop; update flow.type to 'agent'
+    connections:
+      - targetNodeId: ipc-saveFlowYaml
+
+  - id: process-removeAgentLoop
+    type: process
+    position: { x: 400, y: 390 }
+    label: Remove agent_loop Node
+    spec:
+      action: Remove agent_loop node; rewire trigger connections to agent_loop's targets; update flow.type to 'traditional'
+    connections:
+      - targetNodeId: ipc-saveFlowYaml
+
+  - id: ipc-saveFlowYaml
+    type: ipc_call
+    position: { x: 250, y: 520 }
+    label: Save flow.yaml
+    spec:
+      command: write_file
+      args:
+        path: "{projectPath}/specs/domains/{domainId}/flows/{flowId}.yaml"
+        contents: stringify(updatedFlowDocument)
+      description: markWriting() called first
+    connections:
+      - targetNodeId: process-updateDomainYaml
+        sourceHandle: success
+      - targetNodeId: terminal-error
+        sourceHandle: error
+
+  - id: process-updateDomainYaml
+    type: process
+    position: { x: 250, y: 650 }
+    label: Update domain.yaml
+    spec:
+      action: Update flow.type in domain.flows[] entry, write domain.yaml
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 780 }
+    label: Flow Type Changed
+    spec:
+      outcome: success
+      status: 200
+      body: { flowId: "{{flowId}}", newType: "{{targetType}}" }
+
+  - id: terminal-error
+    type: terminal
+    position: { x: 550, y: 520 }
+    label: Save Error
+    spec:
+      outcome: error
+      status: 500
+      body: { error: FILE_WRITE_FAILED }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

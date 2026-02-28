@@ -1,15 +1,13 @@
 name: _base
-description: "Base schema with shared fields inherited by all entities"
+description: Base fields shared by timestamped spec files (metadata)
+
 fields:
-  - name: id
-    type: string
+  - name: created
+    type: datetime
     required: true
-    description: "Unique identifier for the entity"
-  - name: created_at
+    description: ISO 8601 timestamp when the spec was created
+
+  - name: modified
     type: datetime
-    required: false
-    description: "ISO 8601 timestamp when the entity was created"
-  - name: modified_at
-    type: datetime
-    required: false
-    description: "ISO 8601 timestamp when the entity was last modified"
+    required: true
+    description: ISO 8601 timestamp of last modification

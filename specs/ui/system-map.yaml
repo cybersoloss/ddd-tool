@@ -1,176 +1,111 @@
-page_id: system-map
-name: System Map (L1)
-description: Visual canvas showing all domains with event arrows and zone grouping
-layout: full
-auth_required: false
+page: system-map
+route: /project/system-map
 
 sections:
   - id: canvas
-    type: canvas
-    layout: full
-    description: Full-screen draggable canvas with domain blocks, event arrows, and zone boundaries
-    library: react-flow
-    features:
-      - pan-and-zoom
-      - fit-view
-      - minimap
-      - grid-background
-    node_types:
-      - type: domain-block
-        description: Rectangular block representing a domain
-        displays: [name, description, role, flowCount]
-        badge: flow-count
-        actions:
-          - double-click: navigateToDomain
-          - context-menu: [editDomain, deleteDomain, moveDomain]
-      - type: zone-boundary
-        description: Dashed boundary grouping domains into logical zones
-        displays: [zoneName]
-        style: dashed-border
-    edge_types:
-      - type: event-arrow
-        description: Arrow showing event flow between domains
-        displays: [eventName]
-        style: animated-dashed
-        label_position: center
-    interactions:
-      - drag-domain: reposition domain block on canvas
-      - double-click-domain: drill down to Domain Map (L2)
-      - right-click-canvas: context menu with add domain
-      - right-click-domain: context menu with edit/delete
-      - select-domain: highlight and show in spec panel
+    component: react-flow-canvas
+    label: System Map Canvas (L1)
+    description: >
+      Infinite canvas showing all domains as DomainBlock nodes.
+      Event arrows (EventArrow) drawn between domains that share events.
+      Drag domains to reposition. Double-click to drill into Domain Map (L2).
+    item_template:
+      node_type: DomainBlock
+      fields:
+        - label: domain name
+        - badge: flow count
+        - badge: schema count
+        - indicator: role (entity/process/interface/orchestration)
+    item_actions:
+      - label: Drill In
+        action: navigate-to-domain-map
+        trigger: double-click
+      - label: Add Domain
+        flow: project-management/add-domain
+        trigger: toolbar-button
+      - label: Delete Domain
+        flow: project-management/delete-domain
+        confirm: true
+        confirm_message: Delete domain and all its flows?
+      - label: Rename Domain
+        flow: project-management/rename-domain
+      - label: Auto Layout
+        flow: canvas-views/auto-layout-domains
+      - label: Add Event Wiring
+        flow: canvas-views/add-event-wiring-dialog
+
+  - id: breadcrumb
+    component: breadcrumb
+    position: top
+    fields:
+      level: L1
+      project_name: "{{project.name}}"
 
   - id: toolbar
-    type: toolbar
-    layout: horizontal
+    component: button-group
     position: top-right
-    elements:
-      - type: button
-        label: Add Domain
-        icon: Plus
-        action: openAddDomainDialog
-        shortcut: D
-      - type: button
-        label: Auto Layout
-        icon: LayoutGrid
-        action: autoLayout
-        shortcut: Cmd+L
-      - type: button
-        label: Reload
-        icon: RefreshCw
-        action: reloadProject
-        shortcut: Cmd+R
-      - type: separator
-      - type: button
-        label: Generate CLAUDE.md
-        icon: FileText
-        action: generateClaudeMd
-        tooltip: Generate CLAUDE.md context file for the project
-      - type: button
-        label: Copy Implement Command
-        icon: Copy
-        action: copyImplementCommand
-        tooltip: Copy /ddd-implement command to clipboard
+    buttons:
+      - label: Add Domain
+        flow: project-management/add-domain
+      - label: Auto Layout
+        flow: canvas-views/auto-layout-domains
+      - label: Git
+        navigate: /git-panel
+      - label: Settings
+        navigate: /settings
+
+state:
+  store: project-store
+  initial_fetch: [project-management/load-project]
+  local:
+    showAddDomain: false
+    showEventWiring: false
 
 forms:
   - id: add-domain-dialog
-    type: single
-    title: Add Domain
-    presentation: dialog
+    label: Add Domain
+    position: modal
     fields:
-      - key: name
-        label: Domain Name
+      - name: name
         type: text
+        label: Domain Name
         required: true
-        placeholder: e.g., auth, billing, notifications
-        validation:
-          pattern: "^[a-z][a-z0-9-]*$"
-          message: Lowercase letters, numbers, and hyphens; must start with letter
-      - key: description
-        label: Description
+      - name: description
         type: textarea
+        label: Description
         required: false
-        placeholder: What this domain is responsible for
-      - key: role
-        label: Role
-        type: select
-        options: [core, supporting, generic]
-        default: core
-    actions:
-      submit:
-        label: Add Domain
-        action: addDomain
-      cancel:
-        label: Cancel
-        action: closeDialog
+    submit:
+      flow: project-management/add-domain
+      label: Add Domain
+      success:
+        message: Domain added
 
   - id: event-wiring-dialog
-    type: single
-    title: Wire Event
-    presentation: dialog
+    label: Add Event Wiring
+    position: modal
     fields:
-      - key: eventName
-        label: Event Name
-        type: text
-        required: true
-        placeholder: e.g., user.created, order.completed
-      - key: fromDomain
-        label: From Domain
+      - name: sourceDomainId
         type: select
-        options_depends_on: project-store.domains
+        label: Source Domain
+        options_source: project-store/domain-ids
         required: true
-      - key: toDomain
-        label: To Domain
+      - name: targetDomainId
         type: select
-        options_depends_on: project-store.domains
+        label: Target Domain
+        options_source: project-store/domain-ids
         required: true
-    actions:
-      submit:
-        label: Wire Event
-        action: wireEvent
-      cancel:
-        label: Cancel
-        action: closeDialog
-
-  - id: new-event-dialog
-    type: single
-    title: New Event
-    presentation: dialog
-    fields:
-      - key: event
-        label: Event Name
+      - name: eventName
         type: text
+        label: Event Name
         required: true
-        placeholder: e.g., user.registered
-      - key: payload
-        label: Payload Schema
-        type: code
-        language: yaml
+      - name: fromFlow
+        type: text
+        label: From Flow ID
         required: false
-        placeholder: |
-          user_id: string
-          email: string
-    actions:
-      submit:
-        label: Create Event
-        action: createEvent
-      cancel:
-        label: Cancel
-        action: closeDialog
-
-state:
-  domains:
-    source: project-store
-    type: array
-  selectedDomainId:
-    type: string
-    default: null
-  canvasViewport:
-    type: object
-    default: { x: 0, y: 0, zoom: 1 }
-  addDomainDialogOpen:
-    type: boolean
-    default: false
-  eventWiringDialogOpen:
-    type: boolean
-    default: false
+      - name: handledByFlow
+        type: text
+        label: Handled By Flow ID
+        required: false
+    submit:
+      flow: project-management/add-event-arrow
+      label: Add Event Wiring

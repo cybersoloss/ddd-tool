@@ -1,0 +1,64 @@
+name: Specs Sidebar
+description: Left sidebar panel for viewing and editing the Data, Interface, and Infrastructure pillars. Reads and writes schema YAMLs, UI page specs, and infrastructure.yaml. Owns the specs-store Zustand store.
+role: interface
+
+owns_schemas:
+  - SchemaSpec
+  - UIPageSpec
+  - InfrastructureSpec
+
+stores:
+  - name: specs-store
+    shape:
+      schemas: "Record<string, SchemaSpec>"
+      uiPages: "PagesConfig | null"
+      infrastructure: "InfrastructureSpec | null"
+      activeTab: "\"data\" | \"interface\" | \"infrastructure\""
+      loading: boolean
+    access_pattern: read_write
+
+flows:
+  - id: load-all
+    name: Load All Specs
+    description: Load all schemas, UI pages, and infrastructure spec from disk into specs-store
+    type: traditional
+
+  - id: list-schemas
+    name: List Schemas
+    description: Read specs/schemas/ directory and return list of available schema names
+    type: traditional
+
+  - id: add-schema
+    name: Add Schema
+    description: Create new schema YAML file from minimal template; add to specs-store
+    type: traditional
+
+  - id: edit-schema
+    name: Edit Schema
+    description: Update a schema spec field via SchemaEditor UI and persist to disk
+    type: traditional
+
+  - id: edit-ui-page
+    name: Edit UI Page
+    description: Update a page spec via UIPageEditor UI and persist to disk
+    type: traditional
+
+  - id: edit-infrastructure
+    name: Edit Infrastructure
+    description: Update infrastructure.yaml via InfrastructureEditor UI and persist to disk
+    type: traditional
+
+consumes_events:
+  - event: project:opened
+    handled_by_flow: load-all
+    description: Project loaded — load all pillar specs
+
+layout:
+  flows:
+    load-all: { x: 100, y: 100 }
+    list-schemas: { x: 400, y: 100 }
+    add-schema: { x: 700, y: 100 }
+    edit-schema: { x: 100, y: 280 }
+    edit-ui-page: { x: 400, y: 280 }
+    edit-infrastructure: { x: 700, y: 280 }
+  portals: {}

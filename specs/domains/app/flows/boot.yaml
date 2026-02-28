@@ -1,0 +1,127 @@
+flow:
+  id: boot
+  name: Boot
+  type: traditional
+  domain: app
+  description: Initialize app on startup — resolve home dir, check first-run, load settings and recent projects, route to correct view
+
+trigger:
+  id: trigger-boot0001
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: App Launch
+  spec:
+    event: "ipc:app-launch"
+    description: Tauri window loaded, App component mounted
+  connections:
+    - targetNodeId: process-resolveHome
+      label: startup
+
+nodes:
+  - id: process-resolveHome
+    type: process
+    position: { x: 250, y: 130 }
+    label: Resolve Home Dir
+    spec:
+      action: Call Tauri homeDir() API and inject result as window.__HOME_DIR__ global
+      description: >
+        Uses @tauri-apps/api/path homeDir() to get the platform home directory,
+        then sets window.__HOME_DIR__ as a global variable. Downstream code reads
+        window.__HOME_DIR__ (instead of re-invoking the Tauri API) to construct
+        paths like ~/.ddd-tool/settings.json and ~/.ddd-tool/recent-projects.json.
+        This global injection pattern avoids async Tauri calls in path helpers.
+    connections:
+      - targetNodeId: ipc-checkFirstRun
+        sourceHandle: ~
+
+  - id: ipc-checkFirstRun
+    type: ipc_call
+    position: { x: 250, y: 260 }
+    label: Check First Run
+    spec:
+      command: path_exists
+      args: { path: "~/.ddd-tool/settings.json" }
+      return_type: boolean
+      description: First run if settings.json does not exist
+    connections:
+      - targetNodeId: ipc-loadSettings
+        sourceHandle: success
+      - targetNodeId: terminal-firstRunError
+        sourceHandle: error
+
+  - id: ipc-loadSettings
+    type: ipc_call
+    position: { x: 250, y: 390 }
+    label: Load Settings
+    spec:
+      command: read_file
+      args: { path: "~/.ddd-tool/settings.json" }
+      return_type: GlobalSettings
+      description: Load persisted settings; merge with DEFAULT_SETTINGS as fallback
+    connections:
+      - targetNodeId: ipc-loadRecentProjects
+        sourceHandle: success
+      - targetNodeId: ipc-loadRecentProjects
+        sourceHandle: error
+        label: use defaults
+
+  - id: ipc-loadRecentProjects
+    type: ipc_call
+    position: { x: 250, y: 520 }
+    label: Load Recent Projects
+    spec:
+      command: read_file
+      args: { path: "~/.ddd-tool/recent-projects.json" }
+      return_type: "RecentProject[]"
+      description: Load recent projects list; prune entries whose paths no longer exist
+    connections:
+      - targetNodeId: decision-firstRun
+        sourceHandle: success
+      - targetNodeId: decision-firstRun
+        sourceHandle: error
+        label: use empty list
+
+  - id: decision-firstRun
+    type: decision
+    position: { x: 250, y: 650 }
+    label: Is First Run?
+    spec:
+      condition: "isFirstRun === true (settings.json did not exist)"
+    connections:
+      - targetNodeId: terminal-firstRun
+        sourceHandle: "true"
+      - targetNodeId: terminal-launcher
+        sourceHandle: "false"
+
+  - id: terminal-launcher
+    type: terminal
+    position: { x: 250, y: 780 }
+    label: Show Launcher
+    spec:
+      outcome: success
+      status: 200
+      body: { view: launcher, booted: true }
+      description: Set view to 'launcher', booted = true
+
+  - id: terminal-firstRun
+    type: terminal
+    position: { x: 550, y: 780 }
+    label: Show First Run
+    spec:
+      outcome: success
+      status: 200
+      body: { view: first-run, booted: true }
+      description: Set view to 'first-run', booted = true
+
+  - id: terminal-firstRunError
+    type: terminal
+    position: { x: 550, y: 390 }
+    label: Boot Error
+    spec:
+      outcome: error
+      status: 500
+      body: { error: "Failed to check first run" }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T01:00:00.000Z"

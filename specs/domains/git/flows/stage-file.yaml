@@ -1,61 +1,63 @@
 flow:
   id: stage-file
-  name: "Stage File"
+  name: Stage File
   type: traditional
   domain: git
-  description: "Stages a single file for the next commit"
+  description: Stage a specific file via Tauri IPC git_stage_file; refresh git status
 
 trigger:
-  id: trigger-fK1xQ3tU
+  id: trigger-stageFile
   type: trigger
-  position: { x: 300, y: 0 }
-  label: "Stage File"
+  position: { x: 250, y: 0 }
+  label: Stage File
   spec:
-    event: "ui:stage-file"
-    description: "User clicks the stage button on an unstaged file entry"
+    event: "ui:stage-file-button"
+    description: User clicks stage button on a file in git panel unstaged/untracked list
   connections:
-    - targetNodeId: ipc-gL2yR4uV
+    - targetNodeId: ipc-stageFile
 
 nodes:
-  - id: ipc-gL2yR4uV
+  - id: ipc-stageFile
     type: ipc_call
-    position: { x: 300, y: 130 }
-    label: "Git Stage File"
+    position: { x: 250, y: 130 }
+    label: Stage File
     spec:
-      command: "git_stage_file"
-      payload: "File path relative to project root"
+      command: git_stage_file
+      args:
+        path: "{{projectPath}}"
+        file: "{{filePath}}"
     connections:
-      - targetNodeId: process-hM3zS5vW
-        sourceHandle: "success"
-      - targetNodeId: terminal-jP5bU7xY
-        sourceHandle: "error"
+      - targetNodeId: process-refreshStatus
+        sourceHandle: success
+      - targetNodeId: terminal-error
+        sourceHandle: error
 
-  - id: process-hM3zS5vW
+  - id: process-refreshStatus
     type: process
-    position: { x: 300, y: 260 }
-    label: "Refresh Status"
+    position: { x: 250, y: 260 }
+    label: Refresh Status
     spec:
-      action: "Trigger refresh-status flow to update git-store with new staging state"
+      action: Trigger get-status flow to reload staged/unstaged lists
     connections:
-      - targetNodeId: terminal-iN4aT6wX
+      - targetNodeId: terminal-success
 
-  - id: terminal-iN4aT6wX
+  - id: terminal-success
     type: terminal
-    position: { x: 300, y: 390 }
-    label: "File Staged"
+    position: { x: 250, y: 390 }
+    label: File Staged
     spec:
       outcome: success
-      description: "File moved to staged area and status refreshed"
-    connections: []
+      status: 200
+      body: { file: "{{filePath}}" }
 
-  - id: terminal-jP5bU7xY
+  - id: terminal-error
     type: terminal
     position: { x: 550, y: 260 }
-    label: "Stage Error"
+    label: Stage Error
     spec:
-      outcome: failure
-      description: "Failed to stage file"
-    connections: []
+      outcome: error
+      status: 500
+      body: { error: GIT_STAGE_FAILED }
 
 metadata:
   created: "2026-02-28T00:00:00.000Z"

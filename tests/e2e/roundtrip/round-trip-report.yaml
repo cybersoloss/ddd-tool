@@ -1,0 +1,85 @@
+report: round-trip-report
+mode: online
+started_at: 2026-02-28T14:23:43.754Z
+completed_at: 2026-02-28T14:38:52.744Z
+verdict: PASS
+phases:
+  - name: "Phase 1: Fixture Setup"
+    status: pass
+    duration_ms: 6
+    details: 10 spec files
+  - name: "Phase 2: Original Validation"
+    status: pass
+    duration_ms: 13
+    details: 2 domains, 3 flows, 0 errors
+  - name: "Phase 3: Scaffold"
+    status: pass
+    duration_ms: 205462
+  - name: "Phase 4: Implement"
+    status: pass
+    duration_ms: 381915
+  - name: "Phase 5: Code Strip"
+    status: pass
+    duration_ms: 5
+  - name: "Phase 6: Reverse"
+    status: pass
+    duration_ms: 321218
+    details: 11 spec files
+  - name: "Phase 7: Reversed Validation"
+    status: pass
+    duration_ms: 6
+    details: 2 domains, 3 flows, 0 errors
+  - name: "Phase 8: Compare"
+    status: pass
+    duration_ms: 1
+    details: 98%
+original:
+  domains: 2
+  flows: 3
+  nodes: 16
+  connections: 13
+  schemas: 1
+  event_wiring: 1
+  validation_errors: 0
+  validation_warnings: 0
+  quality_score: 100
+reversed:
+  domains: 2
+  flows: 3
+  nodes: 18
+  connections: 15
+  schemas: 1
+  event_wiring: 1
+  validation_errors: 0
+  validation_warnings: 0
+  quality_score: 100
+comparison:
+  overall_score: 98
+  threshold: 70
+  passed: true
+  dimensions:
+    - dimension: Domains
+      original: 2
+      reversed: 2
+      score_pct: 100
+    - dimension: Flows
+      original: 3
+      reversed: 3
+      score_pct: 95
+    - dimension: Nodes
+      original: 16
+      reversed: 18
+      score_pct: 89
+    - dimension: Connections
+      original: 13
+      reversed: 15
+      score_pct: 87
+    - dimension: Schemas
+      original: 1
+      reversed: 1
+      score_pct: 100
+    - dimension: Events
+      original: 1
+      reversed: 1
+      score_pct: 100
+  discrepancies: []

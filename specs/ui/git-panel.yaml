@@ -1,185 +1,79 @@
-page_id: git-panel
-name: Git Panel
-description: Git status, staging, commit, and history panel docked to the right
-layout: sidebar
-auth_required: false
+page: git-panel
+route: /project/git
 
 sections:
-  - id: header
-    type: header
-    layout: horizontal
-    elements:
-      - type: icon
-        icon: GitBranch
-        size: 16
-      - type: text
-        text_source: git-store.currentBranch
-        weight: bold
-        description: Current branch name
-      - type: spacer
-      - type: button
-        label: Refresh
-        icon: RefreshCw
-        action: refreshGitStatus
-        variant: ghost
-        size: sm
-        tooltip: Refresh git status
-      - type: button
-        label: Close
-        icon: X
-        action: closeGitPanel
-        variant: ghost
-        size: sm
-
   - id: staged-files
-    type: list
-    layout: vertical
-    title: Staged Changes
-    collapsible: true
-    default_open: true
-    empty_state: No staged files
-    data_source: git-store.stagedFiles
-    header_actions:
-      - id: unstage-all
-        label: Unstage All
-        icon: MinusCircle
-        action: unstageAll
-        variant: ghost
-        size: sm
-        visible_when: stagedFiles.length > 0
-    item:
-      type: file-status-row
-      fields:
-        - key: path
-          type: text
-          truncate: start
-          monospace: true
-        - key: status
-          type: badge
-          variants:
-            A: added
-            M: modified
-            D: deleted
-            R: renamed
-      actions:
-        - id: unstage
-          label: Unstage
-          icon: Minus
-          action: unstageFile
-          variant: ghost
-          size: sm
+    component: list
+    label: Staged Changes
+    data_source: git/get-status
+    item_template:
+      primary: path
+      secondary: status
+    item_actions:
+      - label: Unstage
+        flow: git/unstage-file
+        args: { filePath: "{{item.path}}" }
+    empty_state:
+      message: No staged changes
+      description: Stage files below to include in the commit
 
-  - id: changes
-    type: list
-    layout: vertical
-    title: Changes
-    collapsible: true
-    default_open: true
-    empty_state: No changes
-    data_source: git-store.unstagedFiles
-    description: Unstaged modifications and untracked files
-    header_actions:
-      - id: stage-all
-        label: Stage All
-        icon: PlusCircle
-        action: stageAll
-        variant: ghost
-        size: sm
-        visible_when: unstagedFiles.length > 0
-    item:
-      type: file-status-row
-      fields:
-        - key: path
-          type: text
-          truncate: start
-          monospace: true
-        - key: status
-          type: badge
-          variants:
-            M: modified
-            D: deleted
-            "?": untracked
-      actions:
-        - id: stage
-          label: Stage
-          icon: Plus
-          action: stageFile
-          variant: ghost
-          size: sm
+  - id: unstaged-files
+    component: list
+    label: Unstaged Changes
+    data_source: git/get-status
+    item_template:
+      primary: path
+      secondary: status
+    item_actions:
+      - label: Stage
+        flow: git/stage-file
+        args: { filePath: "{{item.path}}" }
+    empty_state:
+      message: No unstaged changes
 
-  - id: commit
-    type: form-inline
-    layout: vertical
-    title: Commit
+  - id: untracked-files
+    component: list
+    label: Untracked Files
+    data_source: git/get-status
+    item_template:
+      primary: path
+    item_actions:
+      - label: Stage
+        flow: git/stage-file
+        args: { filePath: "{{item.path}}" }
+    empty_state:
+      message: No untracked files
+
+  - id: commit-history
+    component: list
+    label: Recent Commits
+    data_source: git/get-log
+    item_template:
+      primary: message
+      secondary: oid (first 8 chars)
+      meta: timestamp (relative)
+    empty_state:
+      message: No commits yet
+
+forms:
+  - id: commit-form
+    label: Commit
+    position: inline
     fields:
-      - key: message
+      - name: message
         type: textarea
-        placeholder: Commit message...
+        label: Commit Message
         required: true
-        rows: 3
-        shortcut:
-          submit: Cmd+Enter
-    actions:
-      - id: commit
-        label: Commit
-        icon: Check
-        action: commitChanges
-        variant: primary
-        disabled_when: stagedFiles.length == 0 || message == ""
-
-  - id: log
-    type: list
-    layout: vertical
-    title: History
-    collapsible: true
-    default_open: false
-    data_source: git-store.commitHistory
-    max_items: 50
-    empty_state: No commit history
-    item:
-      type: commit-row
-      fields:
-        - key: hash
-          type: text
-          monospace: true
-          truncate: 7
-          muted: true
-        - key: message
-          type: text
-          truncate: true
-          max_lines: 2
-        - key: author
-          type: text
-          muted: true
-          size: sm
-        - key: date
-          type: relative-time
-          muted: true
-          size: sm
+        placeholder: "Describe your changes"
+    submit:
+      flow: git/commit
+      label: Commit
+      loading_label: Committing...
+      success:
+        message: Committed successfully
 
 state:
-  currentBranch:
-    source: git-store
-    type: string
-  stagedFiles:
-    source: git-store
-    type: array
-  unstagedFiles:
-    source: git-store
-    type: array
-  commitHistory:
-    source: git-store
-    type: array
-  commitMessage:
-    type: string
-    default: ""
-  isCommitting:
-    type: boolean
-    default: false
-  isRefreshing:
-    type: boolean
-    default: false
-  pollInterval:
-    type: number
-    default: 10000
-    description: Git status polling interval in milliseconds
+  initial_fetch: [git/get-status, git/get-log]
+  local:
+    polling: true
+    poll_interval_ms: 10000

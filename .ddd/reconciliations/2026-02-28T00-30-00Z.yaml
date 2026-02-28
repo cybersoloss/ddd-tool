@@ -1,0 +1,161 @@
+generated_at: "2026-02-28T00:30:00.000Z"
+source: ddd-sync
+flags: []  # plain sync — no --discover, --fix-drift, --verify
+
+summary:
+  overall_status: in_sync
+  flows_checked: 49
+  flows_in_sync: 48
+  flows_spec_ahead: 1
+  flows_code_ahead: 0
+  flows_diverged: 0
+  pages_checked: 9
+  pages_in_sync: 9
+  schemas_checked: 6
+  schemas_in_sync: 6
+  infra_services_checked: 6
+  infra_services_in_sync: 6
+  change_history_pending: 0
+
+# ── Data (Schemas) ───────────────────────────────────────────────────────
+data:
+  - schema: _base
+    status: in_sync
+    notes: Common base interfaces — src/types/ has matching patterns
+  - schema: flow-document
+    status: in_sync
+    impl_file: src/types/flow.ts
+  - schema: domain-config
+    status: in_sync
+    impl_file: src/types/domain.ts
+  - schema: project-config
+    status: in_sync
+    impl_file: src/types/app.ts
+  - schema: global-settings
+    status: in_sync
+    impl_file: src/types/app.ts
+  - schema: flow-mapping
+    status: in_sync
+    impl_file: src/types/implementation.ts
+
+# ── Interface (Pages) ────────────────────────────────────────────────────
+interface:
+  - page: project-launcher
+    status: in_sync
+    specHash_match: true
+    fileHash_match: true
+  - page: first-run-wizard
+    status: in_sync
+    specHash_match: true
+    fileHash_match: true
+  - page: system-map
+    status: in_sync
+    specHash_match: true
+    fileHash_match: true
+  - page: domain-map
+    status: in_sync
+    specHash_match: true
+    fileHash_match: true
+  - page: flow-canvas
+    status: in_sync
+    specHash_match: true
+    fileHash_match: true
+  - page: git-panel
+    status: in_sync
+    specHash_match: true
+    fileHash_match: true
+  - page: validation-panel
+    status: in_sync
+    specHash_match: true
+    fileHash_match: true
+  - page: specs-sidebar-panel
+    status: in_sync
+    specHash_match: true
+    fileHash_match: true
+  - page: settings-dialog
+    status: in_sync
+    specHash_match: true
+    fileHash_match: true
+
+# ── Infrastructure ───────────────────────────────────────────────────────
+infrastructure:
+  status: in_sync
+  services:
+    - id: tauri-app
+      status: in_sync
+    - id: vite-dev-server
+      status: in_sync
+    - id: local-filesystem
+      status: in_sync
+    - id: libgit2
+      status: in_sync
+    - id: system-git
+      status: in_sync
+    - id: claude-code-cli
+      status: in_sync
+  notes: >
+    Demo/test scripts (demo:*, test:*) in package.json not captured in
+    infrastructure spec — dev tooling, not core services, acceptable gap.
+
+# ── Logic (Flows) ────────────────────────────────────────────────────────
+logic:
+  in_sync:
+    - app/boot
+    - app/open-project
+    - app/save-settings
+    - app/complete-first-run
+    - project-management/load-project
+    - project-management/create-project
+    - project-management/add-domain
+    - project-management/delete-domain
+    - project-management/rename-domain
+    - project-management/add-flow
+    - project-management/delete-flow
+    - project-management/rename-flow
+    - project-management/duplicate-flow
+    - project-management/move-flow
+    - project-management/change-flow-type
+    - project-management/add-event-arrow
+    - flow-editor/load-flow
+    - flow-editor/save-flow
+    - flow-editor/add-node
+    - flow-editor/delete-node
+    - flow-editor/add-connection
+    - flow-editor/remove-connection
+    - flow-editor/auto-layout
+    - canvas-views/render-system-map
+    - canvas-views/render-domain-map
+    - canvas-views/navigate-to-level
+    - canvas-views/update-domain-position
+    - canvas-views/update-flow-position
+    - git/get-status
+    - git/get-log
+    - git/stage-file
+    - git/unstage-file
+    - git/commit
+    - git/clone-repository
+    - implementation/load-mappings
+    - implementation/detect-drift
+    - implementation/compute-sync-score
+    - implementation/resolve-drift
+    - implementation/run-claude-command
+    - specs-sidebar/load-all
+    - specs-sidebar/list-schemas
+    - specs-sidebar/add-schema
+    - specs-sidebar/edit-schema
+    - specs-sidebar/edit-ui-page
+    - specs-sidebar/edit-infrastructure
+    - validation/validate-flow
+    - validation/validate-domain
+    - validation/validate-system
+
+  spec_ahead:
+    - flow: flow-editor/export-mermaid
+      spec: specs/domains/flow-editor/flows/export-mermaid.yaml
+      specHash_match: true
+      impl_file: src/utils/mermaid-generator.ts
+      issue: Implementation file does not exist on disk
+      action: "/ddd-implement flow-editor/export-mermaid to create mermaid-generator.ts"
+
+  code_ahead: []
+  diverged: []

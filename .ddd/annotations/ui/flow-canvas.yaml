@@ -1,152 +1,68 @@
 page: flow-canvas
-captured_at: "2026-02-28T00:00:00.000Z"
+captured_at: "2026-02-28T00:30:00.000Z"
 captured_from: reflect
 patterns:
-  - id: kbrd-save
-    type: keyboard_shortcut
+  - id: iJ1pA7rN
+    type: custom
     description: >
-      Cmd+S flushes the 500ms debounced save and writes the current flow to disk
-      immediately. This is the only shortcut that fires even when the focus is
-      inside an input or textarea element — all other shortcuts are suppressed
-      when the user is typing in a form field.
-    applies_to_sections: [breadcrumb]
-    code_evidence:
-      file: src/components/Navigation/Breadcrumb.tsx
-      lines: "81-87"
-    status: candidate
-
-  - id: kbrd-undz
-    type: keyboard_shortcut
-    description: >
-      Cmd+Z triggers undo for the current flow. Cmd+Shift+Z and Cmd+Y both
-      trigger redo. These operate on per-flow undo stacks managed by
-      undo-store.ts, not browser-native undo. Suppressed when focus is in
-      input/textarea/contentEditable elements.
-    applies_to_sections: [breadcrumb]
-    code_evidence:
-      file: src/components/Navigation/Breadcrumb.tsx
-      lines: "96-117"
-    status: candidate
-
-  - id: kbrd-mmap
-    type: keyboard_shortcut
-    description: >
-      Cmd+Shift+M toggles the React Flow MiniMap overlay. Visibility state is
-      persisted in ui-store and survives across flow navigation.
-    applies_to_sections: [breadcrumb]
-    code_evidence:
-      file: src/components/Navigation/Breadcrumb.tsx
-      lines: "119-124"
-    status: candidate
-
-  - id: kbrd-reld
-    type: keyboard_shortcut
-    description: >
-      Cmd+R reloads the entire project from disk (re-parses ddd-project.json,
-      all domain.yaml files, and system-layout.yaml). This overrides the
-      browser's default page reload behavior via preventDefault().
-    applies_to_sections: [breadcrumb]
-    code_evidence:
-      file: src/components/Navigation/Breadcrumb.tsx
-      lines: "127-131"
-    status: candidate
-
-  - id: kbrd-srch
-    type: keyboard_shortcut
-    description: >
-      Cmd+K opens the search palette (SearchPalette component) for quick
-      navigation to flows, domains, nodes, and spec elements across the project.
-    applies_to_sections: [breadcrumb]
-    code_evidence:
-      file: src/components/Navigation/Breadcrumb.tsx
-      lines: "133-138"
-    status: candidate
-
-  - id: kbrd-lock
-    type: keyboard_shortcut
-    description: >
-      Cmd+Shift+L toggles the project lock state. When locked, nodes cannot be
-      dragged, connected, or deleted (nodesDraggable, nodesConnectable, and
-      deleteKeyCode are all gated by isLocked in FlowCanvas.tsx).
-    applies_to_sections: [breadcrumb]
-    code_evidence:
-      file: src/components/Navigation/Breadcrumb.tsx
-      lines: "140-145"
-    status: candidate
-
-  - id: kbrd-esc
-    type: keyboard_shortcut
-    description: >
-      Escape navigates up one level (flow -> domain -> system -> launcher).
-      At system level it returns to the launcher. If the validation panel is
-      open, Escape is consumed by it and does not trigger navigation.
-      At flow level with unsaved changes, an UnsavedChangesDialog is shown.
-    applies_to_sections: [breadcrumb]
-    code_evidence:
-      file: src/components/Navigation/Breadcrumb.tsx
-      lines: "147-155"
-    status: candidate
-
-  - id: vprt-save
-    type: timing
-    description: >
-      Viewport position (pan x/y and zoom) is persisted per flow using a
-      200ms debounce. The viewport key format is "flow:{domainId}/{flowId}".
-      On first load with no saved viewport, fitView() is called after a 50ms
-      delay to ensure React Flow has measured node dimensions.
+      Auto-save timer: when a flow loads, an interval timer starts that writes
+      the current flow state to .ddd/autosave/{flowId}.yaml at the interval
+      set in settings (default 30s, configurable via editor.autoSaveInterval).
+      The autosave file is deleted on clean unload (cleanupAutoSave).
+      This is separate from the 500ms debounced spec save — autosave is a
+      crash-recovery backup, not the real save. The page spec does not capture
+      this autosave lifecycle (start on load, stop and delete on unload).
     applies_to_sections: [canvas]
     code_evidence:
-      file: src/components/FlowCanvas/FlowCanvas.tsx
-      lines: "204-213"
-    status: candidate
+      file: src/stores/flow-store.ts
+      lines: "175-207"
+      snippet: >
+        function startAutoSave(_projectPath: string, flowId: string) {
+          autoSaveTimer = setInterval(async () => {
+            await invoke('write_file', {
+              path: getAutoSavePath(state.projectPath, flowId),
+              contents: stringify(state.currentFlow),
+            });
+          }, intervalSec * 1000);
+        }
+    status: promoted
 
-  - id: auto-vali
-    type: timing
+  - id: kL3qB8sO
+    type: custom
     description: >
-      Auto-validation fires 300ms after any change to the currentFlow state.
-      It calls validateCurrentFlow() which runs all flow-scope validation
-      rules synchronously and stores results keyed by "{domainId}/{flowId}".
+      Flush-on-unload: when navigating away from the flow canvas (unloadFlow),
+      any pending 500ms debounced save is flushed immediately before state is
+      cleared. This prevents losing edits when the user navigates quickly.
+      The spec's save-flow flow doesn't capture this flush-on-unload guarantee.
+    applies_to_sections: [canvas, flow-toolbar]
+    code_evidence:
+      file: src/stores/flow-store.ts
+      lines: "249-265"
+      snippet: >
+        if (saveTimer) {
+          clearTimeout(saveTimer);
+          saveTimer = null;
+          if (currentFlow?.flow && domainId && projectPath) {
+            void performSave(currentFlow, domainId, projectPath);
+          }
+        }
+    status: promoted
+
+  - id: mN5rC9tP
+    type: state_management
+    description: >
+      Lazy undo registration pattern: flow-store registers undo callbacks
+      (registerUndoPush, registerUndoClear) lazily via module-level variables
+      to avoid circular imports between flow-store and undo-store.
+      A _skipUndo flag prevents undo loops when undo-store restores state.
+      The page spec's state section does not capture this lazy-binding pattern.
     applies_to_sections: [canvas]
     code_evidence:
-      file: src/components/FlowCanvas/FlowCanvas.tsx
-      lines: "244-250"
-    status: candidate
-
-  - id: node-type
-    type: component_registration
-    description: >
-      All 29 DDD node types are registered with React Flow via a single
-      nodeTypes map imported from FlowCanvas/nodes/index.ts. Two custom edge
-      types are also registered: circuit_breaker (for smart_router circuit
-      breaker visualization) and behavior (for data/behavior annotations on
-      connections). Default edge style uses CSS variable --color-text-muted
-      for dark theme consistency.
-    applies_to_sections: [canvas]
-    code_evidence:
-      file: src/components/FlowCanvas/FlowCanvas.tsx
-      lines: "30-50"
-    status: candidate
-
-  - id: snap-grid
-    type: configuration
-    description: >
-      React Flow canvas uses snapToGrid with a 20x20 pixel grid. The
-      background variant is Dots (not Lines or Cross). Delete keys are
-      Backspace and Delete, but both are disabled when the project is locked.
-    applies_to_sections: [canvas]
-    code_evidence:
-      file: src/components/FlowCanvas/FlowCanvas.tsx
-      lines: "427-433"
-    status: candidate
-
-  - id: minimap-c
-    type: configuration
-    description: >
-      MiniMap uses a dark theme with nodeColor #1a1d27, maskColor
-      rgba(0,0,0,0.6), and background #0f1117. Visibility is toggled via
-      the minimapVisible flag in ui-store, persisted across sessions.
-    applies_to_sections: [canvas]
-    code_evidence:
-      file: src/components/FlowCanvas/FlowCanvas.tsx
-      lines: "439-445"
-    status: candidate
+      file: src/stores/flow-store.ts
+      lines: "49-62"
+      snippet: >
+        let _pushSnapshotFn: ((flowId: string, description: string) => void) | null = null;
+        export function registerUndoPush(fn: ...) { _pushSnapshotFn = fn; }
+        let _skipUndo = false;
+        export function setSkipUndo(v: boolean) { _skipUndo = v; }
+    status: promoted

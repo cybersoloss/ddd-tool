@@ -1,0 +1,101 @@
+page: settings-dialog
+route: /settings
+
+sections:
+  - id: settings-tabs
+    component: tabs
+    label: Settings Sections
+    fields:
+      tabs:
+        - id: claude-tab
+          label: Claude Code
+        - id: editor-tab
+          label: Editor
+        - id: git-tab
+          label: Git
+
+forms:
+  - id: claude-settings
+    label: Claude Code Settings
+    position: inline
+    visible_when: activeTab === 'claude'
+    fields:
+      - name: claudeCode.enabled
+        type: toggle
+        label: Enable Claude Code
+        default: true
+
+      - name: claudeCode.command
+        type: text
+        label: CLI Command
+        default: claude
+        visible_when: "claudeCode.enabled === true"
+
+    submit:
+      flow: app/save-settings
+      label: Save
+      success:
+        message: Settings saved
+
+  - id: editor-settings
+    label: Editor Settings
+    position: inline
+    visible_when: activeTab === 'editor'
+    fields:
+      - name: editor.theme
+        type: select
+        label: Theme
+        options: [light, dark, system]
+
+      - name: editor.gridSnap
+        type: toggle
+        label: Grid Snap
+
+      - name: editor.autoSave
+        type: toggle
+        label: Auto Save
+
+      - name: editor.autoSaveInterval
+        type: number
+        label: Auto Save Interval (seconds)
+        visible_when: "editor.autoSave === true"
+        min: 5
+        max: 300
+
+      - name: editor.fontSize
+        type: number
+        label: Font Size
+        min: 10
+        max: 24
+
+      - name: editor.saveNotification
+        type: toggle
+        label: Show Save Notification
+
+    submit:
+      flow: app/save-settings
+      label: Save
+
+  - id: git-settings
+    label: Git Settings
+    position: inline
+    visible_when: activeTab === 'git'
+    fields:
+      - name: git.autoCommitMessage
+        type: text
+        label: Auto Commit Message Template
+        placeholder: "DDD: {action} in {flow_id}"
+
+      - name: git.branchNaming
+        type: text
+        label: Branch Naming Template
+        placeholder: "ddd/{flow_id}"
+
+    submit:
+      flow: app/save-settings
+      label: Save
+
+state:
+  store: app-store
+  local:
+    activeTab: claude

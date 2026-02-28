@@ -1,13 +1,23 @@
 {
   "name": "ddd-tool",
-  "description": "Design Driven Development desktop app for visual flow-based software design",
+  "description": "DDD Tool — Design Driven Development desktop app for visual flow-based software design",
+  "techStack": {
+    "language": "TypeScript + Rust",
+    "languageVersion": "TypeScript 5.8 / Rust 2021",
+    "framework": "Tauri 2.0",
+    "database": "local-filesystem",
+    "orm": "none",
+    "runtime": "desktop"
+  },
   "domains": [
-    { "id": "project", "name": "Project Management" },
-    { "id": "canvas", "name": "Canvas Visualization" },
-    { "id": "spec-editing", "name": "Spec Editing" },
-    { "id": "git", "name": "Git Integration" },
-    { "id": "validation", "name": "Validation" },
-    { "id": "implementation", "name": "Implementation Tracking" },
-    { "id": "persistence", "name": "Persistence" }
-  ]
+    { "id": "app", "name": "App", "description": "Application lifecycle: boot, routing between views, error handling", "role": "process" },
+    { "id": "project-management", "name": "Project Management", "description": "CRUD for projects, domains, flows, and event wiring", "role": "entity" },
+    { "id": "flow-editor", "name": "Flow Editor", "description": "Flow canvas editing — nodes, connections, specs, undo/redo, save", "role": "entity" },
+    { "id": "canvas-views", "name": "Canvas Views", "description": "System Map (L1) and Domain Map (L2) visual navigation layers", "role": "interface" },
+    { "id": "git", "name": "Git", "description": "Git version control — status, staging, commit, clone, log", "role": "process" },
+    { "id": "implementation", "name": "Implementation", "description": "Drift detection, spec-to-code mapping, reconciliation", "role": "process" },
+    { "id": "specs-sidebar", "name": "Specs Sidebar", "description": "Four-pillars sidebar: schema editor, UI page editor, infrastructure editor", "role": "interface" },
+    { "id": "validation", "name": "Validation", "description": "Flow and project validation rules, quality gates, real-time indicators", "role": "process" }
+  ],
+  "createdAt": "2026-02-28T00:00:00.000Z"
 }

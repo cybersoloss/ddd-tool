@@ -1,0 +1,49 @@
+flow:
+  id: add-node
+  name: Add Node
+  type: traditional
+  domain: flow-editor
+  description: Create new node at canvas position from toolbar drag-drop; add to flow-store with default spec fields
+
+trigger:
+  id: trigger-addNode
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Add Node
+  spec:
+    event: "ui:node-toolbar-drop"
+    description: User drags node type from toolbar and drops on canvas; or clicks toolbar item (adds at center)
+  connections:
+    - targetNodeId: process-buildNode
+
+nodes:
+  - id: process-buildNode
+    type: process
+    position: { x: 250, y: 130 }
+    label: Build Node
+    spec:
+      action: Create DddFlowNode with id={type}-{8-char-random}, type, position from drop event, label=defaultLabel(type), spec=defaultSpec(type) — includes required fields for the node type
+    connections:
+      - targetNodeId: process-addToStore
+
+  - id: process-addToStore
+    type: process
+    position: { x: 250, y: 260 }
+    label: Add to flow-store
+    spec:
+      action: Append new node to flow-store.nodes; push to undo-store; set isDirty=true; trigger debounced auto-save
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 390 }
+    label: Node Added
+    spec:
+      outcome: success
+      status: 201
+      body: { nodeId: "{{nodeId}}", nodeType: "{{nodeType}}" }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

@@ -1,0 +1,39 @@
+name: App
+description: Application lifecycle — boot sequence, view routing, error handling, settings I/O
+role: process
+
+flows:
+  - id: boot
+    name: Boot
+    description: Initialize app on startup — resolve home dir, check first-run, load settings and recent projects, route to correct view
+    type: traditional
+
+  - id: open-project
+    name: Open Project
+    description: Open a project folder, load domain configs and system layout, switch to project view
+    type: traditional
+
+  - id: save-settings
+    name: Save Settings
+    description: Persist global settings to ~/.ddd-tool/settings.json
+    type: traditional
+
+  - id: complete-first-run
+    name: Complete First Run
+    description: Save first-run config and transition to project launcher
+    type: traditional
+
+publishes_events:
+  - event: project:opened
+    from_flow: open-project
+    description: Fired after project is fully loaded; project-management domain begins loading
+
+consumes_events: []
+
+layout:
+  flows:
+    boot: { x: 100, y: 100 }
+    open-project: { x: 400, y: 100 }
+    save-settings: { x: 100, y: 300 }
+    complete-first-run: { x: 400, y: 300 }
+  portals: {}

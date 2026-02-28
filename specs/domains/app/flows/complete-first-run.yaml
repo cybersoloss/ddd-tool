@@ -1,0 +1,64 @@
+flow:
+  id: complete-first-run
+  name: Complete First Run
+  type: traditional
+  domain: app
+  description: Save first-run config (settings) and transition to project launcher
+
+trigger:
+  id: trigger-completeFirstRun
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Complete First Run
+  spec:
+    event: "ui:complete-first-run"
+    description: User submits first-run wizard form
+  connections:
+    - targetNodeId: ipc-writeSettings
+
+nodes:
+  - id: ipc-writeSettings
+    type: ipc_call
+    position: { x: 250, y: 130 }
+    label: Write Settings File
+    spec:
+      command: write_file
+      args:
+        path: "~/.ddd-tool/settings.json"
+        contents: "JSON.stringify(settings, null, 2)"
+    connections:
+      - targetNodeId: process-setView
+        sourceHandle: success
+      - targetNodeId: terminal-error
+        sourceHandle: error
+
+  - id: process-setView
+    type: process
+    position: { x: 250, y: 260 }
+    label: Set View to Launcher
+    spec:
+      action: Set app-store view to 'launcher', isFirstRun to false
+    connections:
+      - targetNodeId: terminal-success
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 390 }
+    label: First Run Complete
+    spec:
+      outcome: success
+      status: 200
+      body: { view: launcher }
+
+  - id: terminal-error
+    type: terminal
+    position: { x: 550, y: 260 }
+    label: Save Failed
+    spec:
+      outcome: error
+      status: 500
+      body: { error: FILE_WRITE_FAILED }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

@@ -1,0 +1,72 @@
+page: validation-panel
+route: /project/validation
+
+sections:
+  - id: validation-tabs
+    component: tabs
+    label: Validation Scopes
+    fields:
+      tabs:
+        - id: flow-tab
+          label: Flow
+          description: Issues in the currently open flow
+        - id: domain-tab
+          label: Domain
+          description: Issues across all flows in the current domain
+        - id: system-tab
+          label: System
+          description: Issues across all domains (event wiring, cross-domain refs)
+
+  - id: flow-issues
+    component: list
+    label: Flow Issues
+    data_source: validation/get-flow-issues
+    item_template:
+      primary: message
+      secondary: node label
+      meta: severity (error/warning/info)
+    empty_state:
+      message: No issues in this flow
+      description: Flow is valid
+
+  - id: domain-issues
+    component: list
+    label: Domain Issues
+    data_source: validation/get-domain-issues
+    item_template:
+      primary: message
+      secondary: flow id
+      meta: severity
+    empty_state:
+      message: Domain is valid
+
+  - id: system-issues
+    component: list
+    label: System Issues
+    data_source: validation/get-system-issues
+    item_template:
+      primary: message
+      secondary: source domain / target domain
+      meta: severity
+    empty_state:
+      message: System is valid
+
+  - id: quality-score
+    component: metric
+    label: Quality Score
+    data_source: validation/get-quality-score
+    fields:
+      score: "{{score}}/100"
+      breakdown: per-rule
+
+  - id: implement-gate
+    component: alert-banner
+    visible_when: validation.hasErrors === true
+    fields:
+      message: "Fix validation errors before implementing"
+      type: warning
+
+state:
+  store: validation-store
+  local:
+    activeTab: flow

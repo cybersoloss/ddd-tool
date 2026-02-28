@@ -1,29 +1,36 @@
-environment_variables: []
+project: ddd-tool
 
-app_config:
-  settings_path: "~/.ddd-tool/settings.json"
-  log_path: "~/.ddd-tool/logs/ddd-tool.log"
-  recent_projects_path: "~/.ddd-tool/recent-projects.json"
-  max_recent_projects: 20
-  log_rotation:
-    max_bytes: 1048576
-    max_files: 3
+# No traditional .env file — this is a desktop app.
+# Configuration is stored in ~/.ddd-tool/settings.json (global settings)
+# and {projectPath}/.ddd/config.yaml (per-project overrides).
 
-project_config:
-  project_file: "ddd-project.json"
-  specs_dir: "specs/"
-  ddd_dir: ".ddd/"
-  autosave_dir: ".ddd/autosave/"
-  mapping_file: ".ddd/mapping.yaml"
-  change_history_file: ".ddd/change-history.yaml"
-  annotations_dir: ".ddd/annotations/"
-  reconciliations_dir: ".ddd/reconciliations/"
+global_settings_path: "~/.ddd-tool/settings.json"
+recent_projects_path: "~/.ddd-tool/recent-projects.json"
+log_path: "~/.ddd-tool/logs/ddd-tool.log"
 
 defaults:
-  auto_save_interval_ms: 30000
-  debounce_save_ms: 500
-  validation_debounce_ms: 300
-  git_poll_interval_ms: 10000
-  write_guard_ms: 2000
-  undo_coalesce_ms: 500
-  max_undo_entries: 100
+  claude_code:
+    enabled: true
+    command: claude
+  editor:
+    grid_snap: true
+    auto_save: false
+    auto_save_interval_seconds: 30
+    theme: dark
+    font_size: 14
+    save_notification: true
+  git:
+    auto_commit_message: "DDD: {action} in {flow_id}"
+    branch_naming: "ddd/{flow_id}"
+
+project_overrides:
+  path: "{projectPath}/.ddd/config.yaml"
+  mergeable_keys: [claudeCode, editor, git]
+
+log_rotation:
+  max_bytes_per_file: 10485760  # 10 MB
+  max_files: 5
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

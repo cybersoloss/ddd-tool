@@ -1,0 +1,65 @@
+flow:
+  id: save-settings
+  name: Save Settings
+  type: traditional
+  domain: app
+  description: Persist global settings to ~/.ddd-tool/settings.json
+
+trigger:
+  id: trigger-saveSettings
+  type: trigger
+  position: { x: 250, y: 0 }
+  label: Save Settings
+  spec:
+    event: "ui:save-settings"
+    description: User submits settings form
+  connections:
+    - targetNodeId: process-updateState
+
+nodes:
+  - id: process-updateState
+    type: process
+    position: { x: 250, y: 130 }
+    label: Update App State
+    spec:
+      action: Set settings in app-store Zustand state
+    connections:
+      - targetNodeId: ipc-writeSettings
+
+  - id: ipc-writeSettings
+    type: ipc_call
+    position: { x: 250, y: 260 }
+    label: Write Settings File
+    spec:
+      command: write_file
+      args:
+        path: "~/.ddd-tool/settings.json"
+        contents: "JSON.stringify(settings, null, 2)"
+      description: Persist to disk in JSON format
+    connections:
+      - targetNodeId: terminal-success
+        sourceHandle: success
+      - targetNodeId: terminal-error
+        sourceHandle: error
+
+  - id: terminal-success
+    type: terminal
+    position: { x: 250, y: 390 }
+    label: Settings Saved
+    spec:
+      outcome: success
+      status: 200
+      body: { saved: true }
+
+  - id: terminal-error
+    type: terminal
+    position: { x: 550, y: 390 }
+    label: Save Failed
+    spec:
+      outcome: error
+      status: 500
+      body: { error: FILE_WRITE_FAILED }
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

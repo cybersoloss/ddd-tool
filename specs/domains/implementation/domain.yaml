@@ -1,23 +1,55 @@
-name: "Implementation Tracking"
-description: "Tracks the mapping between DDD specs and implementation code. Detects drift via SHA-256 hash comparison, supports reconciliation workflows, and records change history."
+name: Implementation
+description: Drift detection and implementation tracking. Reads .ddd/mapping.yaml, computes SHA-256 hashes, detects spec vs code drift, writes reconciliation reports. Owns the implementation-store Zustand store.
 role: process
+
+owns_schemas:
+  - FlowMapping
+
+stores:
+  - name: implementation-store
+    shape:
+      mappings: "Record<string, FlowMapping>"
+      driftResults: "DriftResult[]"
+      syncScore: number
+      loading: boolean
+    access_pattern: read_write
+
 flows:
   - id: load-mappings
-    name: "Load Mappings"
-    description: "Reads .ddd/mapping.yaml and annotations on project open"
+    name: Load Mappings
+    description: Read .ddd/mapping.yaml into implementation-store on project open
+    type: traditional
+
   - id: detect-drift
-    name: "Detect Drift"
-    description: "Compares spec hashes against implementation file hashes to find drift"
+    name: Detect Drift
+    description: Compute SHA-256 of current spec files and compare against stored specHash values; classify drift type
+    type: traditional
+
+  - id: compute-sync-score
+    name: Compute Sync Score
+    description: Calculate quality/sync score across all mapped flows based on drift state
+    type: traditional
+
   - id: resolve-drift
-    name: "Resolve Drift"
-    description: "Handles individual drift resolution — accept, reimpl, or ignore"
-  - id: save-reconciliation
-    name: "Save Reconciliation"
-    description: "Batch-resolves drift and writes a reconciliation report"
-  - id: record-change
-    name: "Record Change"
-    description: "Records spec content changes with SHA-256 hashes for history tracking"
-publishes_events: []
+    name: Resolve Drift
+    description: User-triggered reconciliation — run detect-drift, compute-sync-score, and write reconciliation report YAML
+    type: traditional
+
+  - id: run-claude-command
+    name: Run Claude Command
+    description: Execute a DDD CLI command (ddd-implement, ddd-sync, etc.) via shell subprocess using run_command IPC
+    type: traditional
+
 consumes_events:
-  - event: flow-saved
-    description: "Records change when a flow spec is saved"
+  - event: flow:saved
+    handled_by_flow: detect-drift
+    description: Spec file changed — re-detect drift
+
+layout:
+  flows:
+    load-mappings: { x: 100, y: 100 }
+    detect-drift: { x: 400, y: 100 }
+    compute-sync-score: { x: 700, y: 100 }
+    resolve-drift: { x: 100, y: 280 }
+    run-claude-command: { x: 400, y: 280 }
+  portals: {}
