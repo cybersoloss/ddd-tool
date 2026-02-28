@@ -1,0 +1,62 @@
+flow:
+  id: auto-save
+  name: "Auto Save"
+  type: traditional
+  domain: persistence
+  description: "Periodically saves the current flow to .ddd/autosave/"
+
+trigger:
+  id: trigger-hQ3zW6vX
+  type: trigger
+  position: { x: 300, y: 0 }
+  label: "Auto-Save Timer"
+  spec:
+    event: "timer:auto-save-interval"
+    description: "Fires every 30 seconds when a flow is open and has unsaved changes"
+  connections:
+    - targetNodeId: process-iR4aX7wY
+
+nodes:
+  - id: process-iR4aX7wY
+    type: process
+    position: { x: 300, y: 130 }
+    label: "Serialize Current Flow"
+    spec:
+      action: "Serialize flow-store state (trigger, nodes, connections, metadata) to YAML string"
+    connections:
+      - targetNodeId: ipc-jS5bY8xZ
+
+  - id: ipc-jS5bY8xZ
+    type: ipc_call
+    position: { x: 300, y: 260 }
+    label: "Write Autosave File"
+    spec:
+      command: "write_file"
+      payload: "Serialized flow YAML to .ddd/autosave/{domainId}_{flowId}.yaml"
+    connections:
+      - targetNodeId: terminal-kT6cZ9yA
+        sourceHandle: "success"
+      - targetNodeId: terminal-lU7dA1zB
+        sourceHandle: "error"
+
+  - id: terminal-kT6cZ9yA
+    type: terminal
+    position: { x: 300, y: 390 }
+    label: "Autosaved"
+    spec:
+      outcome: success
+      description: "Flow state saved to autosave directory"
+    connections: []
+
+  - id: terminal-lU7dA1zB
+    type: terminal
+    position: { x: 550, y: 390 }
+    label: "Save Error"
+    spec:
+      outcome: failure
+      description: "Failed to write autosave file (non-critical, will retry)"
+    connections: []
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

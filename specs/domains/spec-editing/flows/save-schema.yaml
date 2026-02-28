@@ -1,0 +1,72 @@
+flow:
+  id: save-schema
+  name: "Save Schema"
+  type: traditional
+  domain: spec-editing
+  description: "Persists schema changes to disk"
+
+trigger:
+  id: trigger-zB5qG7kL
+  type: trigger
+  position: { x: 300, y: 0 }
+  label: "Save Schema"
+  spec:
+    event: "ui:save-schema"
+    description: "User clicks Save in the schema editor"
+  connections:
+    - targetNodeId: process-aC6rH8lM
+
+nodes:
+  - id: process-aC6rH8lM
+    type: process
+    position: { x: 300, y: 130 }
+    label: "Serialize Schema"
+    spec:
+      action: "Convert schema editor state to YAML string with fields, relationships, indexes"
+    connections:
+      - targetNodeId: ipc-bD7sJ9mN
+
+  - id: ipc-bD7sJ9mN
+    type: ipc_call
+    position: { x: 300, y: 260 }
+    label: "Write Schema File"
+    spec:
+      command: "write_file"
+      payload: "Serialized schema YAML to specs/schemas/{schemaId}.yaml"
+    connections:
+      - targetNodeId: event-cE8tK1nP
+        sourceHandle: "success"
+      - targetNodeId: terminal-eG1vM3qR
+        sourceHandle: "error"
+
+  - id: event-cE8tK1nP
+    type: event
+    position: { x: 300, y: 390 }
+    label: "Domain Saved"
+    spec:
+      event_name: "domain-saved"
+      payload: "{ schemaId, action: 'schema-saved' }"
+    connections:
+      - targetNodeId: terminal-dF9uL2pQ
+
+  - id: terminal-dF9uL2pQ
+    type: terminal
+    position: { x: 300, y: 520 }
+    label: "Schema Saved"
+    spec:
+      outcome: success
+      description: "Schema YAML written to disk"
+    connections: []
+
+  - id: terminal-eG1vM3qR
+    type: terminal
+    position: { x: 550, y: 390 }
+    label: "Write Error"
+    spec:
+      outcome: failure
+      description: "Failed to write schema file"
+    connections: []
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

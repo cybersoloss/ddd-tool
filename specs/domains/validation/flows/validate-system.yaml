@@ -1,0 +1,58 @@
+flow:
+  id: validate-system
+  name: "Validate System"
+  type: traditional
+  domain: validation
+  description: "Validates system-wide constraints — event wiring, portal targets, cross-pillar references"
+
+trigger:
+  id: trigger-qV8hB2dE
+  type: trigger
+  position: { x: 300, y: 0 }
+  label: "Validate System"
+  spec:
+    event: "ui:validate-system"
+    description: "User triggers system validation from the validation panel"
+  connections:
+    - targetNodeId: process-rW9iC3eF
+
+nodes:
+  - id: process-rW9iC3eF
+    type: process
+    position: { x: 300, y: 130 }
+    label: "Check Event Wiring"
+    spec:
+      action: "Verify every emitted event has at least one listener across domains, and every listener has at least one emitter"
+    connections:
+      - targetNodeId: process-sX1jD4fG
+
+  - id: process-sX1jD4fG
+    type: process
+    position: { x: 300, y: 260 }
+    label: "Check Portal Targets"
+    spec:
+      action: "Verify sub_flow and portal nodes reference valid existing flows in the project"
+    connections:
+      - targetNodeId: process-tY2kE5gH
+
+  - id: process-tY2kE5gH
+    type: process
+    position: { x: 300, y: 390 }
+    label: "Check Cross-Pillar Refs"
+    spec:
+      action: "Verify schema references in flows exist in specs/schemas/, UI page refs exist in specs/ui/"
+    connections:
+      - targetNodeId: terminal-uZ3lF6hJ
+
+  - id: terminal-uZ3lF6hJ
+    type: terminal
+    position: { x: 300, y: 520 }
+    label: "System Result"
+    spec:
+      outcome: success
+      description: "System validation results computed and stored in validation-store"
+    connections: []
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

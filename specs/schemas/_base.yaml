@@ -1,0 +1,15 @@
+name: _base
+description: "Base schema with shared fields inherited by all entities"
+fields:
+  - name: id
+    type: string
+    required: true
+    description: "Unique identifier for the entity"
+  - name: created_at
+    type: datetime
+    required: false
+    description: "ISO 8601 timestamp when the entity was created"
+  - name: modified_at
+    type: datetime
+    required: false
+    description: "ISO 8601 timestamp when the entity was last modified"

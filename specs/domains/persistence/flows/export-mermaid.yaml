@@ -1,0 +1,71 @@
+flow:
+  id: export-mermaid
+  name: "Export Mermaid"
+  type: traditional
+  domain: persistence
+  description: "Transforms a flow into Mermaid markdown and writes to file"
+
+trigger:
+  id: trigger-xF9pL3kM
+  type: trigger
+  position: { x: 300, y: 0 }
+  label: "Export Mermaid"
+  spec:
+    event: "ui:export-mermaid"
+    description: "User clicks Export Mermaid from the flow canvas toolbar"
+  connections:
+    - targetNodeId: process-yG1qM4lN
+
+nodes:
+  - id: process-yG1qM4lN
+    type: process
+    position: { x: 300, y: 130 }
+    label: "Transform Flow to Mermaid Input"
+    spec:
+      action: "Map flow nodes to Mermaid node shapes (process=rectangle, decision=rhombus, terminal=rounded) and connections to arrows"
+    connections:
+      - targetNodeId: process-zH2rN5mP
+
+  - id: process-zH2rN5mP
+    type: process
+    position: { x: 300, y: 260 }
+    label: "Generate Mermaid Markdown"
+    spec:
+      action: "Build Mermaid flowchart TD syntax string from transformed node/edge data"
+    connections:
+      - targetNodeId: ipc-aJ3sP6nQ
+
+  - id: ipc-aJ3sP6nQ
+    type: ipc_call
+    position: { x: 300, y: 390 }
+    label: "Write Mermaid File"
+    spec:
+      command: "write_file"
+      payload: "Mermaid markdown to {flowId}.mmd file"
+    connections:
+      - targetNodeId: terminal-bK4tQ7pR
+        sourceHandle: "success"
+      - targetNodeId: terminal-cL5uR8qS
+        sourceHandle: "error"
+
+  - id: terminal-bK4tQ7pR
+    type: terminal
+    position: { x: 300, y: 520 }
+    label: "Exported"
+    spec:
+      outcome: success
+      description: "Mermaid markdown file written to disk"
+    connections: []
+
+  - id: terminal-cL5uR8qS
+    type: terminal
+    position: { x: 550, y: 520 }
+    label: "Export Error"
+    spec:
+      outcome: failure
+      description: "Failed to write Mermaid file"
+    connections: []
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

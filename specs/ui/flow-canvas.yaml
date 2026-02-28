@@ -1,0 +1,470 @@
+page_id: flow-canvas
+name: Flow Canvas (L3)
+description: React Flow canvas for designing individual flow graphs with 29 node types
+layout: full
+auth_required: false
+
+sections:
+  - id: canvas
+    type: canvas
+    layout: full
+    description: React Flow canvas with 29 node types, edges, minimap, and grid background
+    library: react-flow
+    features:
+      - pan-and-zoom
+      - fit-view
+      - minimap
+      - grid-background
+      - snap-to-grid
+      - multi-select
+      - copy-paste
+      - undo-redo
+    node_types:
+      # Core nodes
+      - type: trigger
+        category: core
+        description: Entry point of a flow (HTTP, event, schedule, etc.)
+        handles: [default]
+        color: emerald
+      - type: input
+        category: core
+        description: Input validation and transformation
+        handles: [valid, invalid]
+        color: blue
+      - type: process
+        category: core
+        description: Business logic processing step
+        handles: [default]
+        color: violet
+      - type: decision
+        category: core
+        description: Conditional branching
+        handles: [dynamic, based on branches]
+        color: amber
+      - type: terminal
+        category: core
+        description: Flow endpoint (response, return)
+        handles: []
+        color: red
+      # Data nodes
+      - type: data_store
+        category: data
+        description: Database CRUD operations
+        handles: [default, error]
+        color: cyan
+      - type: cache
+        category: data
+        description: Cache get/set/delete/invalidate
+        handles: [hit, miss]
+        color: teal
+      - type: transform
+        category: data
+        description: Data transformation and mapping
+        handles: [default]
+        color: indigo
+      - type: collection
+        category: data
+        description: Array/collection operations (map, filter, reduce, sort)
+        handles: [default]
+        color: purple
+      - type: parse
+        category: data
+        description: Parse structured data (JSON, XML, CSV, YAML)
+        handles: [default, error]
+        color: lime
+      # Integration nodes
+      - type: service_call
+        category: integration
+        description: External HTTP/API calls
+        handles: [success, error]
+        color: orange
+      - type: ipc_call
+        category: integration
+        description: Internal service-to-service calls
+        handles: [success, error]
+        color: yellow
+      - type: event
+        category: integration
+        description: Publish/subscribe domain events
+        handles: [default]
+        color: pink
+      - type: websocket_broadcast
+        category: integration
+        description: Send WebSocket messages to connected clients
+        handles: [done]
+        color: sky
+      # Flow control nodes
+      - type: loop
+        category: flow-control
+        description: Iterate over collection or condition
+        handles: [body, done]
+        color: slate
+      - type: parallel
+        category: flow-control
+        description: Execute branches concurrently
+        handles: [dynamic, based on branches]
+        color: zinc
+      - type: sub_flow
+        category: flow-control
+        description: Invoke another flow as a sub-routine
+        handles: [default, error]
+        color: stone
+      - type: delay
+        category: flow-control
+        description: Wait for duration or until condition
+        handles: [default]
+        color: gray
+      - type: batch
+        category: flow-control
+        description: Process items in configurable batch sizes
+        handles: [default, error]
+        color: neutral
+      - type: transaction
+        category: flow-control
+        description: Wrap steps in a database transaction
+        handles: [commit, rollback]
+        color: rose
+      # Security nodes
+      - type: crypto
+        category: security
+        description: Encrypt, decrypt, hash, sign, verify
+        handles: [default, error]
+        color: fuchsia
+      # AI nodes
+      - type: llm_call
+        category: ai
+        description: Large language model invocation
+        handles: [default, error]
+        color: emerald
+      # Agent nodes
+      - type: agent_loop
+        category: agent
+        description: Autonomous agent execution loop with tools and memory
+        handles: [done, error, escalate]
+        color: violet
+      - type: guardrail
+        category: agent
+        description: Safety check gate for agent outputs
+        handles: [pass, block]
+        color: amber
+      - type: human_gate
+        category: agent
+        description: Human-in-the-loop approval gate
+        handles: [approved, rejected]
+        color: blue
+      # Orchestration nodes
+      - type: orchestrator
+        category: orchestration
+        description: Top-level agent coordinator
+        handles: [default]
+        color: purple
+      - type: smart_router
+        category: orchestration
+        description: Dynamic routing to agents based on intent
+        handles: [dynamic, based on routes]
+        color: cyan
+      - type: handoff
+        category: orchestration
+        description: Transfer context from one agent to another
+        handles: [default]
+        color: orange
+      - type: agent_group
+        category: orchestration
+        description: Multi-agent collaboration group
+        handles: [default]
+        color: pink
+    edge_types:
+      - type: default
+        description: Standard connection between nodes
+        style: bezier
+        animated: false
+      - type: error
+        description: Error path connection
+        style: bezier
+        color: red
+        animated: false
+      - type: conditional
+        description: Decision branch connection with label
+        style: bezier
+        label: true
+    interactions:
+      - drag-from-toolbar: create new node on canvas
+      - connect-handles: wire source handle to target node
+      - click-node: select and show in spec panel
+      - double-click-label: inline edit node label
+      - right-click-node: context menu (delete, duplicate, disconnect)
+      - right-click-edge: context menu (delete, edit label)
+      - multi-select: box select or Shift+click for bulk operations
+      - keyboard-delete: Delete/Backspace removes selected nodes/edges
+      - cmd-z: undo last action
+      - cmd-shift-z: redo last undone action
+      - cmd-c-cmd-v: copy/paste nodes
+      - cmd-shift-m: toggle minimap visibility
+
+  - id: node-toolbar
+    type: toolbar
+    layout: vertical
+    position: left
+    description: Drag-and-drop toolbar with all node type buttons grouped by category
+    groups:
+      - label: Core
+        nodes: [trigger, input, process, decision, terminal]
+      - label: Data
+        nodes: [data_store, cache, transform, collection, parse]
+      - label: Integration
+        nodes: [service_call, ipc_call, event, websocket_broadcast]
+      - label: Flow Control
+        nodes: [loop, parallel, sub_flow, delay, batch, transaction]
+      - label: Security
+        nodes: [crypto]
+      - label: AI
+        nodes: [llm_call]
+      - label: Agent
+        nodes: [agent_loop, guardrail, human_gate]
+        visible_when: flowType == agent
+      - label: Orchestration
+        nodes: [orchestrator, smart_router, handoff, agent_group]
+        visible_when: flowType == agent
+    interaction: drag-to-canvas
+
+  - id: spec-panel
+    type: panel
+    layout: sidebar-right
+    width: 360
+    resizable: true
+    collapsible: true
+    description: Right panel showing selected node's spec editor with type-specific fields
+    visible_when: selectedNode != null
+    elements:
+      - type: node-icon
+        description: Colored icon matching the selected node type
+      - type: inline-label-edit
+        description: Editable node label/name
+        field: label
+      - type: type-badge
+        description: Read-only badge showing node type
+      - type: spec-editor
+        description: Type-specific form fields for the selected node's spec
+        dynamic: true
+        editor_per_type: true
+      - type: cross-cutting-section
+        description: Fields common to all nodes (notes, tags, error_handling)
+        fields:
+          - key: notes
+            label: Notes
+            type: markdown
+          - key: error_handling
+            label: Error Handling
+            type: select
+            options: [propagate, catch, retry, ignore]
+          - key: retry
+            label: Retry Config
+            type: object
+            visible_when: error_handling == retry
+            fields:
+              - key: max_attempts
+                type: number
+              - key: backoff
+                type: select
+                options: [fixed, exponential]
+      - type: extra-fields-editor
+        description: Catch-all for YAML fields not covered by known editors
+
+  - id: validation-panel
+    type: panel
+    layout: docked-bottom
+    collapsible: true
+    description: Validation issues panel with scope tabs and severity indicators
+    elements:
+      - type: tab-group
+        tabs:
+          - id: flow
+            label: Flow
+            badge_count: flowIssueCount
+          - id: domain
+            label: Domain
+            badge_count: domainIssueCount
+          - id: system
+            label: System
+            badge_count: systemIssueCount
+      - type: issue-list
+        per_tab: true
+        item:
+          fields:
+            - key: severity
+              type: icon
+              variants: [error, warning, info]
+            - key: message
+              type: text
+            - key: nodeLabel
+              type: text
+              muted: true
+            - key: rule
+              type: text
+              muted: true
+          actions:
+            - id: navigate
+              label: Go to Node
+              action: selectAndPanToNode
+
+  - id: stale-banner
+    type: banner
+    layout: top
+    variant: warning
+    visible_when: flowIsStale == true
+    description: Drift warning banner shown when flow spec hash differs from implementation hash
+    elements:
+      - type: icon
+        icon: AlertTriangle
+      - type: text
+        text: "This flow has been modified since last implementation. Run reconciliation to review changes."
+      - type: button
+        label: Run Reconciliation
+        action: runReconciliation
+        variant: warning
+      - type: button
+        label: Dismiss
+        action: dismissStaleBanner
+        variant: ghost
+
+forms:
+  - id: flow-settings-dialog
+    type: single
+    title: Flow Settings
+    presentation: dialog
+    fields:
+      - key: trigger_type
+        label: Trigger Type
+        type: select
+        options: [http, event, schedule, manual, websocket, queue]
+        required: true
+      - key: method
+        label: HTTP Method
+        type: select
+        options: [GET, POST, PUT, PATCH, DELETE]
+        visible_when: trigger_type == http
+      - key: path
+        label: Path
+        type: text
+        placeholder: /api/v1/resource
+        visible_when: trigger_type == http
+      - key: auth
+        label: Authentication
+        type: select
+        options: [none, jwt, api_key, oauth, session]
+        default: none
+      - key: rate_limit
+        label: Rate Limit
+        type: object
+        fields:
+          - key: max
+            label: Max Requests
+            type: number
+          - key: window
+            label: Window
+            type: text
+            placeholder: e.g., 1m, 1h
+      - key: contract
+        label: Contract
+        type: object
+        fields:
+          - key: input_schema
+            label: Input Schema
+            type: code
+            language: yaml
+          - key: output_schema
+            label: Output Schema
+            type: code
+            language: yaml
+      - key: metrics
+        label: Metrics
+        type: repeating_group
+        fields:
+          - key: name
+            label: Metric Name
+            type: text
+          - key: type
+            label: Type
+            type: select
+            options: [counter, histogram, gauge]
+    actions:
+      submit:
+        label: Save
+        action: saveFlowSettings
+      cancel:
+        label: Cancel
+        action: closeDialog
+
+  - id: connection-editor
+    type: single
+    title: Edit Connection
+    presentation: popover
+    fields:
+      - key: label
+        label: Label
+        type: text
+        placeholder: e.g., success, valid, branch-name
+      - key: data_fields
+        label: Data Fields
+        type: repeating_group
+        fields:
+          - key: name
+            label: Field Name
+            type: text
+          - key: type
+            label: Type
+            type: select
+            options: [string, number, boolean, object, array]
+      - key: behavior
+        label: Behavior
+        type: select
+        options: [default, conditional, error]
+        default: default
+    actions:
+      submit:
+        label: Save
+        action: saveConnection
+      cancel:
+        label: Cancel
+        action: closePopover
+
+state:
+  flowId:
+    source: sheet-store.currentFlowId
+    type: string
+  domainId:
+    source: sheet-store.currentDomainId
+    type: string
+  flowType:
+    source: flow-store.currentFlowType
+    type: string
+    enum: [traditional, agent]
+  nodes:
+    source: flow-store
+    type: array
+  edges:
+    source: flow-store
+    type: array
+  selectedNode:
+    type: object
+    default: null
+  selectedEdge:
+    type: object
+    default: null
+  flowIsStale:
+    source: implementation-store
+    type: boolean
+  minimapVisible:
+    source: ui-store
+    type: boolean
+    default: true
+  specPanelOpen:
+    source: ui-store
+    type: boolean
+    default: true
+  validationPanelOpen:
+    type: boolean
+    default: false
+  canvasViewport:
+    type: object
+    default: { x: 0, y: 0, zoom: 1 }

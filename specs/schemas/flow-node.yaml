@@ -1,0 +1,104 @@
+name: flow-node
+description: "Individual node in a flow graph — one of 29 node types with type-specific configuration"
+inherits: _base
+fields:
+  - name: type
+    type: enum
+    required: true
+    description: "The node type determining its behavior and available spec fields"
+    values:
+      - trigger
+      - input
+      - process
+      - decision
+      - terminal
+      - data_store
+      - service_call
+      - ipc_call
+      - event
+      - loop
+      - parallel
+      - sub_flow
+      - llm_call
+      - delay
+      - cache
+      - transform
+      - collection
+      - parse
+      - crypto
+      - batch
+      - transaction
+      - agent_loop
+      - guardrail
+      - human_gate
+      - orchestrator
+      - smart_router
+      - handoff
+      - agent_group
+      - websocket_broadcast
+  - name: position_x
+    type: number
+    required: true
+    description: "X coordinate of the node on the canvas"
+  - name: position_y
+    type: number
+    required: true
+    description: "Y coordinate of the node on the canvas"
+  - name: label
+    type: string
+    required: true
+    description: "Display label shown on the node in the canvas"
+  - name: spec
+    type: json
+    required: true
+    description: "Node-type-specific configuration object (shape varies by type)"
+  - name: connections
+    type: json
+    required: false
+    description: "Array of outgoing connections — each has targetNodeId, sourceHandle?, targetHandle?, label?, data?, behavior?"
+  - name: parent_id
+    type: string
+    required: false
+    description: "ID of parent node for nested nodes (e.g., nodes inside loop or parallel containers)"
+  - name: pattern_governed
+    type: string
+    required: false
+    description: "Name of the governing pattern if this node follows a cross-cutting pattern"
+  - name: observability
+    type: json
+    required: false
+    description: "Observability configuration — metrics, tracing, logging settings"
+  - name: security
+    type: json
+    required: false
+    description: "Security configuration — encryption, access control, audit settings"
+  - name: log
+    type: json
+    required: false
+    description: "Logging configuration — {level: debug|info|warn|error, fields: string[], condition?}"
+relationships:
+  - name: flow
+    type: belongs_to
+    target: flow-document
+    foreign_key: flow_id
+    description: "Every node belongs to exactly one flow"
+  - name: parent
+    type: belongs_to
+    target: flow-node
+    foreign_key: parent_id
+    description: "Optional parent node for nested layout (loop/parallel containers)"
+  - name: children
+    type: has_many
+    target: flow-node
+    foreign_key: parent_id
+    description: "Child nodes nested inside this container node"
+indexes:
+  - fields: [id]
+    unique: true
+    description: "Primary key — each node has a unique ID within its flow"
+  - fields: [type]
+    unique: false
+    description: "Lookup nodes by type across flows"
+  - fields: [parent_id]
+    unique: false
+    description: "Find all children of a container node"

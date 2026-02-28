@@ -1,0 +1,58 @@
+flow: spec-editing/auto-layout
+captured_at: "2026-02-28T00:00:00.000Z"
+captured_from: reflect
+patterns:
+  - id: dag-algo
+    type: algorithm
+    description: >
+      L3 flow auto-layout uses a BFS-based DAG algorithm starting from the
+      trigger node. Nodes are assigned to layers based on longest path from
+      root (not shortest), ensuring downstream nodes always appear below
+      their predecessors. Cycle detection uses a push-count limit
+      (maxPushes = nodeCount + 1) to prevent infinite loops in cyclic
+      graphs. Unconnected nodes are placed one layer below the deepest
+      connected node.
+    applies_to_nodes: [all-nodes]
+    code_evidence:
+      file: src/utils/auto-layout.ts
+      lines: "13-51"
+    status: candidate
+
+  - id: l3-const
+    type: layout_constant
+    description: >
+      L3 flow layout constants: Y_SPACING=150px between layers,
+      X_SPACING=280px between nodes in the same layer, CENTER_X=400px
+      as the horizontal center. Nodes in each layer are centered around
+      CENTER_X with equal X_SPACING between them.
+    applies_to_nodes: [all-nodes]
+    code_evidence:
+      file: src/utils/auto-layout.ts
+      lines: "4-6"
+    status: candidate
+
+  - id: l1-const
+    type: layout_constant
+    description: >
+      L1 system map auto-layout: 3 columns (GRID_COLS), 380px horizontal
+      spacing (GRID_H_SPACING), 220px vertical spacing (GRID_V_SPACING).
+      Domains are placed in a simple grid based on their index in the
+      domain list.
+    applies_to_nodes: [all-nodes]
+    code_evidence:
+      file: src/utils/domain-parser.ts
+      lines: "21-23"
+    status: candidate
+
+  - id: l2-const
+    type: layout_constant
+    description: >
+      L2 domain map auto-layout: 3 columns (FLOW_GRID_COLS), 320px
+      horizontal spacing (FLOW_H_SPACING), 180px vertical spacing
+      (FLOW_V_SPACING). Portals are offset to the right of the flow
+      grid, beyond the last column.
+    applies_to_nodes: [all-nodes]
+    code_evidence:
+      file: src/utils/domain-parser.ts
+      lines: "109-111"
+    status: candidate

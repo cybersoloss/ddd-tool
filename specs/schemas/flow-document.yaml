@@ -1,0 +1,98 @@
+name: flow-document
+description: "Core flow specification — a directed graph of nodes representing a business process or agent workflow"
+inherits: _base
+fields:
+  - name: flow_id
+    type: string
+    required: true
+    description: "Unique identifier for the flow"
+  - name: flow_name
+    type: string
+    required: true
+    description: "Human-readable name of the flow"
+  - name: flow_type
+    type: enum
+    required: true
+    description: "Whether this is a traditional step-based flow or an agent-driven flow"
+    values: [traditional, agent]
+  - name: flow_domain
+    type: string
+    required: true
+    description: "The domain this flow belongs to"
+  - name: flow_description
+    type: text
+    required: false
+    description: "Free-text description of what this flow does"
+  - name: keyboard_shortcut
+    type: string
+    required: false
+    description: "Optional keyboard shortcut to trigger this flow in the tool"
+  - name: template
+    type: boolean
+    required: false
+    description: "Whether this flow is a reusable template"
+  - name: parameters
+    type: json
+    required: false
+    description: "Flow-level parameters — map of name to {type, values?}"
+  - name: contract_inputs
+    type: json
+    required: false
+    description: "Input contract — array of {name, type, required?, ref?}"
+  - name: contract_outputs
+    type: json
+    required: false
+    description: "Output contract — array of {name, type}"
+  - name: emits
+    type: json
+    required: false
+    description: "Event names this flow publishes"
+  - name: listens_to
+    type: json
+    required: false
+    description: "Event names this flow subscribes to"
+  - name: auth
+    type: json
+    required: false
+    description: "Auth configuration — {required, roles?, strategy?}"
+  - name: metrics
+    type: json
+    required: false
+    description: "Custom metrics — array of {name, type: counter|gauge|histogram, labels?}"
+  - name: trigger
+    type: json
+    required: true
+    description: "The trigger node that starts this flow (reference to flow-node)"
+  - name: nodes
+    type: json
+    required: true
+    description: "Array of flow-node references forming the directed graph"
+  - name: metadata_created
+    type: datetime
+    required: true
+    description: "ISO 8601 timestamp when the flow was created"
+  - name: metadata_modified
+    type: datetime
+    required: true
+    description: "ISO 8601 timestamp when the flow was last modified"
+relationships:
+  - name: nodes
+    type: has_many
+    target: flow-node
+    foreign_key: flow_id
+    description: "A flow contains many nodes (including the trigger)"
+  - name: domain
+    type: belongs_to
+    target: domain-config
+    foreign_key: flow_domain
+    description: "Every flow belongs to exactly one domain"
+indexes:
+  - fields: [flow_id]
+    unique: true
+    description: "Primary key — each flow has a unique ID"
+  - fields: [flow_domain, flow_name]
+    unique: true
+    description: "Flow names must be unique within a domain"
+  - fields: [flow_type]
+    unique: false
+    description: "Lookup flows by type (traditional vs agent)"

@@ -1,0 +1,79 @@
+flow:
+  id: detect-drift
+  name: "Detect Drift"
+  type: traditional
+  domain: implementation
+  description: "Compares spec hashes against implementation file hashes to find drift"
+
+trigger:
+  id: trigger-jP8aV2wX
+  type: trigger
+  position: { x: 300, y: 0 }
+  label: "Detect Drift"
+  spec:
+    event: "ui:detect-drift"
+    description: "User clicks Detect Drift or it runs automatically on project open"
+  connections:
+    - targetNodeId: loop-kQ9bW3xY
+
+nodes:
+  - id: loop-kQ9bW3xY
+    type: loop
+    position: { x: 300, y: 130 }
+    label: "For Each Mapping"
+    spec:
+      over: "mappings"
+      as: "mapping"
+      action: "Iterate over each flow mapping entry to check its hash"
+    connections:
+      - targetNodeId: ipc-lR1cX4yZ
+        sourceHandle: "body"
+      - targetNodeId: terminal-pV5gB8cD
+        sourceHandle: "done"
+
+  - id: ipc-lR1cX4yZ
+    type: ipc_call
+    position: { x: 600, y: 130 }
+    label: "Compute File Hash"
+    spec:
+      command: "compute_file_hash"
+      payload: "Implementation file path from mapping"
+    connections:
+      - targetNodeId: decision-mS2dY5zA
+        sourceHandle: "success"
+      - targetNodeId: process-nT3eZ6aB
+        sourceHandle: "error"
+
+  - id: decision-mS2dY5zA
+    type: decision
+    position: { x: 600, y: 260 }
+    label: "Hash Matches?"
+    spec:
+      condition: "computedHash === mapping.specHash"
+    connections:
+      - targetNodeId: loop-kQ9bW3xY
+        sourceHandle: "true"
+      - targetNodeId: process-nT3eZ6aB
+        sourceHandle: "false"
+
+  - id: process-nT3eZ6aB
+    type: process
+    position: { x: 600, y: 390 }
+    label: "Classify Sync State"
+    spec:
+      action: "Mark mapping as drifted (hash mismatch), missing (file not found), or error (read failure)"
+    connections:
+      - targetNodeId: loop-kQ9bW3xY
+
+  - id: terminal-pV5gB8cD
+    type: terminal
+    position: { x: 300, y: 390 }
+    label: "Drift Report"
+    spec:
+      outcome: success
+      description: "All mappings checked — drift report with sync states stored in implementation-store"
+    connections: []
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

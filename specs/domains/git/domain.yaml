@@ -1,0 +1,26 @@
+domain:
+  id: git
+  name: "Git Integration"
+  role: process
+  description: "Provides git operations via the git2 crate (libgit2) — status, staging, unstaging, committing, and log viewing. Exposed through the Git panel in the sidebar."
+
+flows:
+  - id: refresh-status
+    name: "Refresh Status"
+    description: "Fetches current git status and recent log entries"
+  - id: stage-file
+    name: "Stage File"
+    description: "Stages a single file for the next commit"
+  - id: unstage-file
+    name: "Unstage File"
+    description: "Removes a file from the staging area"
+  - id: commit-changes
+    name: "Commit Changes"
+    description: "Commits staged changes with a message"
+  - id: view-log
+    name: "View Log"
+    description: "Displays recent git commit history"
+
+events:
+  emits: []
+  listens: []

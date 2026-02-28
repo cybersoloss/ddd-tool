@@ -1,0 +1,73 @@
+types:
+  node_type:
+    description: "All 29 DDD node types"
+    values:
+      - trigger
+      - input
+      - process
+      - decision
+      - terminal
+      - data_store
+      - service_call
+      - ipc_call
+      - event
+      - loop
+      - parallel
+      - sub_flow
+      - llm_call
+      - delay
+      - cache
+      - transform
+      - collection
+      - parse
+      - crypto
+      - batch
+      - transaction
+      - agent_loop
+      - guardrail
+      - human_gate
+      - orchestrator
+      - smart_router
+      - handoff
+      - agent_group
+      - websocket_broadcast
+
+  flow_type:
+    description: "Flow classification"
+    values: [traditional, agent]
+
+  domain_role:
+    description: "Domain role in the system"
+    values: [entity, process, interface, orchestration]
+
+  sync_state:
+    description: "Implementation sync state"
+    values: [synced, spec_ahead, code_ahead, diverged]
+
+  validation_severity:
+    description: "Validation issue severity"
+    values: [error, warning, info]
+
+  validation_scope:
+    description: "Validation scope level"
+    values: [flow, domain, system]
+
+  app_view:
+    description: "Main app view states"
+    values: [launcher, first-run, project]
+
+  sheet_level:
+    description: "Navigation hierarchy levels"
+    values: [system, domain, flow]
+
+  git_file_status:
+    description: "Git file change status"
+    values: [new, modified, deleted]
+
+  annotation_status:
+    description: "Annotation lifecycle status"
+    values: [candidate, approved, promoted, dismissed]
+
+  reconciliation_action:
+    description: "Actions for resolving drift"
+    values: [accept, reimpl, ignore]

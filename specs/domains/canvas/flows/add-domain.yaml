@@ -1,0 +1,125 @@
+flow:
+  id: add-domain
+  name: "Add Domain"
+  type: traditional
+  domain: canvas
+  description: "Creates a new domain with directory and YAML config"
+
+trigger:
+  id: trigger-hK9yM4qP
+  type: trigger
+  position: { x: 300, y: 0 }
+  label: "Add Domain"
+  spec:
+    event: "ui:add-domain"
+    description: "User clicks Add Domain on the system map"
+  connections:
+    - targetNodeId: input-iL1zN5rQ
+
+nodes:
+  - id: input-iL1zN5rQ
+    type: input
+    position: { x: 300, y: 130 }
+    label: "Domain Details"
+    spec:
+      fields:
+        - name: name
+          type: string
+          required: true
+        - name: description
+          type: string
+          required: false
+        - name: role
+          type: string
+          required: true
+      validation: "Name must be unique among existing domains"
+    connections:
+      - targetNodeId: process-jM2aP6sR
+        sourceHandle: "valid"
+      - targetNodeId: terminal-pS8gV2yX
+        sourceHandle: "invalid"
+
+  - id: process-jM2aP6sR
+    type: process
+    position: { x: 300, y: 260 }
+    label: "Generate Domain ID"
+    spec:
+      action: "Slugify domain name to create domain ID"
+    connections:
+      - targetNodeId: ipc-kN3bQ7tS
+
+  - id: ipc-kN3bQ7tS
+    type: ipc_call
+    position: { x: 300, y: 390 }
+    label: "Create Domain Directory"
+    spec:
+      command: "create_directory"
+      payload: "specs/domains/{domainId}/flows/"
+    connections:
+      - targetNodeId: ipc-lP4cR8uT
+        sourceHandle: "success"
+      - targetNodeId: terminal-qT9hW3zY
+        sourceHandle: "error"
+
+  - id: ipc-lP4cR8uT
+    type: ipc_call
+    position: { x: 300, y: 520 }
+    label: "Write domain.yaml"
+    spec:
+      command: "write_file"
+      payload: "Serialized domain config YAML"
+    connections:
+      - targetNodeId: process-mQ5dS9vU
+        sourceHandle: "success"
+      - targetNodeId: terminal-qT9hW3zY
+        sourceHandle: "error"
+
+  - id: process-mQ5dS9vU
+    type: process
+    position: { x: 300, y: 650 }
+    label: "Update ddd-project.json"
+    spec:
+      action: "Add new domain entry to project config domains array"
+    connections:
+      - targetNodeId: event-nR6eT1wV
+
+  - id: event-nR6eT1wV
+    type: event
+    position: { x: 300, y: 780 }
+    label: "Domain Saved"
+    spec:
+      event_name: "domain-saved"
+      payload: "{ domainId, action: 'created' }"
+    connections:
+      - targetNodeId: terminal-pS7fU2xW
+
+  - id: terminal-pS7fU2xW
+    type: terminal
+    position: { x: 300, y: 910 }
+    label: "Domain Added"
+    spec:
+      outcome: success
+      description: "Domain created with directory, YAML, and project config updated"
+    connections: []
+
+  - id: terminal-pS8gV2yX
+    type: terminal
+    position: { x: 550, y: 260 }
+    label: "Invalid Input"
+    spec:
+      outcome: failure
+      description: "Domain details validation failed"
+    connections: []
+
+  - id: terminal-qT9hW3zY
+    type: terminal
+    position: { x: 550, y: 520 }
+    label: "Write Error"
+    spec:
+      outcome: failure
+      description: "Failed to create domain directory or write config"
+    connections: []
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

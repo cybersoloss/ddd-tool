@@ -1,0 +1,59 @@
+flow:
+  id: update-node-spec
+  name: "Update Node Spec"
+  type: traditional
+  domain: spec-editing
+  description: "Applies a spec field change, pushes undo snapshot, and triggers save"
+
+trigger:
+  id: trigger-pR4gW6zA
+  type: trigger
+  position: { x: 300, y: 0 }
+  label: "Change Spec"
+  spec:
+    event: "ui:change-spec"
+    description: "User edits a field value in the spec panel"
+  connections:
+    - targetNodeId: process-qS5hX7aB
+
+nodes:
+  - id: process-qS5hX7aB
+    type: process
+    position: { x: 300, y: 130 }
+    label: "Update Node Spec"
+    spec:
+      action: "Merge changed field into node.spec object in flow-store"
+    connections:
+      - targetNodeId: process-rT6iY8bC
+
+  - id: process-rT6iY8bC
+    type: process
+    position: { x: 300, y: 260 }
+    label: "Push Undo Snapshot"
+    spec:
+      action: "Snapshot current flow state to undo-store stack before applying change"
+    connections:
+      - targetNodeId: event-sU7jZ9cD
+
+  - id: event-sU7jZ9cD
+    type: event
+    position: { x: 300, y: 390 }
+    label: "Flow Saved"
+    spec:
+      event_name: "flow-saved"
+      payload: "{ flowId, action: 'spec-updated', nodeId, field }"
+    connections:
+      - targetNodeId: terminal-tV8kA1dE
+
+  - id: terminal-tV8kA1dE
+    type: terminal
+    position: { x: 300, y: 520 }
+    label: "Spec Updated"
+    spec:
+      outcome: success
+      description: "Node spec field updated, undo snapshot pushed, save triggered"
+    connections: []
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

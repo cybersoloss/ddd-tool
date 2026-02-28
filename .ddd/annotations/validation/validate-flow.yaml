@@ -1,0 +1,109 @@
+flow: validation/validate-flow
+captured_at: "2026-02-28T00:00:00.000Z"
+captured_from: reflect
+patterns:
+  - id: rule-cats
+    type: implementation_detail
+    description: >
+      Flow validation has 25+ check functions organized into 7 categories:
+      graph_completeness (checkTriggerExists, checkAllPathsReachTerminal,
+      checkOrphanedNodes, checkCircularPaths, checkBranchingCompleteness),
+      spec_completeness (checkTriggerEvent, checkInputFieldTypes,
+      checkDecisionCondition, checkProcessDescription, checkInputBranches,
+      checkHttpTriggerFields, checkExtendedNodes),
+      agent_validation (checkAgentFlow),
+      orchestration_validation (checkOrchestrationNodes),
+      domain_consistency (checkDuplicateHttpPaths, checkDecisionBranches,
+      checkTerminalNoOutgoing),
+      reference_integrity (checkSubFlowReferenceExists, checkSchemaReferences,
+      checkStoreReferences),
+      event_wiring (checked at domain level).
+      System-level validation adds: checkPortalTargetsExist,
+      checkSchemaOwnershipConflicts, checkDataSourceReferences,
+      checkPageNavigationRefs, checkSchemaFileReferences.
+    applies_to_nodes: [all-nodes]
+    code_evidence:
+      file: src/utils/flow-validator.ts
+      lines: "1242-1285"
+    status: candidate
+
+  - id: vali-debv
+    type: timing
+    description: >
+      Auto-validation fires 300ms after any change to the currentFlow state
+      in FlowCanvas.tsx. This is separate from the 500ms debounced save —
+      validation runs faster because it is purely in-memory with no I/O.
+      Results are stored in validation-store keyed by "{domainId}/{flowId}".
+    applies_to_nodes: [all-nodes]
+    code_evidence:
+      file: src/components/FlowCanvas/FlowCanvas.tsx
+      lines: "244-250"
+    status: candidate
+
+  - id: vali-para
+    type: implementation_detail
+    description: >
+      Parallel branch children (nodes connected via branch-N source handles)
+      are exempted from dead-end and branching-completeness checks. The
+      getParallelBranchChildIds() helper scans all parallel nodes to build
+      an exemption set. This prevents false positives on nodes that are
+      intentionally leaf nodes collected by the parallel done handle.
+    applies_to_nodes: [parallel]
+    code_evidence:
+      file: src/utils/flow-validator.ts
+      lines: "110-121"
+    status: candidate
+
+  - id: vali-agnt
+    type: implementation_detail
+    description: >
+      Agent flow validation (checkAgentFlow) skips cycle detection entirely
+      since agent flows naturally have loops. It also validates agent-specific
+      fields: model, tools[], stop_conditions[], and checks that agent_loop
+      nodes exist in agent-typed flows.
+    applies_to_nodes: [agent_loop]
+    code_evidence:
+      file: src/utils/flow-validator.ts
+      lines: "201-203, 383-448"
+    status: candidate
+
+  - id: vali-gate
+    type: implementation_detail
+    description: >
+      The implementation gate (checkImplementGate) aggregates validation
+      results across flow, domain, and system scopes. It returns
+      canImplement=false if ANY scope has errors (not just the flow scope).
+      Warnings do not block implementation but are surfaced via hasWarnings.
+    applies_to_nodes: [all-nodes]
+    code_evidence:
+      file: src/stores/validation-store.ts
+      lines: "230-254"
+    status: candidate
+
+  - id: vali-xdom
+    type: implementation_detail
+    description: >
+      Cross-domain validation (validateAllDomains) loads and validates
+      ALL flows across ALL domains by reading their YAML files from disk.
+      Each flow is normalized via normalizeFlowDocument before validation.
+      Results are aggregated per domain with total error/warning counts
+      that include both individual flow issues and domain-level issues.
+    applies_to_nodes: [all-nodes]
+    code_evidence:
+      file: src/stores/validation-store.ts
+      lines: "95-147"
+    status: candidate
+
+  - id: vali-xpil
+    type: implementation_detail
+    description: >
+      System-level validation (validateSystem) performs cross-pillar checks:
+      UI page data_source references are validated against schema names,
+      page navigation refs are checked against known page IDs, and schema
+      file references are verified. This connects the Interface pillar
+      specs to the Data pillar specs.
+    applies_to_nodes: [all-nodes]
+    code_evidence:
+      file: src/utils/flow-validator.ts
+      lines: "1533-1645"
+    status: candidate

@@ -1,0 +1,71 @@
+flow:
+  id: load-mappings
+  name: "Load Mappings"
+  type: traditional
+  domain: implementation
+  description: "Reads .ddd/mapping.yaml and annotations on project open"
+
+trigger:
+  id: trigger-cH2uP5qR
+  type: trigger
+  position: { x: 300, y: 0 }
+  label: "Open Project"
+  spec:
+    event: "ui:open-project"
+    description: "Fires when a project is opened to load implementation tracking data"
+  connections:
+    - targetNodeId: ipc-dJ3vQ6rS
+
+nodes:
+  - id: ipc-dJ3vQ6rS
+    type: ipc_call
+    position: { x: 300, y: 130 }
+    label: "Read mapping.yaml"
+    spec:
+      command: "read_file"
+      payload: ".ddd/mapping.yaml"
+    connections:
+      - targetNodeId: process-eK4wR7sT
+        sourceHandle: "success"
+      - targetNodeId: terminal-hN7zU1vW
+        sourceHandle: "error"
+
+  - id: process-eK4wR7sT
+    type: process
+    position: { x: 300, y: 260 }
+    label: "Parse Mappings"
+    spec:
+      action: "Parse YAML to extract flow-to-file mappings, spec hashes, sync states"
+    connections:
+      - targetNodeId: process-fL5xS8tU
+
+  - id: process-fL5xS8tU
+    type: process
+    position: { x: 300, y: 390 }
+    label: "Load Annotations"
+    spec:
+      action: "Read .ddd/annotations/ directory for implementation wisdom from /ddd-reflect"
+    connections:
+      - targetNodeId: terminal-gM6yT9uV
+
+  - id: terminal-gM6yT9uV
+    type: terminal
+    position: { x: 300, y: 520 }
+    label: "Mappings Loaded"
+    spec:
+      outcome: success
+      description: "Implementation mappings and annotations loaded into implementation-store"
+    connections: []
+
+  - id: terminal-hN7zU1vW
+    type: terminal
+    position: { x: 550, y: 260 }
+    label: "No Mappings"
+    spec:
+      outcome: success
+      description: "No mapping.yaml found — starting with empty implementation state"
+    connections: []
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

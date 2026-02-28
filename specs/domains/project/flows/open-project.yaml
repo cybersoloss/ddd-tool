@@ -1,0 +1,105 @@
+flow:
+  id: open-project
+  name: "Open Project"
+  type: traditional
+  domain: project
+  description: "Opens an existing DDD project by reading ddd-project.json and loading domain configs"
+
+trigger:
+  id: trigger-nR6iT3yW
+  type: trigger
+  position: { x: 300, y: 0 }
+  label: "Open Project"
+  spec:
+    event: "ui:open-project"
+    description: "User selects a project folder to open"
+  connections:
+    - targetNodeId: ipc-pS7jU4zX
+
+nodes:
+  - id: ipc-pS7jU4zX
+    type: ipc_call
+    position: { x: 300, y: 130 }
+    label: "Check Path Exists"
+    spec:
+      command: "path_exists"
+      payload: "ddd-project.json path"
+    connections:
+      - targetNodeId: decision-qT8kV5aY
+        sourceHandle: "success"
+      - targetNodeId: terminal-wZ4qB1gE
+        sourceHandle: "error"
+
+  - id: decision-qT8kV5aY
+    type: decision
+    position: { x: 300, y: 260 }
+    label: "Config Exists?"
+    spec:
+      condition: "pathExists === true"
+    connections:
+      - targetNodeId: ipc-rU9lW6bZ
+        sourceHandle: "true"
+      - targetNodeId: terminal-xA5rC2hF
+        sourceHandle: "false"
+
+  - id: ipc-rU9lW6bZ
+    type: ipc_call
+    position: { x: 300, y: 390 }
+    label: "Read Project File"
+    spec:
+      command: "read_file"
+      payload: "ddd-project.json path"
+    connections:
+      - targetNodeId: process-sV1mX7cA
+        sourceHandle: "success"
+      - targetNodeId: terminal-wZ4qB1gE
+        sourceHandle: "error"
+
+  - id: process-sV1mX7cA
+    type: process
+    position: { x: 300, y: 520 }
+    label: "Parse Project Config"
+    spec:
+      action: "Parse JSON, extract domains list, project metadata, and tech stack"
+    connections:
+      - targetNodeId: process-tW2nY8dB
+
+  - id: process-tW2nY8dB
+    type: process
+    position: { x: 300, y: 650 }
+    label: "Load Domain Configs"
+    spec:
+      action: "Read each domain.yaml from specs/domains/{id}/, load flows list and events"
+    connections:
+      - targetNodeId: terminal-uX3pZ9eC
+
+  - id: terminal-uX3pZ9eC
+    type: terminal
+    position: { x: 300, y: 780 }
+    label: "Project Loaded"
+    spec:
+      outcome: success
+      description: "Project config and all domain configs loaded into stores"
+    connections: []
+
+  - id: terminal-xA5rC2hF
+    type: terminal
+    position: { x: 550, y: 390 }
+    label: "Not Found"
+    spec:
+      outcome: failure
+      description: "ddd-project.json not found at specified location"
+    connections: []
+
+  - id: terminal-wZ4qB1gE
+    type: terminal
+    position: { x: 550, y: 260 }
+    label: "Read Error"
+    spec:
+      outcome: failure
+      description: "File system error reading project config"
+    connections: []
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

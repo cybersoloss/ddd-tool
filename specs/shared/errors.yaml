@@ -1,0 +1,70 @@
+errors:
+  - code: FILE_NOT_FOUND
+    status: 404
+    message: "File not found at specified path"
+    domain: persistence
+
+  - code: FILE_WRITE_FAILED
+    status: 500
+    message: "Failed to write file to disk"
+    domain: persistence
+
+  - code: YAML_PARSE_ERROR
+    status: 400
+    message: "Failed to parse YAML content"
+    domain: persistence
+
+  - code: GIT_NOT_INITIALIZED
+    status: 400
+    message: "Project directory is not a git repository"
+    domain: git
+
+  - code: GIT_COMMIT_FAILED
+    status: 500
+    message: "Git commit operation failed"
+    domain: git
+
+  - code: PROJECT_NOT_FOUND
+    status: 404
+    message: "DDD project not found (missing ddd-project.json)"
+    domain: project
+
+  - code: DOMAIN_NOT_FOUND
+    status: 404
+    message: "Domain not found in project"
+    domain: canvas
+
+  - code: FLOW_NOT_FOUND
+    status: 404
+    message: "Flow not found in domain"
+    domain: canvas
+
+  - code: VALIDATION_FAILED
+    status: 422
+    message: "Flow validation failed with errors"
+    domain: validation
+
+  - code: IMPLEMENT_GATE_BLOCKED
+    status: 422
+    message: "Implementation blocked due to validation errors"
+    domain: validation
+
+  - code: HASH_MISMATCH
+    status: 409
+    message: "Spec hash does not match implementation hash (drift detected)"
+    domain: implementation
+
+  - code: AUTOSAVE_RESTORE_FAILED
+    status: 500
+    message: "Failed to restore from autosave backup"
+    domain: persistence
+
+  - code: CLONE_FAILED
+    status: 500
+    message: "Git clone operation failed"
+    domain: git
+
+  - code: COMMAND_EXECUTION_FAILED
+    status: 500
+    message: "External command execution failed"
+    domain: persistence

@@ -1,0 +1,61 @@
+flow:
+  id: resolve-drift
+  name: "Resolve Drift"
+  type: traditional
+  domain: implementation
+  description: "Handles individual drift resolution — accept, reimpl, or ignore"
+
+trigger:
+  id: trigger-qW6hC9dE
+  type: trigger
+  position: { x: 300, y: 0 }
+  label: "Resolve Drift"
+  spec:
+    event: "ui:resolve-drift"
+    description: "User selects a resolution action for a drifted mapping entry"
+  connections:
+    - targetNodeId: decision-rX7iD1eF
+
+nodes:
+  - id: decision-rX7iD1eF
+    type: decision
+    position: { x: 300, y: 130 }
+    label: "Action Type?"
+    spec:
+      condition: "action === 'accept' || action === 'reimpl' || action === 'ignore'"
+    connections:
+      - targetNodeId: process-sY8jE2fG
+        sourceHandle: "true"
+      - targetNodeId: process-uA1lG4hJ
+        sourceHandle: "false"
+
+  - id: process-sY8jE2fG
+    type: process
+    position: { x: 300, y: 260 }
+    label: "Accept — Update Hash"
+    spec:
+      action: "If action is 'accept': update mapping specHash to current file hash, mark as synced"
+    connections:
+      - targetNodeId: terminal-vB2mH5iK
+
+  - id: process-uA1lG4hJ
+    type: process
+    position: { x: 550, y: 260 }
+    label: "Reimpl or Ignore"
+    spec:
+      action: "If 'reimpl': copy implementation command to clipboard for Claude Code. If 'ignore': add mapping to ignored set."
+    connections:
+      - targetNodeId: terminal-vB2mH5iK
+
+  - id: terminal-vB2mH5iK
+    type: terminal
+    position: { x: 300, y: 390 }
+    label: "Resolved"
+    spec:
+      outcome: success
+      description: "Drift entry resolved with chosen action"
+    connections: []
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

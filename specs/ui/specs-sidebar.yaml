@@ -1,0 +1,400 @@
+page_id: specs-sidebar
+name: Project Specs
+description: Left sidebar with Data/Interface/Infrastructure tabs for editing project-level specs
+layout: sidebar
+auth_required: false
+
+sections:
+  - id: tabs
+    type: tab-group
+    layout: horizontal
+    description: Three tabs for the four pillars of project specs (Data, Interface, Infrastructure)
+    tabs:
+      - id: data
+        label: Data
+        icon: Database
+        badge_count: schemaCount
+        description: Schema definitions, relationships, indexes, transitions, seed data
+      - id: interface
+        label: Interface
+        icon: Layout
+        badge_count: uiPageCount
+        description: UI page definitions, sections, forms, state
+      - id: infrastructure
+        label: Infrastructure
+        icon: Server
+        badge_count: serviceCount
+        description: Service definitions, startup order, deployment config
+
+  - id: schema-list
+    type: list
+    layout: vertical
+    visible_when: activeTab == data
+    title: Schemas
+    data_source: specs-store.schemas
+    empty_state: No schemas defined
+    header_actions:
+      - id: add-schema
+        label: Add Schema
+        icon: Plus
+        action: addSchema
+        variant: ghost
+        size: sm
+    item:
+      type: schema-card
+      fields:
+        - key: name
+          type: text
+          weight: bold
+        - key: fieldCount
+          type: text
+          muted: true
+          suffix: fields
+      actions:
+        - id: edit
+          label: Edit
+          icon: Edit2
+          action: editSchema
+          primary: true
+        - id: delete
+          label: Delete
+          icon: Trash2
+          action: deleteSchema
+          confirm: Delete this schema?
+
+  - id: schema-editor
+    type: form-panel
+    layout: vertical
+    visible_when: activeTab == data && selectedSchema != null
+    description: Full schema editor with fields, relationships, indexes, transitions, and seed data
+    sub_sections:
+      - id: fields
+        title: Fields
+        type: repeating_group
+        add_label: Add Field
+        fields:
+          - key: name
+            label: Name
+            type: text
+            required: true
+          - key: type
+            label: Type
+            type: select
+            options: [string, number, boolean, date, uuid, enum, json, text, float, decimal, bigint]
+            required: true
+          - key: required
+            label: Required
+            type: toggle
+            default: false
+          - key: unique
+            label: Unique
+            type: toggle
+            default: false
+          - key: default
+            label: Default Value
+            type: text
+          - key: description
+            label: Description
+            type: text
+
+      - id: relationships
+        title: Relationships
+        type: repeating_group
+        add_label: Add Relationship
+        collapsible: true
+        fields:
+          - key: name
+            label: Name
+            type: text
+            required: true
+          - key: type
+            label: Type
+            type: select
+            options: [has_one, has_many, belongs_to, many_to_many]
+            required: true
+          - key: target
+            label: Target Schema
+            type: select
+            options_depends_on: specs-store.schemaNames
+            required: true
+          - key: foreign_key
+            label: Foreign Key
+            type: text
+
+      - id: indexes
+        title: Indexes
+        type: repeating_group
+        add_label: Add Index
+        collapsible: true
+        fields:
+          - key: name
+            label: Name
+            type: text
+          - key: columns
+            label: Columns
+            type: text
+            description: Comma-separated field names
+          - key: unique
+            label: Unique
+            type: toggle
+            default: false
+
+      - id: transitions
+        title: State Transitions
+        type: repeating_group
+        add_label: Add Transition
+        collapsible: true
+        description: For schemas with a status/state field, define valid transitions
+        fields:
+          - key: from
+            label: From State
+            type: text
+            required: true
+          - key: to
+            label: To State
+            type: text
+            required: true
+          - key: event
+            label: Trigger Event
+            type: text
+
+      - id: seed
+        title: Seed Data
+        type: code
+        language: yaml
+        collapsible: true
+        description: Sample data records for seeding the database
+        placeholder: |
+          - name: Example
+            email: example@test.com
+
+  - id: ui-pages-list
+    type: list
+    layout: vertical
+    visible_when: activeTab == interface
+    title: UI Pages
+    data_source: specs-store.uiPages
+    empty_state: No UI pages defined
+    header_actions:
+      - id: add-page
+        label: Add Page
+        icon: Plus
+        action: addUiPage
+        variant: ghost
+        size: sm
+    item:
+      type: page-card
+      fields:
+        - key: name
+          type: text
+          weight: bold
+        - key: sectionCount
+          type: text
+          muted: true
+          suffix: sections
+      actions:
+        - id: edit
+          label: Edit
+          icon: Edit2
+          action: editUiPage
+          primary: true
+        - id: delete
+          label: Delete
+          icon: Trash2
+          action: deleteUiPage
+          confirm: Delete this page?
+
+  - id: ui-page-editor
+    type: form-panel
+    layout: vertical
+    visible_when: activeTab == interface && selectedUiPage != null
+    description: UI page editor with sections, forms, fields, and state
+    sub_sections:
+      - id: page-info
+        title: Page Info
+        fields:
+          - key: name
+            label: Name
+            type: text
+            required: true
+          - key: route
+            label: Route
+            type: text
+          - key: layout
+            label: Layout
+            type: select
+            options: [full, centered, sidebar, split]
+
+      - id: sections
+        title: Sections
+        type: repeating_group
+        add_label: Add Section
+        fields:
+          - key: id
+            label: Section ID
+            type: text
+            required: true
+          - key: type
+            label: Type
+            type: select
+            options: [content, form, list, canvas, toolbar, panel, banner, tab-group]
+          - key: title
+            label: Title
+            type: text
+          - key: layout
+            label: Layout
+            type: select
+            options: [vertical, horizontal, grid, centered, full]
+
+      - id: forms
+        title: Forms
+        type: repeating_group
+        add_label: Add Form
+        collapsible: true
+        fields:
+          - key: id
+            label: Form ID
+            type: text
+            required: true
+          - key: title
+            label: Title
+            type: text
+          - key: presentation
+            label: Presentation
+            type: select
+            options: [dialog, inline, popover, drawer]
+          - key: fields
+            label: Fields
+            type: repeating_group
+            fields:
+              - key: key
+                label: Key
+                type: text
+                required: true
+              - key: label
+                label: Label
+                type: text
+              - key: type
+                label: Type
+                type: select
+                options: [text, textarea, number, select, toggle, code, directory-picker, repeating_group, date-range]
+
+      - id: state
+        title: State
+        type: repeating_group
+        add_label: Add State Variable
+        collapsible: true
+        fields:
+          - key: name
+            label: Name
+            type: text
+            required: true
+          - key: type
+            label: Type
+            type: select
+            options: [string, number, boolean, array, object]
+          - key: default
+            label: Default Value
+            type: text
+          - key: source
+            label: Store Source
+            type: text
+            placeholder: e.g., app-store.settings
+
+  - id: infrastructure-editor
+    type: form-panel
+    layout: vertical
+    visible_when: activeTab == infrastructure
+    description: Infrastructure editor for services, startup order, and deployment config
+    sub_sections:
+      - id: services
+        title: Services
+        type: repeating_group
+        add_label: Add Service
+        fields:
+          - key: id
+            label: Service ID
+            type: text
+            required: true
+          - key: type
+            label: Type
+            type: select
+            options: [server, database, cache, queue, storage, cdn]
+            required: true
+          - key: runtime
+            label: Runtime
+            type: text
+            placeholder: e.g., node, rust, python
+          - key: framework
+            label: Framework
+            type: text
+            placeholder: e.g., express, tauri-2, fastapi
+          - key: entry
+            label: Entry Point
+            type: text
+          - key: port
+            label: Port
+            type: number
+          - key: dev_command
+            label: Dev Command
+            type: text
+          - key: depends_on
+            label: Depends On
+            type: text
+            description: Comma-separated service IDs
+
+      - id: startup
+        title: Startup Order
+        type: list
+        sortable: true
+        data_source: specs-store.infrastructure.services
+        description: Drag to reorder service startup sequence
+
+      - id: deployment
+        title: Deployment
+        fields:
+          - key: local_strategy
+            label: Local Strategy
+            type: select
+            options: [process-manager, docker-compose, manual]
+            default: process-manager
+          - key: staging_provider
+            label: Staging Provider
+            type: select
+            options: [none, docker, kubernetes, fly, railway, vercel]
+            default: none
+          - key: production_provider
+            label: Production Provider
+            type: select
+            options: [none, docker, kubernetes, fly, railway, vercel, aws, gcp]
+            default: none
+
+state:
+  activeTab:
+    type: string
+    enum: [data, interface, infrastructure]
+    default: data
+  schemas:
+    source: specs-store
+    type: array
+  schemaCount:
+    computed: true
+    type: number
+  selectedSchema:
+    type: object
+    default: null
+  uiPages:
+    source: specs-store
+    type: array
+  uiPageCount:
+    computed: true
+    type: number
+  selectedUiPage:
+    type: object
+    default: null
+  infrastructure:
+    source: specs-store
+    type: object
+  serviceCount:
+    computed: true
+    type: number

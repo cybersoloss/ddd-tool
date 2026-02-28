@@ -1,0 +1,58 @@
+flow:
+  id: validate-domain
+  name: "Validate Domain"
+  type: traditional
+  domain: validation
+  description: "Checks domain-level rules — duplicate flow IDs, event groups, schema references"
+
+trigger:
+  id: trigger-kQ3cW6yZ
+  type: trigger
+  position: { x: 300, y: 0 }
+  label: "Validate Domain"
+  spec:
+    event: "ui:validate-domain"
+    description: "User triggers domain validation from the validation panel"
+  connections:
+    - targetNodeId: process-lR4dX7zA
+
+nodes:
+  - id: process-lR4dX7zA
+    type: process
+    position: { x: 300, y: 130 }
+    label: "Check Duplicate Flow IDs"
+    spec:
+      action: "Ensure no two flows within the domain share the same ID"
+    connections:
+      - targetNodeId: process-mS5eY8aB
+
+  - id: process-mS5eY8aB
+    type: process
+    position: { x: 300, y: 260 }
+    label: "Check Event Groups"
+    spec:
+      action: "Verify domain.events.emits and listens are consistent with actual flow events"
+    connections:
+      - targetNodeId: process-nT6fZ9bC
+
+  - id: process-nT6fZ9bC
+    type: process
+    position: { x: 300, y: 390 }
+    label: "Check Schema References"
+    spec:
+      action: "Verify data_store nodes reference valid schemas from specs/schemas/"
+    connections:
+      - targetNodeId: terminal-pU7gA1cD
+
+  - id: terminal-pU7gA1cD
+    type: terminal
+    position: { x: 300, y: 520 }
+    label: "Domain Result"
+    spec:
+      outcome: success
+      description: "Domain validation results computed and stored in validation-store"
+    connections: []
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

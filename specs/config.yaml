@@ -1,0 +1,29 @@
+environment_variables: []
+
+app_config:
+  settings_path: "~/.ddd-tool/settings.json"
+  log_path: "~/.ddd-tool/logs/ddd-tool.log"
+  recent_projects_path: "~/.ddd-tool/recent-projects.json"
+  max_recent_projects: 20
+  log_rotation:
+    max_bytes: 1048576
+    max_files: 3
+
+project_config:
+  project_file: "ddd-project.json"
+  specs_dir: "specs/"
+  ddd_dir: ".ddd/"
+  autosave_dir: ".ddd/autosave/"
+  mapping_file: ".ddd/mapping.yaml"
+  change_history_file: ".ddd/change-history.yaml"
+  annotations_dir: ".ddd/annotations/"
+  reconciliations_dir: ".ddd/reconciliations/"
+
+defaults:
+  auto_save_interval_ms: 30000
+  debounce_save_ms: 500
+  validation_debounce_ms: 300
+  git_poll_interval_ms: 10000
+  write_guard_ms: 2000
+  undo_coalesce_ms: 500
+  max_undo_entries: 100

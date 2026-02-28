@@ -1,0 +1,45 @@
+name: schema-spec
+description: "Data model definition from specs/schemas/*.yaml — describes entity fields, relationships, indexes, state transitions, and seed data"
+fields:
+  - name: name
+    type: string
+    required: true
+    description: "Schema name used as identifier and file name"
+  - name: description
+    type: text
+    required: false
+    description: "Human-readable description of the data entity"
+  - name: inherits
+    type: string
+    required: false
+    description: "Name of a parent schema whose fields are inherited (e.g., '_base')"
+  - name: fields
+    type: json
+    required: true
+    description: "Array of field definitions — each has name, type (string|number|decimal|boolean|uuid|datetime|enum|json|text), required?, description?, default?, format?, values?, ref?, encrypted?, constraints? ({unique?, max_length?, min?, max?})"
+  - name: relationships
+    type: json
+    required: false
+    description: "Array of relationship definitions — each has name, type (has_many|has_one|belongs_to|many_to_many), target, foreign_key, join_table?, target_key?"
+  - name: indexes
+    type: json
+    required: false
+    description: "Array of index definitions — each has fields[], unique?, type? (btree|hash|gin|gist), description?"
+  - name: transitions
+    type: json
+    required: false
+    description: "State machine definition — {field, states: [{from, to[]}], on_invalid: reject|warn|log}"
+  - name: seed
+    type: json
+    required: false
+    description: "Array of seed data definitions — each has name, description?, strategy (migration|fixture|script), data?, source?, count_estimate?"
+relationships:
+  - name: domain
+    type: belongs_to
+    target: domain-config
+    foreign_key: domain_name
+    description: "A schema is owned by the domain that lists it in owns_schemas"
+indexes:
+  - fields: [name]
+    unique: true
+    description: "Schema names must be unique within a project"

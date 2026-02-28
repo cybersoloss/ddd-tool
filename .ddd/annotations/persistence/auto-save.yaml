@@ -1,0 +1,57 @@
+flow: persistence/auto-save
+captured_at: "2026-02-28T00:00:00.000Z"
+captured_from: reflect
+patterns:
+  - id: asav-path
+    type: implementation_detail
+    description: >
+      Auto-save writes to .ddd/autosave/{flowId}.yaml, NOT the real spec
+      file at specs/domains/{domainId}/flows/{flowId}.yaml. This prevents
+      auto-save from triggering file watcher reloads or creating git noise.
+      The auto-save file contains the full FlowDocument serialized as YAML.
+    applies_to_nodes: [all-nodes]
+    code_evidence:
+      file: src/stores/flow-store.ts
+      lines: "112-114"
+    status: candidate
+
+  - id: asav-intv
+    type: timing
+    description: >
+      Default auto-save interval is 30 seconds, configurable via app settings
+      through the registerAutoSaveIntervalGetter() callback. The interval is
+      set using setInterval and fires regardless of whether changes have been
+      made (it always writes the current state). Auto-save can be disabled
+      entirely via settings (registerAutoSaveEnabledGetter).
+    applies_to_nodes: [all-nodes]
+    code_evidence:
+      file: src/stores/flow-store.ts
+      lines: "175-192"
+    status: candidate
+
+  - id: asav-clen
+    type: implementation_detail
+    description: >
+      When a flow is unloaded (navigating away or closing), the auto-save
+      file for that flow is deleted via cleanupAutoSave(). Any pending
+      debounced save is also flushed before clearing state, ensuring no
+      data loss. The undo stack for the flow is also cleared at this point.
+    applies_to_nodes: [all-nodes]
+    code_evidence:
+      file: src/stores/flow-store.ts
+      lines: "249-274"
+    status: candidate
+
+  - id: asav-reco
+    type: implementation_detail
+    description: >
+      On app boot, AppShell.tsx checks for any .yaml files in the
+      .ddd/autosave/ directory. If found, it shows the CrashRecoveryDialog
+      which lets the user recover unsaved work from the auto-save files.
+      This handles the case where the app crashed before the debounced
+      save could persist to the real spec file.
+    applies_to_nodes: [all-nodes]
+    code_evidence:
+      file: src/AppShell.tsx
+      lines: "88-100"
+    status: candidate

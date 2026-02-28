@@ -1,0 +1,59 @@
+flow:
+  id: watch-specs
+  name: "Watch Specs"
+  type: traditional
+  domain: persistence
+  description: "Sets up a file watcher for YAML/JSON changes in the specs directory"
+
+trigger:
+  id: trigger-yF3qM6lN
+  type: trigger
+  position: { x: 300, y: 0 }
+  label: "Watch Directory"
+  spec:
+    event: "ipc:watch_directory"
+    description: "Tauri IPC command to start watching a directory for changes"
+  connections:
+    - targetNodeId: process-zG4rN7mP
+
+nodes:
+  - id: process-zG4rN7mP
+    type: process
+    position: { x: 300, y: 130 }
+    label: "Setup Notify Watcher"
+    spec:
+      action: "Initialize notify::RecommendedWatcher on the specs/ directory with recursive mode"
+    connections:
+      - targetNodeId: process-aH5sP8nQ
+
+  - id: process-aH5sP8nQ
+    type: process
+    position: { x: 300, y: 260 }
+    label: "Filter YAML/JSON Changes"
+    spec:
+      action: "Filter file events to only *.yaml, *.yml, *.json files, debounce rapid changes"
+    connections:
+      - targetNodeId: event-bJ6tQ9pR
+
+  - id: event-bJ6tQ9pR
+    type: event
+    position: { x: 300, y: 390 }
+    label: "Spec Files Changed"
+    spec:
+      event_name: "spec-files-changed"
+      payload: "{ changedPaths: string[], changeType: 'created' | 'modified' | 'deleted' }"
+    connections:
+      - targetNodeId: terminal-cK7uR1qS
+
+  - id: terminal-cK7uR1qS
+    type: terminal
+    position: { x: 300, y: 520 }
+    label: "Watching"
+    spec:
+      outcome: success
+      description: "File watcher active and emitting change events"
+    connections: []
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

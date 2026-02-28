@@ -1,0 +1,44 @@
+name: global-settings
+description: "Application-wide settings persisted across sessions — Claude Code integration, editor preferences, and git conventions"
+fields:
+  - name: claude_code_enabled
+    type: boolean
+    required: true
+    description: "Whether Claude Code integration is active"
+  - name: claude_code_command
+    type: string
+    required: true
+    description: "CLI command to invoke Claude Code (e.g., 'claude')"
+  - name: editor_grid_snap
+    type: boolean
+    required: true
+    description: "Whether nodes snap to the canvas grid when dragged"
+  - name: editor_auto_save
+    type: boolean
+    required: true
+    description: "Whether auto-save is enabled (saves to .ddd/autosave/)"
+  - name: editor_auto_save_interval
+    type: number
+    required: true
+    description: "Auto-save interval in milliseconds"
+  - name: editor_theme
+    type: enum
+    required: true
+    description: "Application color theme"
+    values: [light, dark, system]
+  - name: editor_font_size
+    type: number
+    required: true
+    description: "Base font size in pixels for the editor UI"
+  - name: editor_save_notification
+    type: boolean
+    required: true
+    description: "Whether to show a toast notification after saving"
+  - name: git_auto_commit_message
+    type: string
+    required: false
+    description: "Template for auto-generated commit messages (supports {flow}, {domain} placeholders)"
+  - name: git_branch_naming
+    type: string
+    required: false
+    description: "Template for branch naming conventions"

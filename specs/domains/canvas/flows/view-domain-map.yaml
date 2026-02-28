@@ -1,0 +1,49 @@
+flow:
+  id: view-domain-map
+  name: "View Domain Map"
+  type: traditional
+  domain: canvas
+  description: "Renders the L2 domain map with flow blocks and orchestration visuals"
+
+trigger:
+  id: trigger-zC9rF3iH
+  type: trigger
+  position: { x: 300, y: 0 }
+  label: "Navigate to Domain"
+  spec:
+    event: "ui:navigate-domain"
+    description: "User double-clicks a domain block on L1 or navigates via breadcrumb"
+  connections:
+    - targetNodeId: process-aD1sG4jK
+
+nodes:
+  - id: process-aD1sG4jK
+    type: process
+    position: { x: 300, y: 130 }
+    label: "Build Domain Map Data"
+    spec:
+      action: "Transform domain flows into positioned FlowBlock nodes with type badges (traditional/agent/orchestration)"
+    connections:
+      - targetNodeId: process-bE2tH5kL
+
+  - id: process-bE2tH5kL
+    type: process
+    position: { x: 300, y: 260 }
+    label: "Compute Orchestration Viz"
+    spec:
+      action: "Build orchestration edges between flows that reference each other via sub_flow, portals, or handoff nodes"
+    connections:
+      - targetNodeId: terminal-cF3uJ6lM
+
+  - id: terminal-cF3uJ6lM
+    type: terminal
+    position: { x: 300, y: 390 }
+    label: "Render L2"
+    spec:
+      outcome: success
+      description: "Domain map rendered with flow blocks and orchestration edges"
+    connections: []
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

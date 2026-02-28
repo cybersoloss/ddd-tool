@@ -1,0 +1,42 @@
+domain:
+  id: canvas
+  name: "Canvas & Navigation"
+  role: interface
+  description: "Manages the three-level canvas (System Map L1, Domain Map L2, Flow Canvas L3) and all user interactions for adding, deleting, and navigating domains, flows, and nodes."
+
+flows:
+  - id: view-system-map
+    name: "View System Map"
+    description: "Renders the L1 system map with domain blocks, event arrows, and zone boundaries"
+  - id: add-domain
+    name: "Add Domain"
+    description: "Creates a new domain with directory and YAML config"
+  - id: delete-domain
+    name: "Delete Domain"
+    description: "Removes a domain and its directory after confirmation"
+  - id: view-domain-map
+    name: "View Domain Map"
+    description: "Renders the L2 domain map with flow blocks and orchestration visuals"
+  - id: add-flow
+    name: "Add Flow"
+    description: "Creates a new flow within a domain"
+  - id: delete-flow
+    name: "Delete Flow"
+    description: "Removes a flow file and updates domain config"
+  - id: design-flow
+    name: "Design Flow"
+    description: "Opens a flow on the L3 canvas for node editing"
+  - id: add-node
+    name: "Add Node"
+    description: "Adds a new node to the current flow canvas"
+  - id: wire-connection
+    name: "Wire Connection"
+    description: "Creates an edge between two nodes on the flow canvas"
+
+events:
+  emits:
+    - domain-saved
+    - flow-saved
+  listens:
+    - domain-saved
+    - flow-saved

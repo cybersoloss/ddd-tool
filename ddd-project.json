@@ -1,3 +1,13 @@
 {
-  "domains": []
+  "name": "ddd-tool",
+  "description": "Design Driven Development desktop app for visual flow-based software design",
+  "domains": [
+    { "id": "project", "name": "Project Management" },
+    { "id": "canvas", "name": "Canvas Visualization" },
+    { "id": "spec-editing", "name": "Spec Editing" },
+    { "id": "git", "name": "Git Integration" },
+    { "id": "validation", "name": "Validation" },
+    { "id": "implementation", "name": "Implementation Tracking" },
+    { "id": "persistence", "name": "Persistence" }
+  ]
 }

@@ -1,0 +1,62 @@
+flow:
+  id: edit-ui-page
+  name: "Edit UI Page"
+  type: traditional
+  domain: spec-editing
+  description: "Opens a UI page spec for editing"
+
+trigger:
+  id: trigger-fH2wN4rS
+  type: trigger
+  position: { x: 300, y: 0 }
+  label: "Edit Page"
+  spec:
+    event: "ui:edit-page"
+    description: "User clicks a page entry in the Project Specs sidebar Interface tab"
+  connections:
+    - targetNodeId: ipc-gJ3xP5sT
+
+nodes:
+  - id: ipc-gJ3xP5sT
+    type: ipc_call
+    position: { x: 300, y: 130 }
+    label: "Read Page YAML"
+    spec:
+      command: "read_file"
+      payload: "specs/ui/{pageId}.yaml"
+    connections:
+      - targetNodeId: process-hK4yQ6tU
+        sourceHandle: "success"
+      - targetNodeId: terminal-jM6aS8vW
+        sourceHandle: "error"
+
+  - id: process-hK4yQ6tU
+    type: process
+    position: { x: 300, y: 260 }
+    label: "Parse Page Spec"
+    spec:
+      action: "Parse YAML to extract sections, forms, state management, navigation"
+    connections:
+      - targetNodeId: terminal-iL5zR7uV
+
+  - id: terminal-iL5zR7uV
+    type: terminal
+    position: { x: 300, y: 390 }
+    label: "Page Editor Open"
+    spec:
+      outcome: success
+      description: "UIPageEditor populated with parsed page spec"
+    connections: []
+
+  - id: terminal-jM6aS8vW
+    type: terminal
+    position: { x: 550, y: 260 }
+    label: "Read Error"
+    spec:
+      outcome: failure
+      description: "Failed to read UI page YAML file"
+    connections: []
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

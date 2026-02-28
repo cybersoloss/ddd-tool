@@ -1,0 +1,190 @@
+flow:
+  id: create-project
+  name: "Create Project"
+  type: traditional
+  domain: project
+  description: "Creates a new DDD project with directory structure, domain YAMLs, and optional git init"
+
+trigger:
+  id: trigger-aB3kQ7mN
+  type: trigger
+  position: { x: 300, y: 0 }
+  label: "New Project"
+  spec:
+    event: "ui:new-project"
+    description: "User clicks New Project in the launcher"
+  connections:
+    - targetNodeId: input-cR4wP8xL
+
+nodes:
+  - id: input-cR4wP8xL
+    type: input
+    position: { x: 300, y: 130 }
+    label: "Project Details"
+    spec:
+      fields:
+        - name: name
+          type: string
+          required: true
+        - name: location
+          type: string
+          required: true
+        - name: description
+          type: string
+          required: false
+        - name: techStack
+          type: object
+          required: false
+        - name: domains
+          type: array
+          required: true
+      validation: "Name must be non-empty; location must be a valid directory path"
+    connections:
+      - targetNodeId: process-dF5yH2nK
+        sourceHandle: "valid"
+      - targetNodeId: terminal-eG6zJ3pM
+        sourceHandle: "invalid"
+
+  - id: process-dF5yH2nK
+    type: process
+    position: { x: 300, y: 260 }
+    label: "Create Directories"
+    spec:
+      action: "Create specs/, specs/domains/, specs/schemas/, specs/shared/, .ddd/ directory structure"
+    connections:
+      - targetNodeId: ipc-fH7aK4qN
+
+  - id: ipc-fH7aK4qN
+    type: ipc_call
+    position: { x: 300, y: 390 }
+    label: "Create Directory"
+    spec:
+      command: "create_directory"
+      payload: "Project root and subdirectory tree"
+    connections:
+      - targetNodeId: ipc-gJ8bL5rP
+        sourceHandle: "success"
+      - targetNodeId: terminal-sU2nX9dH
+        sourceHandle: "error"
+
+  - id: ipc-gJ8bL5rP
+    type: ipc_call
+    position: { x: 300, y: 520 }
+    label: "Write ddd-project.json"
+    spec:
+      command: "write_file"
+      payload: "Serialized project config JSON"
+    connections:
+      - targetNodeId: loop-hK9cM6sQ
+        sourceHandle: "success"
+      - targetNodeId: terminal-sU2nX9dH
+        sourceHandle: "error"
+
+  - id: loop-hK9cM6sQ
+    type: loop
+    position: { x: 300, y: 650 }
+    label: "Create Domain YAMLs"
+    spec:
+      over: "domains"
+      as: "domain"
+      action: "Write domain.yaml for each domain in specs/domains/{domain.id}/"
+    connections:
+      - targetNodeId: ipc-iL1dN7tR
+        sourceHandle: "body"
+      - targetNodeId: decision-jM2eP8uS
+        sourceHandle: "done"
+
+  - id: ipc-iL1dN7tR
+    type: ipc_call
+    position: { x: 600, y: 650 }
+    label: "Write Domain YAML"
+    spec:
+      command: "write_file"
+      payload: "Serialized domain config YAML"
+    connections:
+      - targetNodeId: loop-hK9cM6sQ
+        sourceHandle: "success"
+      - targetNodeId: terminal-sU2nX9dH
+        sourceHandle: "error"
+
+  - id: decision-jM2eP8uS
+    type: decision
+    position: { x: 300, y: 780 }
+    label: "Init Git?"
+    spec:
+      condition: "project.initGit === true"
+    connections:
+      - targetNodeId: ipc-kN3fQ9vT
+        sourceHandle: "true"
+      - targetNodeId: terminal-qT1mW8cG
+        sourceHandle: "false"
+
+  - id: ipc-kN3fQ9vT
+    type: ipc_call
+    position: { x: 300, y: 910 }
+    label: "Git Init"
+    spec:
+      command: "git_init"
+      payload: "Project root path"
+    connections:
+      - targetNodeId: ipc-lP4gR1wU
+        sourceHandle: "success"
+      - targetNodeId: terminal-sU2nX9dH
+        sourceHandle: "error"
+
+  - id: ipc-lP4gR1wU
+    type: ipc_call
+    position: { x: 300, y: 1040 }
+    label: "Git Add All"
+    spec:
+      command: "git_add_all"
+      payload: "Stage all created files"
+    connections:
+      - targetNodeId: ipc-mQ5hS2xV
+        sourceHandle: "success"
+      - targetNodeId: terminal-sU2nX9dH
+        sourceHandle: "error"
+
+  - id: ipc-mQ5hS2xV
+    type: ipc_call
+    position: { x: 300, y: 1170 }
+    label: "Git Commit"
+    spec:
+      command: "git_commit"
+      payload: "Initial commit message"
+    connections:
+      - targetNodeId: terminal-qT1mW8cG
+        sourceHandle: "success"
+      - targetNodeId: terminal-sU2nX9dH
+        sourceHandle: "error"
+
+  - id: terminal-qT1mW8cG
+    type: terminal
+    position: { x: 300, y: 1300 }
+    label: "Project Created"
+    spec:
+      outcome: success
+      description: "Project successfully created and optionally initialized with git"
+    connections: []
+
+  - id: terminal-eG6zJ3pM
+    type: terminal
+    position: { x: 550, y: 260 }
+    label: "Invalid Input"
+    spec:
+      outcome: failure
+      description: "Project details validation failed"
+    connections: []
+
+  - id: terminal-sU2nX9dH
+    type: terminal
+    position: { x: 550, y: 910 }
+    label: "Error"
+    spec:
+      outcome: failure
+      description: "File system or git operation failed"
+    connections: []
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

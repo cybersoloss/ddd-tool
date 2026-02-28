@@ -1,0 +1,142 @@
+flow: canvas/design-flow
+captured_at: "2026-02-28T00:00:00.000Z"
+captured_from: reflect
+patterns:
+  - id: norm-conn
+    type: format_bridge
+    description: >
+      Connection normalization bridges 3 external field names to the internal
+      targetNodeId: target, targetId, and targetNodeId are all accepted.
+      Handle values of "default" are remapped to undefined (unnamed handle).
+    applies_to_nodes: [all-nodes]
+    code_evidence:
+      file: src/utils/flow-normalizer.ts
+      lines: "298-311"
+    status: candidate
+
+  - id: norm-spec
+    type: format_bridge
+    description: >
+      Node spec normalization pulls from 3 possible locations: spec:,
+      properties:, or config:. Additionally, any non-structural fields
+      inlined directly on the node object are collected and merged into
+      the spec. Structural keys (id, type, label, name, position,
+      connections, parentId, observability, security) are excluded.
+    applies_to_nodes: [all-nodes]
+    code_evidence:
+      file: src/utils/flow-normalizer.ts
+      lines: "313-328"
+    status: candidate
+
+  - id: norm-trig
+    type: format_bridge
+    description: >
+      Trigger location normalization handles 3 formats: (1) trigger at
+      document top-level with type:"trigger", (2) trigger embedded inside
+      the nodes[] array, (3) top-level trigger with an API type (http,
+      timer, cron, webhook, etc.) that gets synthesized into a trigger node.
+      A NON_NODE_TRIGGER_TYPES set of 18 type strings controls which
+      top-level trigger.type values trigger the API-to-node synthesis.
+    applies_to_nodes: [trigger]
+    code_evidence:
+      file: src/utils/flow-normalizer.ts
+      lines: "584-619"
+    status: candidate
+
+  - id: norm-tops
+    type: format_bridge
+    description: >
+      Top-level connections array normalization handles the /ddd-create
+      format where connections are defined as a flat array with {from, to,
+      sourceHandle, targetHandle, label} objects separate from nodes. These
+      are distributed into each source node's connections array before
+      per-node normalization runs.
+    applies_to_nodes: [all-nodes]
+    code_evidence:
+      file: src/utils/flow-normalizer.ts
+      lines: "624-657"
+    status: candidate
+
+  - id: norm-type
+    type: format_bridge
+    description: >
+      Unknown node types from external YAML are mapped to the nearest
+      known DDD node type via TYPE_MAP: http->service_call, rest->service_call,
+      manual->process, webhook->trigger. Any unrecognized type falls through
+      unchanged.
+    applies_to_nodes: [all-nodes]
+    code_evidence:
+      file: src/utils/flow-normalizer.ts
+      lines: "413-420"
+    status: candidate
+
+  - id: norm-deci
+    type: format_bridge
+    description: >
+      Decision node normalization bridges: true_label/false_label ->
+      trueLabel/falseLabel, expression -> condition, and remaps semantic
+      handle names to canonical "true"/"false" (including yes->true,
+      no->false aliases).
+    applies_to_nodes: [decision]
+    code_evidence:
+      file: src/utils/flow-normalizer.ts
+      lines: "467-487"
+    status: candidate
+
+  - id: norm-evnt
+    type: format_bridge
+    description: >
+      Event node normalization bridges 4 field aliases: event_type ->
+      event_name, action/operation -> direction (with emit/publish ->
+      "emit", consume/handle/listen -> "consume"). If direction is still
+      missing, it infers from the node label via regex. If event_name is
+      missing, it extracts from label ("Emit alert.triggered" ->
+      "alert.triggered").
+    applies_to_nodes: [event]
+    code_evidence:
+      file: src/utils/flow-normalizer.ts
+      lines: "347-373"
+    status: candidate
+
+  - id: norm-para
+    type: format_bridge
+    description: >
+      Parallel node normalization handles 3 formats: (1) numeric branches
+      value coerced to ParallelBranch[] array, (2) inline branches with
+      embedded node configs marked with _inlineBranches flag, (3) fan-out
+      branches where branch ID handles are remapped to branch-N format.
+    applies_to_nodes: [parallel]
+    code_evidence:
+      file: src/utils/flow-normalizer.ts
+      lines: "391-397, 534-569"
+    status: candidate
+
+  - id: norm-misc
+    type: format_bridge
+    description: >
+      Additional per-type normalizations: service_call endpoint->url,
+      sub_flow flow->flow_ref, llm_call prompt->prompt_template,
+      data_store entity/schema/models->model, batch operation->operation_template,
+      parse missing input defaults to $.data, collection infers operation
+      from filters/aggregate/group_by and remaps valid/output handles to
+      result, guardrail passed/blocked->pass/block, transform
+      mode+output->input_schema/output_schema/field_mappings, transaction
+      success/error->committed/rolled_back handles.
+    applies_to_nodes: [all-nodes]
+    code_evidence:
+      file: src/utils/flow-normalizer.ts
+      lines: "331-569"
+    status: candidate
+
+  - id: norm-labl
+    type: format_bridge
+    description: >
+      Node label normalization falls through: label, name, id, then auto-
+      generated ID. The label field in external YAML may use "name:" instead
+      of "label:", or the node may have no label at all (falls back to the
+      node ID).
+    applies_to_nodes: [all-nodes]
+    code_evidence:
+      file: src/utils/flow-normalizer.ts
+      lines: "577"
+    status: candidate

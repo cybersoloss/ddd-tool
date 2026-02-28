@@ -1,0 +1,73 @@
+flow: implementation/detect-drift
+captured_at: "2026-02-28T00:00:00.000Z"
+captured_from: reflect
+patterns:
+  - id: hash-algo
+    type: implementation_detail
+    description: >
+      Drift detection uses SHA-256 hash comparison via the compute_file_hash
+      Tauri command (implemented in implementation.rs). Both spec files and
+      implementation files are hashed. Hashes are stored in mapping.yaml
+      as specHash (single hash) and fileHashes (map of relative path to hash).
+    applies_to_nodes: [all-nodes]
+    code_evidence:
+      file: src/stores/implementation-store.ts
+      lines: "126-152"
+    status: candidate
+
+  - id: bidr-drft
+    type: implementation_detail
+    description: >
+      Drift detection is bidirectional. It compares both the spec file hash
+      (forward drift) and all implementation file hashes (reverse drift).
+      Four sync states are possible: synced (no changes), spec_ahead (only
+      spec changed), code_ahead (only implementation files changed), and
+      diverged (both spec and code changed independently).
+    applies_to_nodes: [all-nodes]
+    code_evidence:
+      file: src/stores/implementation-store.ts
+      lines: "154-211"
+    status: candidate
+
+  - id: drft-type
+    type: implementation_detail
+    description: >
+      Drift items carry metadata including: flowKey, flowName, domainId,
+      specPath, previousHash, currentHash, implementedAt timestamp,
+      detectedAt timestamp, direction (forward/reverse), and driftType
+      (new_logic for diverged, code_ahead for reverse-only). The driftType
+      field is only set for specific scenarios — forward-only drift has
+      no driftType set.
+    applies_to_nodes: [all-nodes]
+    code_evidence:
+      file: src/stores/implementation-store.ts
+      lines: "157-212"
+    status: candidate
+
+  - id: recon-rpt
+    type: implementation_detail
+    description: >
+      Reconciliation reports are saved to .ddd/reconciliations/ with an
+      ISO timestamp filename (colons and dots replaced with dashes). Each
+      report contains: a unique nanoid, timestamp, entries array (one per
+      resolved drift), and syncScoreBefore/syncScoreAfter percentages.
+      The sync score is computed as (implemented / total) * 100, where
+      total counts all flows across all domains.
+    applies_to_nodes: [all-nodes]
+    code_evidence:
+      file: src/stores/implementation-store.ts
+      lines: "360-382"
+    status: candidate
+
+  - id: auto-drft
+    type: implementation_detail
+    description: >
+      Drift detection runs automatically after mappings are loaded
+      (loadMappings -> detectDrift chain). It iterates all domains and
+      flows, checking each mapped flow against its current file hashes.
+      Flows without mappings are skipped (they are "pending" in sync score).
+    applies_to_nodes: [all-nodes]
+    code_evidence:
+      file: src/stores/implementation-store.ts
+      lines: "56-61"
+    status: candidate

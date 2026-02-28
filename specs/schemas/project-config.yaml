@@ -1,0 +1,60 @@
+name: project-config
+description: "Project configuration — top-level settings stored in ddd-project.json defining the project identity and tech stack"
+fields:
+  - name: name
+    type: string
+    required: true
+    description: "Project name used in file paths and display"
+  - name: location
+    type: string
+    required: true
+    description: "Absolute filesystem path to the project root directory"
+  - name: description
+    type: text
+    required: false
+    description: "Brief description of the project's purpose"
+  - name: init_git
+    type: boolean
+    required: false
+    description: "Whether to initialize a git repository when creating the project"
+  - name: tech_stack_language
+    type: string
+    required: true
+    description: "Primary programming language (e.g., TypeScript, Python, Go)"
+  - name: tech_stack_language_version
+    type: string
+    required: false
+    description: "Language version constraint (e.g., 5.x, 3.12)"
+  - name: tech_stack_framework
+    type: string
+    required: true
+    description: "Web/app framework (e.g., Express, Next.js, FastAPI)"
+  - name: tech_stack_database
+    type: string
+    required: false
+    description: "Database engine (e.g., PostgreSQL, SQLite, MongoDB)"
+  - name: tech_stack_orm
+    type: string
+    required: false
+    description: "ORM or query builder (e.g., Prisma, Drizzle, SQLAlchemy)"
+  - name: tech_stack_cache
+    type: string
+    required: false
+    description: "Cache layer (e.g., Redis, Memcached, in-memory)"
+  - name: domains
+    type: json
+    required: true
+    description: "Array of initial domain definitions — each has name, description"
+relationships:
+  - name: domains
+    type: has_many
+    target: domain-config
+    foreign_key: project_name
+    description: "A project contains many domains"
+indexes:
+  - fields: [name]
+    unique: true
+    description: "Project names must be unique"
+  - fields: [location]
+    unique: true
+    description: "Each project occupies a unique filesystem path"

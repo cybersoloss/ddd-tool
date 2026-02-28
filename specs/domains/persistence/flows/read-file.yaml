@@ -1,0 +1,61 @@
+flow:
+  id: read-file
+  name: "Read File"
+  type: traditional
+  domain: persistence
+  description: "Reads file contents from disk via IPC"
+
+trigger:
+  id: trigger-jR7bX1xZ
+  type: trigger
+  position: { x: 300, y: 0 }
+  label: "Read File"
+  spec:
+    event: "ipc:read_file"
+    description: "Tauri IPC command to read a file from disk"
+  connections:
+    - targetNodeId: process-kS8cY2yA
+
+nodes:
+  - id: process-kS8cY2yA
+    type: process
+    position: { x: 300, y: 130 }
+    label: "Read from Disk"
+    spec:
+      action: "Read file at specified path using std::fs::read_to_string, handle UTF-8 encoding"
+    connections:
+      - targetNodeId: decision-lT9dZ3zA
+
+  - id: decision-lT9dZ3zA
+    type: decision
+    position: { x: 300, y: 260 }
+    label: "Read Success?"
+    spec:
+      condition: "File read completed without error"
+    connections:
+      - targetNodeId: terminal-mU1eA4aB
+        sourceHandle: "true"
+      - targetNodeId: terminal-nV2fB5bC
+        sourceHandle: "false"
+
+  - id: terminal-mU1eA4aB
+    type: terminal
+    position: { x: 300, y: 390 }
+    label: "File Contents"
+    spec:
+      outcome: success
+      description: "File contents returned as string"
+    connections: []
+
+  - id: terminal-nV2fB5bC
+    type: terminal
+    position: { x: 550, y: 390 }
+    label: "Read Error"
+    spec:
+      outcome: failure
+      description: "File not found or permission denied"
+    connections: []
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

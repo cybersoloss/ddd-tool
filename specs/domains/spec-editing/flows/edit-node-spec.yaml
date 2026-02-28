@@ -1,0 +1,49 @@
+flow:
+  id: edit-node-spec
+  name: "Edit Node Spec"
+  type: traditional
+  domain: spec-editing
+  description: "Opens the spec panel for a selected node with type-specific editor fields"
+
+trigger:
+  id: trigger-kM9cS2vW
+  type: trigger
+  position: { x: 300, y: 0 }
+  label: "Select Node"
+  spec:
+    event: "ui:select-node"
+    description: "User clicks a node on the flow canvas"
+  connections:
+    - targetNodeId: process-lN1dT3wX
+
+nodes:
+  - id: process-lN1dT3wX
+    type: process
+    position: { x: 300, y: 130 }
+    label: "Load Spec Editor"
+    spec:
+      action: "Look up node type, load corresponding editor component (e.g., TriggerEditor, InputEditor, ProcessEditor)"
+    connections:
+      - targetNodeId: process-mP2eU4xY
+
+  - id: process-mP2eU4xY
+    type: process
+    position: { x: 300, y: 260 }
+    label: "Render Editor Fields"
+    spec:
+      action: "Populate editor with node.spec values using KNOWN_KEYS pattern, show ExtraFieldsEditor for unknown keys"
+    connections:
+      - targetNodeId: terminal-nQ3fV5yZ
+
+  - id: terminal-nQ3fV5yZ
+    type: terminal
+    position: { x: 300, y: 390 }
+    label: "Spec Panel Open"
+    spec:
+      outcome: success
+      description: "Right-side spec panel showing type-specific editor for selected node"
+    connections: []
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

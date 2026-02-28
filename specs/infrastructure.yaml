@@ -1,0 +1,22 @@
+services:
+  - id: frontend
+    type: server
+    runtime: node
+    framework: react-19
+    engine: vite-7
+    entry: src/main.tsx
+    port: 1420
+    dev_command: npm run dev
+  - id: backend
+    type: server
+    runtime: rust
+    framework: tauri-2
+    entry: src-tauri/src/main.rs
+    depends_on: [frontend]
+    dev_command: npm run tauri dev
+
+startup_order: [frontend, backend]
+
+deployment:
+  local:
+    strategy: process-manager

@@ -1,0 +1,27 @@
+domain:
+  id: implementation
+  name: "Implementation Tracking"
+  role: process
+  description: "Tracks the mapping between DDD specs and implementation code. Detects drift via SHA-256 hash comparison, supports reconciliation workflows, and records change history."
+
+flows:
+  - id: load-mappings
+    name: "Load Mappings"
+    description: "Reads .ddd/mapping.yaml and annotations on project open"
+  - id: detect-drift
+    name: "Detect Drift"
+    description: "Compares spec hashes against implementation file hashes to find drift"
+  - id: resolve-drift
+    name: "Resolve Drift"
+    description: "Handles individual drift resolution — accept, reimpl, or ignore"
+  - id: save-reconciliation
+    name: "Save Reconciliation"
+    description: "Batch-resolves drift and writes a reconciliation report"
+  - id: record-change
+    name: "Record Change"
+    description: "Records spec content changes with SHA-256 hashes for history tracking"
+
+events:
+  emits: []
+  listens:
+    - flow-saved

@@ -1,0 +1,71 @@
+flow:
+  id: save-reconciliation
+  name: "Save Reconciliation"
+  type: traditional
+  domain: implementation
+  description: "Batch-resolves drift and writes a reconciliation report"
+
+trigger:
+  id: trigger-wC3nJ6jL
+  type: trigger
+  position: { x: 300, y: 0 }
+  label: "Resolve All"
+  spec:
+    event: "ui:resolve-all"
+    description: "User clicks Resolve All to batch-process remaining drift entries"
+  connections:
+    - targetNodeId: process-xD4pK7kM
+
+nodes:
+  - id: process-xD4pK7kM
+    type: process
+    position: { x: 300, y: 130 }
+    label: "Batch Resolve"
+    spec:
+      action: "Apply default resolution (accept) to all remaining drifted entries"
+    connections:
+      - targetNodeId: process-yE5qL8lN
+
+  - id: process-yE5qL8lN
+    type: process
+    position: { x: 300, y: 260 }
+    label: "Compute Sync Score"
+    spec:
+      action: "Calculate percentage of mappings in sync: (synced / total) * 100"
+    connections:
+      - targetNodeId: ipc-zF6rM9mP
+
+  - id: ipc-zF6rM9mP
+    type: ipc_call
+    position: { x: 300, y: 390 }
+    label: "Write Reconciliation Report"
+    spec:
+      command: "write_file"
+      payload: "Reconciliation report YAML to .ddd/reconciliations/{timestamp}.yaml"
+    connections:
+      - targetNodeId: terminal-aG7sN1nQ
+        sourceHandle: "success"
+      - targetNodeId: terminal-bH8tP2pR
+        sourceHandle: "error"
+
+  - id: terminal-aG7sN1nQ
+    type: terminal
+    position: { x: 300, y: 520 }
+    label: "Reconciliation Saved"
+    spec:
+      outcome: success
+      description: "All drift resolved and reconciliation report written"
+    connections: []
+
+  - id: terminal-bH8tP2pR
+    type: terminal
+    position: { x: 550, y: 520 }
+    label: "Write Error"
+    spec:
+      outcome: failure
+      description: "Failed to write reconciliation report file"
+    connections: []
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

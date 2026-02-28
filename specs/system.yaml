@@ -1,0 +1,43 @@
+name: ddd-tool
+description: "Design Driven Development desktop app for visual flow-based software design"
+version: "0.2.32-alpha"
+tech_stack:
+  language: TypeScript / Rust
+  frontend: React 19
+  desktop: Tauri 2.0
+  canvas: React Flow (@xyflow/react 12)
+  state: Zustand 5
+  ui: Tailwind CSS 4 + Radix UI
+  build: Vite 7
+  rust_deps: git2, tokio, notify, sha2
+zones:
+  - id: frontend
+    name: Frontend (React)
+    domain_ids: [canvas, spec-editing, project, navigation, git, validation]
+    color: "#3b82f6"
+  - id: backend
+    name: Backend (Rust)
+    domain_ids: [persistence]
+    color: "#f97316"
+events:
+  - name: spec-files-changed
+    description: "File watcher emits when YAML/JSON files change in specs/ directory"
+    publisher: persistence
+    consumers: [canvas, spec-editing]
+  - name: flow-saved
+    description: "Flow store saves flow YAML, triggers change history recording"
+    publisher: canvas
+    consumers: [implementation]
+  - name: validation-triggered
+    description: "Flow changes trigger async validation after 300ms debounce"
+    publisher: canvas
+    consumers: [validation]
+  - name: domain-saved
+    description: "Domain config saved, triggers change history recording"
+    publisher: canvas
+    consumers: [implementation]
+  - name: navigate
+    description: "Sheet store navigates between L1/L2/L3 views"
+    publisher: navigation
+    consumers: [canvas]
+integrations: []

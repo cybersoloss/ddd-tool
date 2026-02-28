@@ -1,0 +1,62 @@
+flow:
+  id: save-settings
+  name: "Save Settings"
+  type: traditional
+  domain: project
+  description: "Persists application settings to disk"
+
+trigger:
+  id: trigger-rT2hV6yX
+  type: trigger
+  position: { x: 300, y: 0 }
+  label: "Save Settings"
+  spec:
+    event: "ui:save-settings"
+    description: "User saves settings from the settings dialog"
+  connections:
+    - targetNodeId: process-sU3iW7zY
+
+nodes:
+  - id: process-sU3iW7zY
+    type: process
+    position: { x: 300, y: 130 }
+    label: "Serialize Settings"
+    spec:
+      action: "Serialize app-store settings to JSON string"
+    connections:
+      - targetNodeId: ipc-tV4jX8aZ
+
+  - id: ipc-tV4jX8aZ
+    type: ipc_call
+    position: { x: 300, y: 260 }
+    label: "Write Settings File"
+    spec:
+      command: "write_file"
+      payload: "Serialized settings JSON to app data directory"
+    connections:
+      - targetNodeId: terminal-uW5kY9bA
+        sourceHandle: "success"
+      - targetNodeId: terminal-vX6lZ1cB
+        sourceHandle: "error"
+
+  - id: terminal-uW5kY9bA
+    type: terminal
+    position: { x: 300, y: 390 }
+    label: "Saved"
+    spec:
+      outcome: success
+      description: "Settings persisted to disk"
+    connections: []
+
+  - id: terminal-vX6lZ1cB
+    type: terminal
+    position: { x: 550, y: 390 }
+    label: "Save Error"
+    spec:
+      outcome: failure
+      description: "Failed to write settings file"
+    connections: []
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

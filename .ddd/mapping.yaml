@@ -1,0 +1,699 @@
+flows:
+  project/create-project:
+    spec: specs/domains/project/flows/create-project.yaml
+    specHash: "245e7adc29790e086af50ba210645743874f60f32d30ef6288dabf6314ec236c"
+    files:
+      - src/stores/app-store.ts
+      - src/components/ProjectLauncher/NewProjectWizard.tsx
+    fileHashes:
+      src/stores/app-store.ts: "1cf3b9afaf589507740517298467d3d231396b9c3622e80ce7f0e50f7e61415f"
+      src/components/ProjectLauncher/NewProjectWizard.tsx: "4fba3df6432e3ee342d8ebe82e2a6169637b23180a9dfa0d47b36da948ea817b"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  project/open-project:
+    spec: specs/domains/project/flows/open-project.yaml
+    specHash: "f3080144d4bafe45e92ab44193186e7b280a424d09cb18b2ed0e38a4a09e163e"
+    files:
+      - src/stores/app-store.ts
+      - src/stores/project-store.ts
+    fileHashes:
+      src/stores/app-store.ts: "1cf3b9afaf589507740517298467d3d231396b9c3622e80ce7f0e50f7e61415f"
+      src/stores/project-store.ts: "b2b35b8fd61940a346869de0f02dce93704bffe28c81b3b2c30a7d894590f3a5"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  project/clone-project:
+    spec: specs/domains/project/flows/clone-project.yaml
+    specHash: "13f6acdf639a4c4a7adc00641365ca49756617ea979dfff80879602e97a3ed63"
+    files:
+      - src/components/ProjectLauncher/CloneDialog.tsx
+    fileHashes:
+      src/components/ProjectLauncher/CloneDialog.tsx: "7e1ad1cdf19d94d84ff3c81e505d69974f365a731713b097c6e4f37d52f3a872"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  project/load-settings:
+    spec: specs/domains/project/flows/load-settings.yaml
+    specHash: "970f0044f015cfa1539f1f7711adb178738f0e815fd80b80a2bd0da00760240c"
+    files:
+      - src/stores/app-store.ts
+    fileHashes:
+      src/stores/app-store.ts: "1cf3b9afaf589507740517298467d3d231396b9c3622e80ce7f0e50f7e61415f"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  project/save-settings:
+    spec: specs/domains/project/flows/save-settings.yaml
+    specHash: "807d4239d41e6f488c6493d766ddc57dc0acc21823e66d649f1e5d3889692b36"
+    files:
+      - src/stores/app-store.ts
+    fileHashes:
+      src/stores/app-store.ts: "1cf3b9afaf589507740517298467d3d231396b9c3622e80ce7f0e50f7e61415f"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  project/create-sample:
+    spec: specs/domains/project/flows/create-sample.yaml
+    specHash: "f0b8c0ad95fb7501556ffb3dca0ffa6912ffacb0de5c9c67f6e1c0a8091fd773"
+    files:
+      - src/utils/sample-project.ts
+    fileHashes:
+      src/utils/sample-project.ts: "421e2c2c64769a6b71f1b07ede2187bf1ca0fb02cafb0682c5e1cbbd5d591ad4"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  canvas/view-system-map:
+    spec: specs/domains/canvas/flows/view-system-map.yaml
+    specHash: "c71193beef4c66d73bfbaab93890e8175228f4e3f21634f1b4d9e671644d9d78"
+    files:
+      - src/components/SystemMap/SystemMap.tsx
+      - src/utils/auto-layout.ts
+    fileHashes:
+      src/components/SystemMap/SystemMap.tsx: "15a3ff999b0b3d6fba165e76f2c183e505c5a698657c25babc6935ec74c83308"
+      src/utils/auto-layout.ts: "6f89adb6398a169e45f4a2936058bab80d6c7514ce044b779453a7b7f1d23ec0"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  canvas/add-domain:
+    spec: specs/domains/canvas/flows/add-domain.yaml
+    specHash: "fffb898843d3773b0b5e3755dfcb4c9b1f1489851394b4d7941f515ecbe38499"
+    files:
+      - src/stores/project-store.ts
+      - src/components/SystemMap/AddDomainDialog.tsx
+    fileHashes:
+      src/stores/project-store.ts: "b2b35b8fd61940a346869de0f02dce93704bffe28c81b3b2c30a7d894590f3a5"
+      src/components/SystemMap/AddDomainDialog.tsx: "178a7a7d3d8f3659c241aeba28e2efde3567fff0e699211e46e47b35d27b7cfb"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  canvas/delete-domain:
+    spec: specs/domains/canvas/flows/delete-domain.yaml
+    specHash: "a1dd635d6f763a6a52245ff209a6dbe733257036ec772e6f2ce34b26c6103b2c"
+    files:
+      - src/stores/project-store.ts
+      - src/components/SystemMap/DomainContextMenu.tsx
+    fileHashes:
+      src/stores/project-store.ts: "b2b35b8fd61940a346869de0f02dce93704bffe28c81b3b2c30a7d894590f3a5"
+      src/components/SystemMap/DomainContextMenu.tsx: "863987895151ec5328a85fab3632ae0dc72e7eb39921edd5ca4c1af5f7deded0"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  canvas/view-domain-map:
+    spec: specs/domains/canvas/flows/view-domain-map.yaml
+    specHash: "62f866c9f5b7991edadab2b4331a0c90aba1782c2d545c38ed775a8c8849d14a"
+    files:
+      - src/components/DomainMap/DomainMap.tsx
+      - src/utils/auto-layout.ts
+    fileHashes:
+      src/components/DomainMap/DomainMap.tsx: "7334f252be88c7dba32004122655eee58540da15753a7c9d75b43ba8019af393"
+      src/utils/auto-layout.ts: "6f89adb6398a169e45f4a2936058bab80d6c7514ce044b779453a7b7f1d23ec0"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  canvas/add-flow:
+    spec: specs/domains/canvas/flows/add-flow.yaml
+    specHash: "6587387b08a43cdee3f6f54db6f52577d8e88f077094773bb9f368ac405f73ce"
+    files:
+      - src/stores/project-store.ts
+      - src/components/DomainMap/AddFlowDialog.tsx
+    fileHashes:
+      src/stores/project-store.ts: "b2b35b8fd61940a346869de0f02dce93704bffe28c81b3b2c30a7d894590f3a5"
+      src/components/DomainMap/AddFlowDialog.tsx: "2a2c6fd9ba2315b0546d875c6f11ad7becfc44ab2a40ae474fe85258ae24b25f"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  canvas/delete-flow:
+    spec: specs/domains/canvas/flows/delete-flow.yaml
+    specHash: "e49aef7f81641f1a13d15c9a7f212dd4af39b018db30d33ae2833206c4920571"
+    files:
+      - src/stores/project-store.ts
+      - src/components/DomainMap/FlowContextMenu.tsx
+    fileHashes:
+      src/stores/project-store.ts: "b2b35b8fd61940a346869de0f02dce93704bffe28c81b3b2c30a7d894590f3a5"
+      src/components/DomainMap/FlowContextMenu.tsx: "212f8f875dd7b2c5cc1ccfadadbfa360adbb6bbba8f705923825445eac2c708d"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  canvas/design-flow:
+    spec: specs/domains/canvas/flows/design-flow.yaml
+    specHash: "ea615543161e8143c74ad82665848fc2c6a938e56b9edfcfb5aac3d77e89b4c6"
+    files:
+      - src/stores/flow-store.ts
+      - src/components/FlowCanvas/FlowCanvas.tsx
+      - src/utils/flow-normalizer.ts
+    fileHashes:
+      src/stores/flow-store.ts: "02fa94c4ceca22e366293b72f9ca9cba46cdd0cfd7102bbc2dee24f76fe2f312"
+      src/components/FlowCanvas/FlowCanvas.tsx: "69025c596b71b917f8f6cc4d186c5805aa755f93d937239832bbd2266ec03910"
+      src/utils/flow-normalizer.ts: "6efe5c2e68e974800d42bc2e2f20fcd1a5090d661134b11a28fa35bdbbf2fcba"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 10
+
+  canvas/add-node:
+    spec: specs/domains/canvas/flows/add-node.yaml
+    specHash: "737d6980dc94e89f7feeb5f91136790d5646989021d792c49e69087b7502172f"
+    files:
+      - src/stores/flow-store.ts
+      - src/components/FlowCanvas/NodeToolbar.tsx
+    fileHashes:
+      src/stores/flow-store.ts: "02fa94c4ceca22e366293b72f9ca9cba46cdd0cfd7102bbc2dee24f76fe2f312"
+      src/components/FlowCanvas/NodeToolbar.tsx: "538327fae3b397aaa67488e79f892bcc0f07810cf649ca8502a117d192fd50dc"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 5
+
+  canvas/wire-connection:
+    spec: specs/domains/canvas/flows/wire-connection.yaml
+    specHash: "5aee515d28b717e354d3efe021729d97b0c734053e5a87a9a6d9d06d43e87bf7"
+    files:
+      - src/stores/flow-store.ts
+      - src/components/FlowCanvas/FlowCanvas.tsx
+    fileHashes:
+      src/stores/flow-store.ts: "02fa94c4ceca22e366293b72f9ca9cba46cdd0cfd7102bbc2dee24f76fe2f312"
+      src/components/FlowCanvas/FlowCanvas.tsx: "69025c596b71b917f8f6cc4d186c5805aa755f93d937239832bbd2266ec03910"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  spec-editing/edit-node-spec:
+    spec: specs/domains/spec-editing/flows/edit-node-spec.yaml
+    specHash: "c25aa4a815da6fb2666ee9fb3d8c5b7d3f359abe7d271d70ed02f3099399d591"
+    files:
+      - src/components/SpecPanel/SpecPanel.tsx
+    fileHashes:
+      src/components/SpecPanel/SpecPanel.tsx: "e65877f2b69bb618917973ee013f77704d7014f84647269898109b66b86ebf2b"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  spec-editing/update-node-spec:
+    spec: specs/domains/spec-editing/flows/update-node-spec.yaml
+    specHash: "92963290fb84b465543dbee0661726a8351846831471302110e9520ff1f442bc"
+    files:
+      - src/stores/flow-store.ts
+    fileHashes:
+      src/stores/flow-store.ts: "02fa94c4ceca22e366293b72f9ca9cba46cdd0cfd7102bbc2dee24f76fe2f312"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  spec-editing/edit-schema:
+    spec: specs/domains/spec-editing/flows/edit-schema.yaml
+    specHash: "ad3c5c506842513ee8de3c4cb3e55b1a5761dbaf078d80235091756b20ce13c2"
+    files:
+      - src/components/SpecsSidebar/SchemaEditor.tsx
+      - src/stores/specs-store.ts
+    fileHashes:
+      src/components/SpecsSidebar/SchemaEditor.tsx: "eeceab7b59da875b9fb7f729f859d16324b87bcfa85fdfcc6cb7215dc79b0416"
+      src/stores/specs-store.ts: "9f972de487901edad7841f3ed6a88abce8e894ce0b02d45d2c5dc323f9254ba8"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  spec-editing/save-schema:
+    spec: specs/domains/spec-editing/flows/save-schema.yaml
+    specHash: "059ac3e3d1774cd1be6913fb4e910560d6d521355ce91ca7008afdc05c3131b5"
+    files:
+      - src/stores/specs-store.ts
+    fileHashes:
+      src/stores/specs-store.ts: "9f972de487901edad7841f3ed6a88abce8e894ce0b02d45d2c5dc323f9254ba8"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  spec-editing/edit-ui-page:
+    spec: specs/domains/spec-editing/flows/edit-ui-page.yaml
+    specHash: "034a77e6d19de3ea900499d00dcbd7afbf573b498d3dc9699741552753ce38f5"
+    files:
+      - src/components/SpecsSidebar/UIPageEditor.tsx
+      - src/stores/specs-store.ts
+    fileHashes:
+      src/components/SpecsSidebar/UIPageEditor.tsx: "2a0450df57ff9823201022abd04fa6ed03e80f53afe76b7f122afb221a53c088"
+      src/stores/specs-store.ts: "9f972de487901edad7841f3ed6a88abce8e894ce0b02d45d2c5dc323f9254ba8"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  spec-editing/save-ui-page:
+    spec: specs/domains/spec-editing/flows/save-ui-page.yaml
+    specHash: "f53c3eeb49566ebf7d08988b176ae3b39065ff94a1eef600ecd022ec8d52a382"
+    files:
+      - src/stores/specs-store.ts
+    fileHashes:
+      src/stores/specs-store.ts: "9f972de487901edad7841f3ed6a88abce8e894ce0b02d45d2c5dc323f9254ba8"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  spec-editing/edit-infrastructure:
+    spec: specs/domains/spec-editing/flows/edit-infrastructure.yaml
+    specHash: "5482a618420ef69f24fd25ee7e88244c4e4d0a9e97a0f9f45b5ac8d59d9747e2"
+    files:
+      - src/components/SpecsSidebar/InfrastructureEditor.tsx
+      - src/stores/specs-store.ts
+    fileHashes:
+      src/components/SpecsSidebar/InfrastructureEditor.tsx: "ec801ed99e6fd20640bc3a9ad8d08997d1f2c08557591d0c1f4cac4ef0e31778"
+      src/stores/specs-store.ts: "9f972de487901edad7841f3ed6a88abce8e894ce0b02d45d2c5dc323f9254ba8"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  spec-editing/auto-layout:
+    spec: specs/domains/spec-editing/flows/auto-layout.yaml
+    specHash: "ba22ee61253b5f96aa3442b4aac06e5f386426600c09cc7e3d6ae40db84e7209"
+    files:
+      - src/utils/auto-layout.ts
+      - src/stores/flow-store.ts
+    fileHashes:
+      src/utils/auto-layout.ts: "6f89adb6398a169e45f4a2936058bab80d6c7514ce044b779453a7b7f1d23ec0"
+      src/stores/flow-store.ts: "02fa94c4ceca22e366293b72f9ca9cba46cdd0cfd7102bbc2dee24f76fe2f312"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 4
+
+  git/refresh-status:
+    spec: specs/domains/git/flows/refresh-status.yaml
+    specHash: "028b4c6cf7104d34ee13f750cd0e3d3ebae5f98cd3740475ee7e3ec3170840c1"
+    files:
+      - src/stores/git-store.ts
+    fileHashes:
+      src/stores/git-store.ts: "bb888e326a528b5a98bc459723a1e01dc04c058157a1896958f6d10cbf3e582a"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  git/stage-file:
+    spec: specs/domains/git/flows/stage-file.yaml
+    specHash: "2d5212e5ee3b295eed5564916bb2917486f84734cac2c11765e28614d89d4dff"
+    files:
+      - src/stores/git-store.ts
+    fileHashes:
+      src/stores/git-store.ts: "bb888e326a528b5a98bc459723a1e01dc04c058157a1896958f6d10cbf3e582a"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  git/unstage-file:
+    spec: specs/domains/git/flows/unstage-file.yaml
+    specHash: "48857b104b2f1e6548feaa46f7711d542c857d696cd09184d302aa71105cc7e2"
+    files:
+      - src/stores/git-store.ts
+    fileHashes:
+      src/stores/git-store.ts: "bb888e326a528b5a98bc459723a1e01dc04c058157a1896958f6d10cbf3e582a"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  git/commit-changes:
+    spec: specs/domains/git/flows/commit-changes.yaml
+    specHash: "879281c634ddedccc6f8d88a2eb74078ff9ec62cde978bfc79f52c982d69a076"
+    files:
+      - src/stores/git-store.ts
+      - src/components/GitPanel/GitPanel.tsx
+    fileHashes:
+      src/stores/git-store.ts: "bb888e326a528b5a98bc459723a1e01dc04c058157a1896958f6d10cbf3e582a"
+      src/components/GitPanel/GitPanel.tsx: "25b9cec1e1d2cf88a41e4563c0b4f5f743c84784342b6cb152bce924a194ee1e"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 4
+
+  git/view-log:
+    spec: specs/domains/git/flows/view-log.yaml
+    specHash: "507bbf09b804504a8352104d10489c5c09ca652e9b30accb3890d9735c68bb78"
+    files:
+      - src/stores/git-store.ts
+      - src/components/GitPanel/GitPanel.tsx
+    fileHashes:
+      src/stores/git-store.ts: "bb888e326a528b5a98bc459723a1e01dc04c058157a1896958f6d10cbf3e582a"
+      src/components/GitPanel/GitPanel.tsx: "25b9cec1e1d2cf88a41e4563c0b4f5f743c84784342b6cb152bce924a194ee1e"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  validation/validate-flow:
+    spec: specs/domains/validation/flows/validate-flow.yaml
+    specHash: "33474e70fb9d3f10faa88c080a08d87581f42854f4e9ec41cbde09b6fca451aa"
+    files:
+      - src/utils/flow-validator.ts
+      - src/stores/validation-store.ts
+    fileHashes:
+      src/utils/flow-validator.ts: "3719879808ea1e6217a6731316e07897037a55ae3e54a0271e76563625ce1600"
+      src/stores/validation-store.ts: "dbfd7ffbc867a2ddf76291cef3c9af846217dd599f2e12356a14ae3c2054e440"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 7
+
+  validation/validate-domain:
+    spec: specs/domains/validation/flows/validate-domain.yaml
+    specHash: "9137e6ecfe51ac350f0764f0da1d0ffdbda1e5def35149ec9fa392e43ddd8815"
+    files:
+      - src/utils/flow-validator.ts
+      - src/stores/validation-store.ts
+    fileHashes:
+      src/utils/flow-validator.ts: "3719879808ea1e6217a6731316e07897037a55ae3e54a0271e76563625ce1600"
+      src/stores/validation-store.ts: "dbfd7ffbc867a2ddf76291cef3c9af846217dd599f2e12356a14ae3c2054e440"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  validation/validate-system:
+    spec: specs/domains/validation/flows/validate-system.yaml
+    specHash: "aefb7010130984536a137e5ee3d6484b373aa0eb01afb1b5903616c63f8c136a"
+    files:
+      - src/utils/flow-validator.ts
+      - src/stores/validation-store.ts
+    fileHashes:
+      src/utils/flow-validator.ts: "3719879808ea1e6217a6731316e07897037a55ae3e54a0271e76563625ce1600"
+      src/stores/validation-store.ts: "dbfd7ffbc867a2ddf76291cef3c9af846217dd599f2e12356a14ae3c2054e440"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  validation/check-implement-gate:
+    spec: specs/domains/validation/flows/check-implement-gate.yaml
+    specHash: "05ef6a011da7aaadc26a75219b14fd61ba5357b45f02119046706b34dc179f26"
+    files:
+      - src/stores/validation-store.ts
+    fileHashes:
+      src/stores/validation-store.ts: "dbfd7ffbc867a2ddf76291cef3c9af846217dd599f2e12356a14ae3c2054e440"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  implementation/load-mappings:
+    spec: specs/domains/implementation/flows/load-mappings.yaml
+    specHash: "1dbce14b124d89f42803b1407d0c33aaa0c45c6cfd90e8a2ffc27e756218e41f"
+    files:
+      - src/stores/implementation-store.ts
+    fileHashes:
+      src/stores/implementation-store.ts: "695e124c2ae33e6aac77c889506d27788422a8b81d74f1b26f92b40f9c761702"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  implementation/detect-drift:
+    spec: specs/domains/implementation/flows/detect-drift.yaml
+    specHash: "75d2e9e8907e581fb5ca76b6fae1831f8965dc9e8eb764d5dc6fe824d828ee2b"
+    files:
+      - src/stores/implementation-store.ts
+    fileHashes:
+      src/stores/implementation-store.ts: "695e124c2ae33e6aac77c889506d27788422a8b81d74f1b26f92b40f9c761702"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 5
+
+  implementation/resolve-drift:
+    spec: specs/domains/implementation/flows/resolve-drift.yaml
+    specHash: "bb1a962267decba5057bf2a9cacd37190564348c5e7fc2508748a6a95ac4e1b7"
+    files:
+      - src/stores/implementation-store.ts
+    fileHashes:
+      src/stores/implementation-store.ts: "695e124c2ae33e6aac77c889506d27788422a8b81d74f1b26f92b40f9c761702"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  implementation/save-reconciliation:
+    spec: specs/domains/implementation/flows/save-reconciliation.yaml
+    specHash: "3cb76aa070783c54cf282b2a6ced6b608b3b2886d127bb0b4bcf34293512bf75"
+    files:
+      - src/stores/implementation-store.ts
+    fileHashes:
+      src/stores/implementation-store.ts: "695e124c2ae33e6aac77c889506d27788422a8b81d74f1b26f92b40f9c761702"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  implementation/record-change:
+    spec: specs/domains/implementation/flows/record-change.yaml
+    specHash: "dd5cc0be9dd9b2b66a6a443a0c8206054b2662b6445fb15199fca6bd5ac8fb6b"
+    files:
+      - src/stores/change-history-store.ts
+    fileHashes:
+      src/stores/change-history-store.ts: "002671d2d7ad6cb74ef45bdcc55306e4ff0ab97f1d6764a1a22d1a4faca87830"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  persistence/read-file:
+    spec: specs/domains/persistence/flows/read-file.yaml
+    specHash: "c424fcb4440445e3739daa78831e81d42fce61c3c2ea8162d96d7e89a90c77c3"
+    files:
+      - src-tauri/src/commands/file.rs
+    fileHashes:
+      src-tauri/src/commands/file.rs: "dd340bf9be7b8f2f25a5fd7be8ef31f81a9ed23f2208655a23674b45a23fbfb0"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  persistence/write-file:
+    spec: specs/domains/persistence/flows/write-file.yaml
+    specHash: "faddd93db97c568f5906d8a8032ca14a85a254af8d9b5c4ab5a5ed202278ecd7"
+    files:
+      - src-tauri/src/commands/file.rs
+    fileHashes:
+      src-tauri/src/commands/file.rs: "dd340bf9be7b8f2f25a5fd7be8ef31f81a9ed23f2208655a23674b45a23fbfb0"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  persistence/manage-directory:
+    spec: specs/domains/persistence/flows/manage-directory.yaml
+    specHash: "d8c46fdb1d323d14a7b7065941495c9e704c5e25d3f7a2bf27ca7bebbfa670aa"
+    files:
+      - src-tauri/src/commands/file.rs
+    fileHashes:
+      src-tauri/src/commands/file.rs: "dd340bf9be7b8f2f25a5fd7be8ef31f81a9ed23f2208655a23674b45a23fbfb0"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  persistence/watch-specs:
+    spec: specs/domains/persistence/flows/watch-specs.yaml
+    specHash: "4ebe4f4a9060ca1e55dd3aa6fe5243a678b11668d885ff010450d455399f62c3"
+    files:
+      - src-tauri/src/commands/file.rs
+    fileHashes:
+      src-tauri/src/commands/file.rs: "dd340bf9be7b8f2f25a5fd7be8ef31f81a9ed23f2208655a23674b45a23fbfb0"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 4
+
+  persistence/compute-hash:
+    spec: specs/domains/persistence/flows/compute-hash.yaml
+    specHash: "aa33b32a6d34a7a060ba86e79536e7846b172a67e594ce8387766d625780bc1f"
+    files:
+      - src-tauri/src/commands/implementation.rs
+    fileHashes:
+      src-tauri/src/commands/implementation.rs: "5c11f59f1689805e95ebf319697463e29f354111f8ceff74973f9d3fab72b126"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  persistence/auto-save:
+    spec: specs/domains/persistence/flows/auto-save.yaml
+    specHash: "67f13cd7f1322a6b11cf5f88519a3ed49662953c905691ff031e66b7359981bd"
+    files:
+      - src/stores/flow-store.ts
+    fileHashes:
+      src/stores/flow-store.ts: "02fa94c4ceca22e366293b72f9ca9cba46cdd0cfd7102bbc2dee24f76fe2f312"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 4
+
+  persistence/crash-recovery:
+    spec: specs/domains/persistence/flows/crash-recovery.yaml
+    specHash: "71616b4fe90ffeff82f8ca7774aacd6cb65a0bf1672916c2d7dae5c4162d3df3"
+    files:
+      - src/components/shared/CrashRecoveryDialog.tsx
+      - src/AppShell.tsx
+    fileHashes:
+      src/components/shared/CrashRecoveryDialog.tsx: "1aefde2f8902493f487ea4dedeae2314d7c3772dd45e0f344159b17ba784cd8e"
+      src/AppShell.tsx: "c0cb478f4676d85a7cd3c7dde42bedee69333e0eead81121ea159994e35cc1ec"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  persistence/export-mermaid:
+    spec: specs/domains/persistence/flows/export-mermaid.yaml
+    specHash: "2170c56777d940832f9a418a620452ea5da8d4f0c30f29ea6feccf185988180c"
+    files:
+      - src/utils/mermaid-export.ts
+    fileHashes:
+      src/utils/mermaid-export.ts: "3b2d39e5ac6666512f639bb17d558feb1e7a2b78db5c7d60199d56fb297bf517"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+pages:
+  launcher:
+    spec: specs/ui/launcher.yaml
+    specHash: "b09e3957a7eff2e3c1c5796e206d8e27bd6641716a9b8d0ef5a9859d76269ae0"
+    files:
+      - src/components/ProjectLauncher/ProjectLauncher.tsx
+      - src/components/ProjectLauncher/NewProjectWizard.tsx
+      - src/components/ProjectLauncher/RecentProjects.tsx
+      - src/components/ProjectLauncher/CloneDialog.tsx
+    fileHashes:
+      src/components/ProjectLauncher/ProjectLauncher.tsx: "3bb882e080d2352067c577b41fdf8b8915c4be0eb50170cebf27e9ed5a930e4d"
+      src/components/ProjectLauncher/NewProjectWizard.tsx: "4fba3df6432e3ee342d8ebe82e2a6169637b23180a9dfa0d47b36da948ea817b"
+      src/components/ProjectLauncher/RecentProjects.tsx: "fd84f13d932a5cefffdd0dcb1e493904abdc8b03c9b99730517bf3560fceaf59"
+      src/components/ProjectLauncher/CloneDialog.tsx: "7e1ad1cdf19d94d84ff3c81e505d69974f365a731713b097c6e4f37d52f3a872"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  first-run:
+    spec: specs/ui/first-run.yaml
+    specHash: "796bcdc6a2f6d0c23adaa5702c9783705080f2f05f2c8806b3cec00ed5ecf050"
+    files:
+      - src/components/FirstRun/FirstRunWizard.tsx
+    fileHashes:
+      src/components/FirstRun/FirstRunWizard.tsx: "6ddbb1dc379ec3fe6dfb1513187e9af34f04c1cd0a870503fd46f58543120d09"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  system-map:
+    spec: specs/ui/system-map.yaml
+    specHash: "8e1959fe5f3c8c2c27c95b052f29744eeafdf5ed3f4a9f1b6b80bfe72c28eaf6"
+    files:
+      - src/components/SystemMap/SystemMap.tsx
+    fileHashes:
+      src/components/SystemMap/SystemMap.tsx: "15a3ff999b0b3d6fba165e76f2c183e505c5a698657c25babc6935ec74c83308"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 4
+
+  domain-map:
+    spec: specs/ui/domain-map.yaml
+    specHash: "323e8319dfac02bd71dbdb47a29674858c806d6332d26042861ef8efb10bf99d"
+    files:
+      - src/components/DomainMap/DomainMap.tsx
+    fileHashes:
+      src/components/DomainMap/DomainMap.tsx: "7334f252be88c7dba32004122655eee58540da15753a7c9d75b43ba8019af393"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  flow-canvas:
+    spec: specs/ui/flow-canvas.yaml
+    specHash: "30f4f1879d80ee3182de6818ca97125f4a03607dc30ce5dd559d3a8478069a5d"
+    files:
+      - src/components/FlowCanvas/FlowCanvas.tsx
+    fileHashes:
+      src/components/FlowCanvas/FlowCanvas.tsx: "69025c596b71b917f8f6cc4d186c5805aa755f93d937239832bbd2266ec03910"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 12
+
+  settings:
+    spec: specs/ui/settings.yaml
+    specHash: "96549d13584ea9f0a2617c7943904a60d1aa629097dd831c4f47f6bc474db6a7"
+    files:
+      - src/components/Settings/SettingsDialog.tsx
+      - src/components/Settings/EditorSettings.tsx
+      - src/components/Settings/ClaudeCodeSettings.tsx
+      - src/components/Settings/GitSettings.tsx
+    fileHashes:
+      src/components/Settings/SettingsDialog.tsx: "6034258771f98879345844d4eaa3b2bf9ce191a906000efaa829beb2c6f7d654"
+      src/components/Settings/EditorSettings.tsx: "88b3e4525307798c46027342950ba1cfb7edd887e602d29a2f85843d5e8de776"
+      src/components/Settings/ClaudeCodeSettings.tsx: "343d49fb01e23dd8e137d65b315ff6b8e79516f92a14c6874b70b3f417d118ed"
+      src/components/Settings/GitSettings.tsx: "eae0ff0e2586c78b05b224dcd169c1eb09804069befebde778eaffab91c1f22a"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  git-panel:
+    spec: specs/ui/git-panel.yaml
+    specHash: "6f4f3a03fc0f8bf600c73ff8144ffe5633985abc79bfcf685187ae895f99bba6"
+    files:
+      - src/components/GitPanel/GitPanel.tsx
+    fileHashes:
+      src/components/GitPanel/GitPanel.tsx: "25b9cec1e1d2cf88a41e4563c0b4f5f743c84784342b6cb152bce924a194ee1e"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  specs-sidebar:
+    spec: specs/ui/specs-sidebar.yaml
+    specHash: "2b98d4d42a9bec48d4f09b21b07b2e2aa10fd992e2deead1ae54968f8a2a52a2"
+    files:
+      - src/components/SpecsSidebar/SpecsSidebar.tsx
+      - src/components/SpecsSidebar/SchemaEditor.tsx
+      - src/components/SpecsSidebar/UIPageEditor.tsx
+      - src/components/SpecsSidebar/InfrastructureEditor.tsx
+    fileHashes:
+      src/components/SpecsSidebar/SpecsSidebar.tsx: "ff901f3d9d4fb51aa27b837100f707a5da41b47e3d819c0e434a09db48fd9a05"
+      src/components/SpecsSidebar/SchemaEditor.tsx: "eeceab7b59da875b9fb7f729f859d16324b87bcfa85fdfcc6cb7215dc79b0416"
+      src/components/SpecsSidebar/UIPageEditor.tsx: "2a0450df57ff9823201022abd04fa6ed03e80f53afe76b7f122afb221a53c088"
+      src/components/SpecsSidebar/InfrastructureEditor.tsx: "ec801ed99e6fd20640bc3a9ad8d08997d1f2c08557591d0c1f4cac4ef0e31778"
+    implementedAt: "2026-02-28T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0

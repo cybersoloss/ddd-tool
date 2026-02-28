@@ -1,0 +1,76 @@
+name: change-history-entry
+description: "Change tracking record — logs every spec modification with source, scope, checksum, and implementation status"
+fields:
+  - name: id
+    type: string
+    required: true
+    description: "Sequential change identifier (e.g., 'chg-0001')"
+  - name: timestamp
+    type: datetime
+    required: true
+    description: "ISO 8601 timestamp of when the change occurred"
+  - name: source
+    type: enum
+    required: true
+    description: "Which tool or command produced this change"
+    values: [ddd-tool, ddd-update, ddd-create, ddd-sync]
+  - name: scope_level
+    type: enum
+    required: true
+    description: "Canvas level where the change was made"
+    values: [L1, L2, L3]
+  - name: scope_domain
+    type: string
+    required: false
+    description: "Domain name if the change is domain-scoped (null for system-level changes)"
+  - name: scope_flow
+    type: string
+    required: false
+    description: "Flow name if the change is flow-scoped (null for domain/system-level changes)"
+  - name: scope_pillar
+    type: enum
+    required: false
+    description: "Which DDD pillar was affected"
+    values: [logic, data, interface, infrastructure]
+  - name: spec_file
+    type: string
+    required: true
+    description: "Relative path from project root to the changed spec file"
+  - name: spec_checksum
+    type: string
+    required: true
+    description: "SHA-256 hash (first 12 chars) of the spec file after the change"
+  - name: status
+    type: enum
+    required: true
+    description: "Whether this change has been implemented in code"
+    values: [pending_implement, implemented]
+  - name: implemented_at
+    type: datetime
+    required: false
+    description: "ISO 8601 timestamp of when the change was implemented (null if pending)"
+  - name: code_files
+    type: json
+    required: false
+    description: "Array of relative paths to implementation files affected by this change"
+  - name: action
+    type: enum
+    required: false
+    description: "The kind of change that was made"
+    values: [created, updated, deleted]
+indexes:
+  - fields: [id]
+    unique: true
+    description: "Primary key — sequential change IDs"
+  - fields: [status]
+    unique: false
+    description: "Filter pending vs implemented changes"
+  - fields: [source]
+    unique: false
+    description: "Audit trail — find changes by originating tool"
+  - fields: [scope_domain, scope_flow]
+    unique: false
+    description: "Find all changes for a specific domain or flow"
+  - fields: [timestamp]
+    unique: false
+    description: "Chronological ordering of changes"

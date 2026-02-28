@@ -1,0 +1,72 @@
+flow:
+  id: save-ui-page
+  name: "Save UI Page"
+  type: traditional
+  domain: spec-editing
+  description: "Persists UI page spec changes to disk"
+
+trigger:
+  id: trigger-kN7bT9wX
+  type: trigger
+  position: { x: 300, y: 0 }
+  label: "Save Page"
+  spec:
+    event: "ui:save-page"
+    description: "User clicks Save in the UI page editor"
+  connections:
+    - targetNodeId: process-lP8cU1xY
+
+nodes:
+  - id: process-lP8cU1xY
+    type: process
+    position: { x: 300, y: 130 }
+    label: "Serialize Page Spec"
+    spec:
+      action: "Convert page editor state to YAML string with sections, forms, state"
+    connections:
+      - targetNodeId: ipc-mQ9dV2yZ
+
+  - id: ipc-mQ9dV2yZ
+    type: ipc_call
+    position: { x: 300, y: 260 }
+    label: "Write Page File"
+    spec:
+      command: "write_file"
+      payload: "Serialized page YAML to specs/ui/{pageId}.yaml"
+    connections:
+      - targetNodeId: event-nR1eW3zA
+        sourceHandle: "success"
+      - targetNodeId: terminal-pT3gY5bC
+        sourceHandle: "error"
+
+  - id: event-nR1eW3zA
+    type: event
+    position: { x: 300, y: 390 }
+    label: "Domain Saved"
+    spec:
+      event_name: "domain-saved"
+      payload: "{ pageId, action: 'page-saved' }"
+    connections:
+      - targetNodeId: terminal-qS2fX4aB
+
+  - id: terminal-qS2fX4aB
+    type: terminal
+    position: { x: 300, y: 520 }
+    label: "Page Saved"
+    spec:
+      outcome: success
+      description: "UI page YAML written to disk"
+    connections: []
+
+  - id: terminal-pT3gY5bC
+    type: terminal
+    position: { x: 550, y: 390 }
+    label: "Write Error"
+    spec:
+      outcome: failure
+      description: "Failed to write UI page file"
+    connections: []
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

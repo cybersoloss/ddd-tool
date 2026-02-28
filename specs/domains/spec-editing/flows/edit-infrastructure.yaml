@@ -1,0 +1,62 @@
+flow:
+  id: edit-infrastructure
+  name: "Edit Infrastructure"
+  type: traditional
+  domain: spec-editing
+  description: "Opens infrastructure spec for editing"
+
+trigger:
+  id: trigger-qU4hZ6cD
+  type: trigger
+  position: { x: 300, y: 0 }
+  label: "Edit Infrastructure"
+  spec:
+    event: "ui:edit-infra"
+    description: "User opens the Infrastructure tab in the Project Specs sidebar"
+  connections:
+    - targetNodeId: ipc-rV5iA7dE
+
+nodes:
+  - id: ipc-rV5iA7dE
+    type: ipc_call
+    position: { x: 300, y: 130 }
+    label: "Read Infrastructure YAML"
+    spec:
+      command: "read_file"
+      payload: "specs/infrastructure.yaml"
+    connections:
+      - targetNodeId: process-sW6jB8eF
+        sourceHandle: "success"
+      - targetNodeId: terminal-uY8lD1gH
+        sourceHandle: "error"
+
+  - id: process-sW6jB8eF
+    type: process
+    position: { x: 300, y: 260 }
+    label: "Parse Infrastructure"
+    spec:
+      action: "Parse YAML to extract services, startup order, deployment config, environment variables"
+    connections:
+      - targetNodeId: terminal-tX7kC9fG
+
+  - id: terminal-tX7kC9fG
+    type: terminal
+    position: { x: 300, y: 390 }
+    label: "Infra Editor Open"
+    spec:
+      outcome: success
+      description: "InfrastructureEditor populated with parsed infrastructure spec"
+    connections: []
+
+  - id: terminal-uY8lD1gH
+    type: terminal
+    position: { x: 550, y: 260 }
+    label: "Read Error"
+    spec:
+      outcome: failure
+      description: "Failed to read infrastructure YAML file"
+    connections: []
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

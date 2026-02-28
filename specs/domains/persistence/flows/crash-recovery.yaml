@@ -1,0 +1,121 @@
+flow:
+  id: crash-recovery
+  name: "Crash Recovery"
+  type: traditional
+  domain: persistence
+  description: "Detects and restores unsaved work from autosave files on app boot"
+
+trigger:
+  id: trigger-mV8eB2aC
+  type: trigger
+  position: { x: 300, y: 0 }
+  label: "App Boot"
+  spec:
+    event: "ui:app-boot"
+    description: "Fires on application startup to check for crash recovery files"
+  connections:
+    - targetNodeId: ipc-nW9fC3bD
+
+nodes:
+  - id: ipc-nW9fC3bD
+    type: ipc_call
+    position: { x: 300, y: 130 }
+    label: "List Autosave Directory"
+    spec:
+      command: "list_directory"
+      payload: ".ddd/autosave/"
+    connections:
+      - targetNodeId: decision-pX1gD4cE
+        sourceHandle: "success"
+      - targetNodeId: terminal-vD7mJ1iK
+        sourceHandle: "error"
+
+  - id: decision-pX1gD4cE
+    type: decision
+    position: { x: 300, y: 260 }
+    label: "Files Exist?"
+    spec:
+      condition: "autosaveFiles.length > 0"
+    connections:
+      - targetNodeId: process-qY2hE5dF
+        sourceHandle: "true"
+      - targetNodeId: terminal-vD7mJ1iK
+        sourceHandle: "false"
+
+  - id: process-qY2hE5dF
+    type: process
+    position: { x: 300, y: 390 }
+    label: "Show Recovery Dialog"
+    spec:
+      action: "Display crash recovery dialog listing available autosave files with timestamps"
+    connections:
+      - targetNodeId: decision-rZ3iF6eG
+
+  - id: decision-rZ3iF6eG
+    type: decision
+    position: { x: 300, y: 520 }
+    label: "Restore?"
+    spec:
+      condition: "User chooses to restore unsaved work"
+    connections:
+      - targetNodeId: ipc-sA4jG7fH
+        sourceHandle: "true"
+      - targetNodeId: ipc-uC6lJ9hK
+        sourceHandle: "false"
+
+  - id: ipc-sA4jG7fH
+    type: ipc_call
+    position: { x: 300, y: 650 }
+    label: "Read Autosave File"
+    spec:
+      command: "read_file"
+      payload: "Selected autosave file path"
+    connections:
+      - targetNodeId: process-tB5kH8gJ
+        sourceHandle: "success"
+      - targetNodeId: terminal-wE8nK2jL
+        sourceHandle: "error"
+
+  - id: process-tB5kH8gJ
+    type: process
+    position: { x: 300, y: 780 }
+    label: "Restore Flow"
+    spec:
+      action: "Parse autosave YAML, load into flow-store, navigate to recovered flow"
+    connections:
+      - targetNodeId: ipc-uC6lJ9hK
+
+  - id: ipc-uC6lJ9hK
+    type: ipc_call
+    position: { x: 300, y: 910 }
+    label: "Delete Autosave"
+    spec:
+      command: "delete_file"
+      payload: "Remove processed autosave files from .ddd/autosave/"
+    connections:
+      - targetNodeId: terminal-vD7mJ1iK
+        sourceHandle: "success"
+      - targetNodeId: terminal-vD7mJ1iK
+        sourceHandle: "error"
+
+  - id: terminal-vD7mJ1iK
+    type: terminal
+    position: { x: 300, y: 1040 }
+    label: "Recovery Complete"
+    spec:
+      outcome: success
+      description: "Crash recovery processed — restored or discarded autosave files"
+    connections: []
+
+  - id: terminal-wE8nK2jL
+    type: terminal
+    position: { x: 550, y: 780 }
+    label: "Restore Error"
+    spec:
+      outcome: failure
+      description: "Failed to read autosave file for restoration"
+    connections: []
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

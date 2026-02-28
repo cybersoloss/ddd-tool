@@ -1,0 +1,83 @@
+flow:
+  id: record-change
+  name: "Record Change"
+  type: traditional
+  domain: implementation
+  description: "Records spec content changes with SHA-256 hashes for history tracking"
+
+trigger:
+  id: trigger-cJ9uQ3qS
+  type: trigger
+  position: { x: 300, y: 0 }
+  label: "Flow Saved"
+  spec:
+    event: "event:flow-saved"
+    description: "Fires after a flow spec is saved to update change history"
+  connections:
+    - targetNodeId: process-dK1vR4rT
+
+nodes:
+  - id: process-dK1vR4rT
+    type: process
+    position: { x: 300, y: 130 }
+    label: "Compute SHA-256"
+    spec:
+      action: "Hash the serialized flow YAML content to produce a SHA-256 digest"
+    connections:
+      - targetNodeId: decision-eL2wS5sU
+
+  - id: decision-eL2wS5sU
+    type: decision
+    position: { x: 300, y: 260 }
+    label: "Content Changed?"
+    spec:
+      condition: "newHash !== previousHash (skip if no actual content change)"
+    connections:
+      - targetNodeId: process-fM3xT6tV
+        sourceHandle: "true"
+      - targetNodeId: terminal-hP5zV8vX
+        sourceHandle: "false"
+
+  - id: process-fM3xT6tV
+    type: process
+    position: { x: 300, y: 390 }
+    label: "Create History Entry"
+    spec:
+      action: "Build change history entry with timestamp, previous hash, new hash, flow ID"
+    connections:
+      - targetNodeId: ipc-gN4yU7uW
+
+  - id: ipc-gN4yU7uW
+    type: ipc_call
+    position: { x: 300, y: 520 }
+    label: "Write change-history.yaml"
+    spec:
+      command: "write_file"
+      payload: "Append change entry to .ddd/change-history.yaml"
+    connections:
+      - targetNodeId: terminal-hP5zV8vX
+        sourceHandle: "success"
+      - targetNodeId: terminal-iQ6aW9wY
+        sourceHandle: "error"
+
+  - id: terminal-hP5zV8vX
+    type: terminal
+    position: { x: 300, y: 650 }
+    label: "Change Recorded"
+    spec:
+      outcome: success
+      description: "Change history entry written (or skipped if no content change)"
+    connections: []
+
+  - id: terminal-iQ6aW9wY
+    type: terminal
+    position: { x: 550, y: 650 }
+    label: "Write Error"
+    spec:
+      outcome: failure
+      description: "Failed to write change history file"
+    connections: []
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

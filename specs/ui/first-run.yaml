@@ -1,0 +1,114 @@
+page_id: first-run
+name: First Run Wizard
+description: 2-step setup wizard shown on first launch
+layout: centered
+auth_required: false
+
+sections:
+  - id: step-1-claude
+    type: form
+    title: Claude Code Setup
+    description: Configure Claude Code integration for AI-assisted development
+    layout: centered
+    visible_when: currentStep == 1
+    elements:
+      - type: icon
+        icon: Terminal
+        size: 48
+        color: primary
+      - type: heading
+        level: 2
+        text: Claude Code
+      - type: paragraph
+        text: DDD Tool integrates with Claude Code to implement your flow designs
+        muted: true
+    fields:
+      - key: detected
+        label: Claude Code Detected
+        type: status-indicator
+        computed: true
+        description: Auto-detects if claude or claude-code is on PATH
+      - key: enabled
+        label: Enable Claude Code Integration
+        type: toggle
+        default: true
+        description: Allow DDD Tool to invoke Claude Code for implementation
+      - key: customPath
+        label: Custom Command Path
+        type: text
+        placeholder: /usr/local/bin/claude
+        required: false
+        visible_when: enabled == true
+        description: Override if Claude Code is not on your PATH
+    actions:
+      - id: detect
+        label: Detect
+        icon: Search
+        action: detectClaudeCode
+        variant: secondary
+      - id: next
+        label: Next
+        action: goToStep2
+        variant: primary
+
+  - id: step-2-start
+    type: content
+    title: Get Started
+    description: Choose how to begin
+    layout: centered
+    visible_when: currentStep == 2
+    elements:
+      - type: icon
+        icon: Rocket
+        size: 48
+        color: primary
+      - type: heading
+        level: 2
+        text: Ready to Go
+      - type: paragraph
+        text: Choose how you'd like to get started
+        muted: true
+      - type: button-group
+        layout: vertical
+        gap: 12
+        elements:
+          - type: button
+            label: Create New Project
+            description: Start a new DDD project from scratch
+            variant: primary
+            icon: Plus
+            action: createNewProject
+          - type: button
+            label: Open Existing Project
+            description: Open a project folder with DDD specs
+            variant: secondary
+            icon: FolderOpen
+            action: openExistingProject
+          - type: button
+            label: Try Sample Project
+            description: Explore a pre-built Todo API example
+            variant: secondary
+            icon: BookOpen
+            action: createSampleProject
+    actions:
+      - id: back
+        label: Back
+        action: goToStep1
+        variant: ghost
+
+state:
+  currentStep:
+    type: number
+    default: 1
+  claudeDetected:
+    type: boolean
+    default: false
+  claudeEnabled:
+    type: boolean
+    default: true
+  claudePath:
+    type: string
+    default: ""
+  isDetecting:
+    type: boolean
+    default: false

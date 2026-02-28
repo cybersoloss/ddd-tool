@@ -1,0 +1,85 @@
+flow:
+  id: validate-flow
+  name: "Validate Flow"
+  type: traditional
+  domain: validation
+  description: "Runs all flow-scope validation rules on save — trigger, paths, orphans, branches, extended nodes, agent patterns"
+
+trigger:
+  id: trigger-bG4uN7qR
+  type: trigger
+  position: { x: 300, y: 0 }
+  label: "Flow Saved"
+  spec:
+    event: "event:flow-saved"
+    description: "Fires after any flow change is saved (debounced 500ms)"
+  connections:
+    - targetNodeId: process-cH5vP8rS
+
+nodes:
+  - id: process-cH5vP8rS
+    type: process
+    position: { x: 300, y: 130 }
+    label: "Check Trigger Exists"
+    spec:
+      action: "Verify flow has exactly one trigger node with a non-empty event"
+    connections:
+      - targetNodeId: process-dJ6wQ9sT
+
+  - id: process-dJ6wQ9sT
+    type: process
+    position: { x: 300, y: 260 }
+    label: "Check All Paths Reach Terminal"
+    spec:
+      action: "Walk all outgoing edges from trigger; every path must reach a terminal node"
+    connections:
+      - targetNodeId: process-eK7xR1tU
+
+  - id: process-eK7xR1tU
+    type: process
+    position: { x: 300, y: 390 }
+    label: "Check Orphaned Nodes"
+    spec:
+      action: "Find nodes with no incoming edges and no outgoing edges (excluding trigger)"
+    connections:
+      - targetNodeId: process-fL8yS2uV
+
+  - id: process-fL8yS2uV
+    type: process
+    position: { x: 300, y: 520 }
+    label: "Check Decision Branches"
+    spec:
+      action: "Verify all decision nodes have both true and false handles wired"
+    connections:
+      - targetNodeId: process-gM9zT3vW
+
+  - id: process-gM9zT3vW
+    type: process
+    position: { x: 300, y: 650 }
+    label: "Check Extended Nodes"
+    spec:
+      action: "Validate branching nodes (input, data_store, service_call, ipc_call, loop, parallel, cache, collection, guardrail, etc.) have all required handles wired"
+    connections:
+      - targetNodeId: process-hN1aU4wX
+
+  - id: process-hN1aU4wX
+    type: process
+    position: { x: 300, y: 780 }
+    label: "Check Agent Flow"
+    spec:
+      action: "If flow type is agent, verify agent_loop exists, tools are wired, guardrails are optional but complete if present"
+    connections:
+      - targetNodeId: terminal-jP2bV5xY
+
+  - id: terminal-jP2bV5xY
+    type: terminal
+    position: { x: 300, y: 910 }
+    label: "Validation Result"
+    spec:
+      outcome: success
+      description: "Flow validation results computed — errors, warnings, and per-node indicators stored in validation-store"
+    connections: []
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

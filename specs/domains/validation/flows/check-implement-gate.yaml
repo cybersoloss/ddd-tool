@@ -1,0 +1,79 @@
+flow:
+  id: check-implement-gate
+  name: "Check Implement Gate"
+  type: traditional
+  domain: validation
+  description: "Aggregates all validation results to determine if a flow is ready for implementation"
+
+trigger:
+  id: trigger-vA4mG7iK
+  type: trigger
+  position: { x: 300, y: 0 }
+  label: "Check Gate"
+  spec:
+    event: "ui:check-gate"
+    description: "User clicks the implement button or validation gate is checked programmatically"
+  connections:
+    - targetNodeId: process-wB5nH8jL
+
+nodes:
+  - id: process-wB5nH8jL
+    type: process
+    position: { x: 300, y: 130 }
+    label: "Get Flow Validation"
+    spec:
+      action: "Retrieve current flow validation results from validation-store"
+    connections:
+      - targetNodeId: process-xC6pJ9kM
+
+  - id: process-xC6pJ9kM
+    type: process
+    position: { x: 300, y: 260 }
+    label: "Get Domain Validation"
+    spec:
+      action: "Retrieve current domain validation results from validation-store"
+    connections:
+      - targetNodeId: process-yD7qK1lN
+
+  - id: process-yD7qK1lN
+    type: process
+    position: { x: 300, y: 390 }
+    label: "Get System Validation"
+    spec:
+      action: "Retrieve current system validation results from validation-store"
+    connections:
+      - targetNodeId: decision-zE8rL2mP
+
+  - id: decision-zE8rL2mP
+    type: decision
+    position: { x: 300, y: 520 }
+    label: "All Valid?"
+    spec:
+      condition: "flowErrors === 0 && domainErrors === 0 && systemErrors === 0"
+    connections:
+      - targetNodeId: terminal-aF9sM3nQ
+        sourceHandle: "true"
+      - targetNodeId: terminal-bG1tN4pR
+        sourceHandle: "false"
+
+  - id: terminal-aF9sM3nQ
+    type: terminal
+    position: { x: 300, y: 650 }
+    label: "Gate Open"
+    spec:
+      outcome: success
+      description: "All validations pass — flow is ready for implementation"
+    connections: []
+
+  - id: terminal-bG1tN4pR
+    type: terminal
+    position: { x: 550, y: 650 }
+    label: "Gate Blocked"
+    spec:
+      outcome: failure
+      description: "Validation errors exist — implementation blocked until resolved"
+    connections: []
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

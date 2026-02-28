@@ -1,0 +1,58 @@
+project_structure:
+  root: "."
+  source_dir: src
+  types_dir: src/types
+  stores_dir: src/stores
+  components_dir: src/components
+  utils_dir: src/utils
+  rust_dir: src-tauri/src
+  specs_dir: specs
+
+conventions:
+  file_naming: kebab-case
+  component_naming: PascalCase
+  store_naming: "{name}-store.ts"
+  type_naming: "{name}.ts"
+  node_components: "src/components/FlowCanvas/nodes/{NodeType}Node.tsx"
+  spec_editors: "src/components/SpecPanel/editors/{NodeType}SpecEditor.tsx"
+
+cross_cutting_patterns:
+  - id: write_guard
+    description: "Prevents self-triggered file watcher reloads by setting a 2-second guard window after writes"
+    utility: src/stores/write-guard.ts
+    used_by_domains: [canvas, spec-editing, persistence]
+
+  - id: debounced_save
+    description: "500ms debounce on flow saves to batch rapid edits into single YAML writes"
+    utility: src/stores/flow-store.ts
+    used_by_domains: [canvas]
+
+  - id: undo_coalescing
+    description: "Repeated same-description changes within 500ms coalesce into single undo entry"
+    utility: src/stores/undo-store.ts
+    used_by_domains: [canvas]
+
+  - id: yaml_normalization
+    description: "Bridges external /ddd-create YAML format to internal FlowDocument format via normalizeFlowDocument()"
+    utility: src/utils/flow-normalizer.ts
+    used_by_domains: [canvas, persistence]
+
+  - id: known_keys_filtering
+    description: "ExtraFieldsEditor uses KNOWN_KEYS to separate typed fields from custom fields per node type"
+    utility: src/components/SpecPanel/editors/ExtraFieldsEditor.tsx
+    used_by_domains: [spec-editing]
+
+  - id: auto_save
+    description: "Periodic auto-save to .ddd/autosave/ (not real spec files) for crash recovery"
+    utility: src/stores/flow-store.ts
+    used_by_domains: [canvas, persistence]
+
+  - id: hash_based_drift
+    description: "SHA-256 hash comparison between spec files and implementation files for drift detection"
+    utility: src/stores/implementation-store.ts
+    used_by_domains: [implementation]
+
+  - id: change_history_dedup
+    description: "Content-hash deduplication prevents redundant change-history entries for unchanged specs"
+    utility: src/stores/change-history-store.ts
+    used_by_domains: [implementation]

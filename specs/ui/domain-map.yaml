@@ -1,0 +1,180 @@
+page_id: domain-map
+name: Domain Map (L2)
+description: Visual canvas showing all flows in a domain with orchestration visualization
+layout: full
+auth_required: false
+
+sections:
+  - id: canvas
+    type: canvas
+    layout: full
+    description: Draggable canvas with flow blocks, portals, event arrows, and orchestration visualization
+    library: react-flow
+    features:
+      - pan-and-zoom
+      - fit-view
+      - minimap
+      - grid-background
+    node_types:
+      - type: flow-block
+        description: Block representing a single flow in the domain
+        displays: [name, type, nodeCount, status]
+        badge: node-count
+        stale_indicator: true
+        actions:
+          - double-click: navigateToFlow
+          - context-menu: [editFlow, deleteFlow, moveFlow, changeType, duplicateFlow]
+      - type: portal
+        description: Reference block pointing to a flow in another domain
+        displays: [domainName, flowName]
+        style: dashed-border
+        actions:
+          - double-click: navigateToPortalTarget
+      - type: orchestration-viz
+        description: Visual representation of orchestration relationships between flows
+        displays: [orchestratorName, routingStrategy]
+        style: orchestration-container
+    edge_types:
+      - type: event-arrow
+        description: Arrow showing event flow between flows
+        displays: [eventName]
+        style: animated-dashed
+      - type: ipc-arrow
+        description: Arrow showing IPC calls between flows
+        displays: [callName]
+        style: solid
+      - type: orchestration-edge
+        description: Arrow showing orchestration routing between flows
+        displays: [routeLabel]
+        style: dotted
+    interactions:
+      - drag-flow: reposition flow block on canvas
+      - double-click-flow: drill down to Flow Canvas (L3)
+      - right-click-canvas: context menu with add flow
+      - right-click-flow: context menu with edit/delete/move/change type
+      - select-flow: highlight and show details
+
+  - id: toolbar
+    type: toolbar
+    layout: horizontal
+    position: top-right
+    elements:
+      - type: button
+        label: Add Flow
+        icon: Plus
+        action: openAddFlowDialog
+        shortcut: F
+      - type: button
+        label: Auto Layout
+        icon: LayoutGrid
+        action: autoLayout
+        shortcut: Cmd+L
+      - type: button
+        label: Reload
+        icon: RefreshCw
+        action: reloadDomain
+        shortcut: Cmd+R
+      - type: separator
+      - type: button
+        label: Copy Implement Command
+        icon: Copy
+        action: copyImplementCommand
+        tooltip: Copy /ddd-implement command for this domain
+
+forms:
+  - id: add-flow-dialog
+    type: single
+    title: Add Flow
+    presentation: dialog
+    fields:
+      - key: name
+        label: Flow Name
+        type: text
+        required: true
+        placeholder: e.g., create-user, process-payment
+        validation:
+          pattern: "^[a-z][a-z0-9-]*$"
+          message: Lowercase letters, numbers, and hyphens; must start with letter
+      - key: description
+        label: Description
+        type: textarea
+        required: false
+        placeholder: What this flow does
+      - key: type
+        label: Flow Type
+        type: select
+        options: [traditional, agent]
+        default: traditional
+        description: Traditional flows use standard nodes; agent flows use agent_loop, guardrail, human_gate
+      - key: template
+        label: Template
+        type: select
+        options: [blank, rest-api, crud, webhook, event-processor]
+        default: blank
+        description: Start from a pre-built template
+    actions:
+      submit:
+        label: Add Flow
+        action: addFlow
+      cancel:
+        label: Cancel
+        action: closeDialog
+
+  - id: move-flow-dialog
+    type: single
+    title: Move Flow
+    presentation: dialog
+    fields:
+      - key: targetDomain
+        label: Target Domain
+        type: select
+        options_depends_on: project-store.domains
+        required: true
+        description: Select the domain to move this flow to
+    actions:
+      submit:
+        label: Move
+        action: moveFlow
+      cancel:
+        label: Cancel
+        action: closeDialog
+
+  - id: change-flow-type-dialog
+    type: single
+    title: Change Flow Type
+    presentation: dialog
+    fields:
+      - key: newType
+        label: New Type
+        type: select
+        options: [traditional, agent]
+        required: true
+        description: Changing type will reset the node toolbar to show appropriate node types
+    actions:
+      submit:
+        label: Change Type
+        action: changeFlowType
+        confirm: This may affect existing nodes. Continue?
+      cancel:
+        label: Cancel
+        action: closeDialog
+
+state:
+  domainId:
+    source: sheet-store.currentDomainId
+    type: string
+  flows:
+    source: project-store
+    type: array
+  selectedFlowId:
+    type: string
+    default: null
+  canvasViewport:
+    type: object
+    default: { x: 0, y: 0, zoom: 1 }
+  addFlowDialogOpen:
+    type: boolean
+    default: false
+  moveFlowDialogOpen:
+    type: boolean
+    default: false

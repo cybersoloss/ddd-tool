@@ -1,0 +1,62 @@
+flow:
+  id: design-flow
+  name: "Design Flow"
+  type: traditional
+  domain: canvas
+  description: "Opens a flow on the L3 canvas for node editing"
+
+trigger:
+  id: trigger-vY3mB5eF
+  type: trigger
+  position: { x: 300, y: 0 }
+  label: "Navigate to Flow"
+  spec:
+    event: "ui:navigate-flow"
+    description: "User double-clicks a flow block on L2 or navigates via breadcrumb"
+  connections:
+    - targetNodeId: ipc-wZ4nC6fG
+
+nodes:
+  - id: ipc-wZ4nC6fG
+    type: ipc_call
+    position: { x: 300, y: 130 }
+    label: "Read Flow YAML"
+    spec:
+      command: "read_file"
+      payload: "specs/domains/{domainId}/flows/{flowId}.yaml"
+    connections:
+      - targetNodeId: process-xA5pD7gH
+        sourceHandle: "success"
+      - targetNodeId: terminal-zA7rF9jK
+        sourceHandle: "error"
+
+  - id: process-xA5pD7gH
+    type: process
+    position: { x: 300, y: 260 }
+    label: "Normalize Flow Document"
+    spec:
+      action: "Run normalizeFlowDocument() to bridge external YAML format to internal React Flow format — handle connection targets, spec locations, handle names, node labels"
+    connections:
+      - targetNodeId: terminal-yB6qE8hJ
+
+  - id: terminal-yB6qE8hJ
+    type: terminal
+    position: { x: 300, y: 390 }
+    label: "Render L3"
+    spec:
+      outcome: success
+      description: "Flow canvas rendered with nodes, edges, and spec panel ready"
+    connections: []
+
+  - id: terminal-zA7rF9jK
+    type: terminal
+    position: { x: 550, y: 260 }
+    label: "Read Error"
+    spec:
+      outcome: failure
+      description: "Failed to read flow YAML file"
+    connections: []
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"

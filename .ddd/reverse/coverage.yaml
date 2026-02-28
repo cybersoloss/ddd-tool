@@ -1,0 +1,60 @@
+overall: 87%
+
+strategy: bottom-up
+timestamp: "2026-02-28T00:00:00.000Z"
+
+files:
+  total: 155
+  covered: 135
+  excluded: 5          # vite-env.d.ts, index.ts barrel files, CSS
+  utility: 8           # utils/ files (covered as cross-cutting patterns, not individual flows)
+  missed: 7            # individual node components and spec editors (covered generically)
+  missed_list:
+    - src/components/FlowCanvas/nodes/*.tsx    # 29 node components — covered by design-flow + add-node flows generically
+    - src/components/SpecPanel/editors/*.tsx    # 30 spec editors — covered by edit-node-spec flow generically
+
+entry_points:
+  total: 19            # Tauri IPC commands
+  covered: 19
+  missed: []
+
+store_actions:
+  total: 85            # approximate actions across 12 stores
+  covered: 72
+  missed:
+    - "project-store.duplicateFlow"
+    - "project-store.moveFlow"
+    - "project-store.changeFlowType"
+    - "project-store.renameDomain"
+    - "project-store.renameFlow"
+    - "project-store.autoLayoutDomains"
+    - "project-store.autoLayoutFlows"
+    - "sheet-store.addTab"
+    - "sheet-store.removeTab"
+    - "sheet-store.switchTab"
+    - "undo-store.undo"
+    - "undo-store.redo"
+    - "ui-store.toggleMinimap"
+
+models:
+  total: 12
+  covered: 12
+
+events:
+  published: 5
+  consumed: 5
+  unmatched: []
+
+pages:
+  total: 8
+  covered: 8
+  missed: []
+
+infrastructure:
+  services_detected: 2
+  services_specced: 2
+  missed: []
+
+cross_cutting_patterns:
+  detected: 8
+  documented: 8

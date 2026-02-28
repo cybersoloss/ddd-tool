@@ -1,0 +1,57 @@
+flow: git/commit-changes
+captured_at: "2026-02-28T00:00:00.000Z"
+captured_from: reflect
+patterns:
+  - id: git-ident
+    type: hardcoded_value
+    description: >
+      Git commit identity is hardcoded: name="DDD Tool", email="ddd-tool@local".
+      Created via git2::Signature::now() which uses the current timestamp.
+      The user's system git config (user.name / user.email) is intentionally
+      NOT used — DDD Tool commits should be distinguishable from manual
+      developer commits in the git log.
+    applies_to_nodes: [commit]
+    code_evidence:
+      file: src-tauri/src/commands/project.rs
+      lines: "38-39"
+    status: candidate
+
+  - id: git-poll
+    type: timing
+    description: >
+      Git status is polled every 10 seconds (10000ms) via setInterval in
+      GitPanel.tsx. The polling runs whenever the component is mounted
+      (regardless of panel open/closed state). Each poll calls refresh()
+      which fetches both git_status and git_log (last 20 entries) in
+      parallel via Promise.all.
+    applies_to_nodes: [all-nodes]
+    code_evidence:
+      file: src/components/GitPanel/GitPanel.tsx
+      lines: "65-73"
+    status: candidate
+
+  - id: git-lib2
+    type: implementation_detail
+    description: >
+      All git operations (init, add, commit, status, log, stage, unstage)
+      use libgit2 via the git2 Rust crate — they do NOT shell out to the
+      system git binary. The exception is clone, which uses the system git
+      command to inherit the user's SSH/credential config for authentication.
+    applies_to_nodes: [all-nodes]
+    code_evidence:
+      file: src-tauri/src/commands/project.rs
+      lines: "1-49"
+    status: candidate
+
+  - id: git-panel
+    type: ui_detail
+    description: >
+      The git panel is a fixed-width 320px sidebar on the right side.
+      The change badge in the breadcrumb bar shows the total count of
+      staged + unstaged + untracked files, capped at "9+" display for
+      counts above 9.
+    applies_to_nodes: [all-nodes]
+    code_evidence:
+      file: src/components/GitPanel/GitPanel.tsx
+      lines: "79"
+    status: candidate

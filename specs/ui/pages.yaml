@@ -1,0 +1,83 @@
+app_type: desktop
+framework: react
+router: zustand-sheet-store  # custom navigation via sheet-store, not URL router
+state_management: zustand
+component_library: radix-ui
+theme:
+  color_scheme: dark
+  primary_color: blue
+  font_family: system-ui
+  border_radius: 8
+pages:
+  - id: launcher
+    route: /
+    name: Project Launcher
+    description: Landing page to open, create, or clone projects
+    layout: centered
+  - id: first-run
+    route: /first-run
+    name: First Run Wizard
+    description: 2-step setup on first launch (Claude Code detection, get started)
+    layout: centered
+  - id: system-map
+    route: /project/system
+    name: System Map (L1)
+    description: Visual canvas showing all domains with event arrows and zone grouping
+    layout: full
+  - id: domain-map
+    route: /project/domain/:domainId
+    name: Domain Map (L2)
+    description: Visual canvas showing all flows in a domain with orchestration viz
+    layout: full
+  - id: flow-canvas
+    route: /project/domain/:domainId/flow/:flowId
+    name: Flow Canvas (L3)
+    description: React Flow canvas for designing individual flow graphs with 29 node types
+    layout: full
+  - id: settings
+    route: /settings
+    name: Settings
+    description: Global and project settings (editor, Claude Code, git)
+    layout: centered
+  - id: git-panel
+    route: /project/git
+    name: Git Panel
+    description: Git status, staging, commit, and history (docked right panel)
+    layout: sidebar
+  - id: specs-sidebar
+    route: /project/specs
+    name: Project Specs
+    description: Left sidebar with Data/Interface/Infrastructure tabs for editing project specs
+    layout: sidebar
+navigation:
+  type: none  # Navigation is via breadcrumb bar, not sidebar/topbar
+  items:
+    - page: launcher
+      icon: Home
+      label: Home
+    - page: system-map
+      icon: Layout
+      label: System Map
+    - page: settings
+      icon: Settings
+      label: Settings
+shared_components:
+  - id: breadcrumb
+    description: Top navigation bar with breadcrumbs, keyboard shortcuts, toggle buttons
+    used_by: [system-map, domain-map, flow-canvas]
+    props: [location, shortcuts, toggleButtons]
+  - id: zoom-controls
+    description: Pan/zoom/fit-view control buttons for canvas views
+    used_by: [system-map, domain-map, flow-canvas]
+    props: [onZoomIn, onZoomOut, onFitView]
+  - id: search-palette
+    description: Cmd+K search across domains, flows, and nodes
+    used_by: [system-map, domain-map, flow-canvas]
+    props: [open, onClose, onSelect]
+  - id: error-toasts
+    description: Error/warning/info notification toasts
+    used_by: [launcher, system-map, domain-map, flow-canvas]
+    props: [errors]
+  - id: save-notification
+    description: Saving indicator during YAML writes
+    used_by: [system-map, domain-map, flow-canvas]

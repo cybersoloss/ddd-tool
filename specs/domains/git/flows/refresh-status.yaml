@@ -1,0 +1,66 @@
+flow:
+  id: refresh-status
+  name: "Refresh Status"
+  type: traditional
+  domain: git
+  description: "Fetches current git status and recent log entries"
+
+trigger:
+  id: trigger-aE5sK7mP
+  type: trigger
+  position: { x: 300, y: 0 }
+  label: "Refresh Git"
+  spec:
+    event: "ui:refresh-git"
+    description: "User opens Git panel or 10-second polling interval fires"
+  connections:
+    - targetNodeId: ipc-bF6tL8nQ
+
+nodes:
+  - id: ipc-bF6tL8nQ
+    type: ipc_call
+    position: { x: 300, y: 130 }
+    label: "Git Status"
+    spec:
+      command: "git_status"
+      payload: "Project root path"
+    connections:
+      - targetNodeId: ipc-cG7uM9pR
+        sourceHandle: "success"
+      - targetNodeId: terminal-eJ9wP2sT
+        sourceHandle: "error"
+
+  - id: ipc-cG7uM9pR
+    type: ipc_call
+    position: { x: 300, y: 260 }
+    label: "Git Log"
+    spec:
+      command: "git_log"
+      payload: "Project root path, limit: 50"
+    connections:
+      - targetNodeId: terminal-dH8vN1qS
+        sourceHandle: "success"
+      - targetNodeId: terminal-eJ9wP2sT
+        sourceHandle: "error"
+
+  - id: terminal-dH8vN1qS
+    type: terminal
+    position: { x: 300, y: 390 }
+    label: "Status Displayed"
+    spec:
+      outcome: success
+      description: "Git status and log loaded into git-store"
+    connections: []
+
+  - id: terminal-eJ9wP2sT
+    type: terminal
+    position: { x: 550, y: 260 }
+    label: "Git Error"
+    spec:
+      outcome: failure
+      description: "Failed to read git status or log (repo may not be initialized)"
+    connections: []
+
+metadata:
+  created: "2026-02-28T00:00:00.000Z"
+  modified: "2026-02-28T00:00:00.000Z"
