@@ -2,7 +2,7 @@
  * Mock for @tauri-apps/plugin-dialog
  * Returns the demo project path for directory pickers.
  */
-import { DEMO_PROJECT_PATH } from '../data/seed-project';
+import { DEMO_PROJECT_PATH } from '../data/seed-loader';
 
 interface OpenDialogOptions {
   directory?: boolean;

@@ -22,7 +22,8 @@
     "demo:build": "VITE_DEMO_MODE=true vite build",
     "demo:preview": "VITE_DEMO_MODE=true vite preview",
     "demo:test": "npx playwright test --config demo/playwright/playwright.config.ts",
-    "demo:lifecycle": "npx playwright test --config demo/playwright/playwright.config.ts demo/playwright/lifecycle-demo.spec.ts"
+    "demo:lifecycle": "npx playwright test --config demo/playwright/playwright.config.ts demo/playwright/lifecycle-demo.spec.ts",
+    "demo:feature-preview": "npx playwright test --config demo/playwright/feature-preview.config.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",

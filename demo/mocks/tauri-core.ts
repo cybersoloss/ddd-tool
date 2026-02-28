@@ -6,7 +6,7 @@ import {
   vfsRead, vfsWrite, vfsExists, vfsDelete,
   vfsDeleteDir, vfsListDir, vfsRename, seedVfs,
 } from './vfs';
-import { SEED_FILES } from '../data/seed-project';
+import { SEED_FILES } from '../data/seed-loader';
 
 // Seed VFS on first import (before any invoke calls)
 seedVfs(SEED_FILES);

@@ -2,7 +2,7 @@
  * Mock for @tauri-apps/api/path
  * Returns virtual paths for demo mode.
  */
-import { DEMO_HOME } from '../data/seed-project';
+import { DEMO_HOME } from '../data/seed-loader';
 
 export async function homeDir(): Promise<string> {
   return DEMO_HOME;
