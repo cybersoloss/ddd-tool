@@ -44,14 +44,13 @@ export function renderTerminal({ lines, title = 'Terminal' }: TerminalOptions): 
     justify-content: center;
     min-height: 100vh;
     font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-    padding: 20px;
+    padding: 16px;
   }
   .terminal {
     background: #0d1117;
     border-radius: 10px;
     box-shadow: 0 20px 60px rgba(0,0,0,0.5);
     width: 100%;
-    max-width: 1200px;
     overflow: hidden;
   }
   .title-bar {
@@ -81,8 +80,7 @@ export function renderTerminal({ lines, title = 'Terminal' }: TerminalOptions): 
     font-size: 15px;
     line-height: 1.7;
     color: #c9d1d9;
-    white-space: pre-wrap;
-    word-wrap: break-word;
+    white-space: pre;
     min-height: 200px;
   }
 </style>

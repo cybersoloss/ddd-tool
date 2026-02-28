@@ -51,18 +51,18 @@ test.describe('DDD Lifecycle Demo', () => {
         '',
         '  {bold}Building an Agent as an Expense Scanner{/bold}',
         '',
-        '  {dim}A small, everyday example — building an AI agent as an{/dim}',
-        '  {dim}expense scanner, designed and executed end-to-end using{/dim}',
-        '  {dim}the DDD methodology.{/dim}',
+        '  {dim}A small, everyday example — building an AI agent{/dim}',
+        '  {dim}as an expense scanner, designed and executed{/dim}',
+        '  {dim}end-to-end using the DDD methodology.{/dim}',
         '',
-        '  {dim}This demo walks through the full DDD lifecycle showing how{/dim}',
-        '  {dim}agent design flows from idea to production-ready code.{/dim}',
+        '  {dim}This demo walks through the full DDD lifecycle{/dim}',
+        '  {dim}showing how agent design flows from idea to{/dim}',
+        '  {dim}production-ready code.{/dim}',
         '',
-        '  {cyan}The four phases:{/cyan}',
-        '    {dim}Phase 1{/dim}  {cyan}Create{/cyan}    Describe → generate specs',
-        '    {dim}Phase 2{/dim}  {cyan}Design{/cyan}    Review specs visually in DDD Tool',
-        '    {dim}Phase 3{/dim}  {cyan}Build{/cyan}     Implement → test → iterate',
-        '    {dim}Phase 4{/dim}  {cyan}Reflect{/cyan}   Capture patterns → sync',
+        '  {cyan}Three steps:{/cyan}',
+        '    {dim}1{/dim}  {cyan}Create{/cyan}    Describe → generate specs',
+        '    {dim}2{/dim}  {cyan}Design{/cyan}    Review specs visually in DDD Tool',
+        '    {dim}3{/dim}  {cyan}Build{/cyan}     Implement → test → iterate',
         '',
       ],
     }));
@@ -109,6 +109,7 @@ test.describe('DDD Lifecycle Demo', () => {
     await page.goto('/');
     await waitForBoot(page);
     await expect(page.getByText('expense-scanner', { exact: true })).toBeVisible({ timeout: 5_000 });
+    await page.waitForTimeout(3000);
     await page.getByText('expense-scanner', { exact: true }).click();
     await expect(page.getByText('Expenses', { exact: true })).toBeVisible({ timeout: 10_000 });
     await page.waitForTimeout(3000);
@@ -196,62 +197,18 @@ test.describe('DDD Lifecycle Demo', () => {
     ], 'Claude Code — /ddd-test', 'lifecycle-10-test.png');
 
     // ════════════════════════════════════════════════════════════════
-    // PHASE 4 — REFLECT
-    // ════════════════════════════════════════════════════════════════
-
-    // ── Scene 11: /ddd-reflect --all ─────────────────────────────────
-    await terminalScene(page, [
-      '{dim}>{/dim} /ddd-reflect --all',
-      '',
-      'Scanning implementation patterns...',
-      '',
-      '  {cyan}expenses/scan-receipt:{/cyan}',
-      '    {green}+{/green} retry_logic: Exponential backoff on OCR failures {dim}(3x, 1s base){/dim}',
-      '    {green}+{/green} confidence_threshold: Agent skips human gate if confidence > 95%',
-      '',
-      '  {cyan}approvals/review-expense:{/cyan}',
-      '    {green}+{/green} audit_trail: All approval decisions logged to audit table',
-      '    {green}+{/green} budget_check: Pre-validates department budget before approval',
-      '',
-      '  {cyan}reports/monthly-summary:{/cyan}',
-      '    {green}+{/green} caching: Monthly aggregates cached for 24h in Redis',
-      '',
-      '{green}5 patterns captured{/green} → .ddd/annotations/',
-      '{dim}Next: /ddd-promote --review to approve findings{/dim}',
-    ], 'Claude Code — /ddd-reflect', 'lifecycle-11-reflect.png');
-
-    // ── Scene 12: /ddd-sync --verify ─────────────────────────────────
-    await terminalScene(page, [
-      '{dim}>{/dim} /ddd-sync --verify',
-      '',
-      'Comparing specs ↔ code across {cyan}3 domains{/cyan}, {cyan}5 flows{/cyan}...',
-      '',
-      '{bold}Domain/Flow                 Nodes  Conform  Status{/bold}',
-      '{dim}────────────────────────    ─────  ───────  ──────{/dim}',
-      'expenses/scan-receipt          7       7    {green}✓ in_sync{/green}',
-      'expenses/submit-expense        6       6    {green}✓ in_sync{/green}',
-      'approvals/review-expense       9       9    {green}✓ in_sync{/green}',
-      'approvals/process-reimburse    5       5    {green}✓ in_sync{/green}',
-      'reports/monthly-summary        4       4    {green}✓ in_sync{/green}',
-      '',
-      '{green}All specs and code aligned ✓{/green}',
-      '{dim}5 annotations pending promotion{/dim}',
-    ], 'Claude Code — /ddd-sync', 'lifecycle-12-sync.png');
-
-    // ════════════════════════════════════════════════════════════════
     // SUMMARY
     // ════════════════════════════════════════════════════════════════
 
-    // ── Scene 13: Summary ────────────────────────────────────────────
+    // ── Scene 11: Summary ────────────────────────────────────────────
     await terminalScene(page, [
       '',
       '',
-      '  {bold}From idea to production — DDD lifecycle complete{/bold}',
+      '  {bold}From idea to working software — DDD lifecycle complete{/bold}',
       '',
       '  {green}✓{/green} {cyan}Create{/cyan}    3 domains, 5 flows, 4 events generated',
       '  {green}✓{/green} {cyan}Design{/cyan}    Specs reviewed and refined in DDD Tool',
       '  {green}✓{/green} {cyan}Build{/cyan}     41 tests passing across 5 flows',
-      '  {green}✓{/green} {cyan}Reflect{/cyan}   5 patterns captured, all specs in sync',
       '',
       '  {dim}15 node types · 3 domains · 5 flows · 4 events{/dim}',
       '  {dim}Agent flow with guardrails, human gates, and tool use{/dim}',
@@ -260,6 +217,6 @@ test.describe('DDD Lifecycle Demo', () => {
       '  {dim}Learn more: github.com/cybersoloss/DDD{/dim}',
       '',
       '',
-    ], 'DDD Lifecycle Complete', 'lifecycle-13-summary.png');
+    ], 'DDD Lifecycle Complete', 'lifecycle-11-summary.png');
   });
 });
