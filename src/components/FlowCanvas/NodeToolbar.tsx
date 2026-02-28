@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useReactFlow } from '@xyflow/react';
-import { FormInput, Cog, GitFork, Square, RotateCw, Shield, Hand, Network, GitBranch, ArrowLeftRight, Box, Undo2, Redo2, Database, ExternalLink, Zap, Repeat, Columns, GitMerge, BrainCircuit, Copy, Check, RotateCcw, Clock, HardDrive, Shuffle, Filter, FileText, Lock, Layers, ShieldCheck, LayoutGrid, Settings, Terminal, Save, FileCode } from 'lucide-react';
+import { FormInput, Cog, GitFork, Square, RotateCw, Shield, Hand, Network, GitBranch, ArrowLeftRight, Box, Undo2, Redo2, Database, ExternalLink, Zap, Repeat, Columns, GitMerge, BrainCircuit, Copy, Check, RotateCcw, Clock, HardDrive, Shuffle, Filter, FileText, Lock, Layers, ShieldCheck, LayoutGrid, Settings, Terminal, Save, FileCode, Radio } from 'lucide-react';
 import { generateMermaidFromFlow } from '../../utils/mermaid-generator';
 import type { DddNodeType } from '../../types/flow';
 import { useSheetStore } from '../../stores/sheet-store';
@@ -37,6 +37,7 @@ const TRADITIONAL_ITEMS: ToolbarItem[] = [
   { type: 'crypto', label: 'Crypto', icon: Lock, borderColor: 'border-l-fuchsia-500', iconColor: 'text-fuchsia-400' },
   { type: 'batch', label: 'Batch', icon: Layers, borderColor: 'border-l-rose-500', iconColor: 'text-rose-400' },
   { type: 'transaction', label: 'Transaction', icon: ShieldCheck, borderColor: 'border-l-amber-600', iconColor: 'text-amber-500' },
+  { type: 'websocket_broadcast', label: 'WS Broadcast', icon: Radio, borderColor: 'border-l-blue-500', iconColor: 'text-blue-400' },
   { type: 'terminal', label: 'Terminal', icon: Square, borderColor: 'border-l-red-500', iconColor: 'text-red-400' },
 ];
 
