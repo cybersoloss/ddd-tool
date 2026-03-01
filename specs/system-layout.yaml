@@ -1,0 +1,25 @@
+domains:
+  app:
+    x: 60
+    y: 40
+  project-management:
+    x: 440
+    y: 40
+  flow-editor:
+    x: 820
+    y: 40
+  canvas-views:
+    x: 60
+    y: 260
+  git:
+    x: 440
+    y: 260
+  implementation:
+    x: 820
+    y: 260
+  specs-sidebar:
+    x: 60
+    y: 480
+  validation:
+    x: 440
+    y: 480
