@@ -479,8 +479,9 @@ function checkOrchestrationNodes(flow: FlowDocument): ValidationIssue[] {
           ));
         }
         // Warn if no fallback chain and no LLM routing — routing may fail silently
+        // fallback_chain: "skip" is an explicit opt-out (upstream filter guarantees input domain)
         const fallbackChain = Array.isArray(spec.fallback_chain) ? spec.fallback_chain : [];
-        if (fallbackChain.length === 0 && !spec.llm_routing?.enabled) {
+        if (spec.fallback_chain !== 'skip' && fallbackChain.length === 0 && !spec.llm_routing?.enabled) {
           issues.push(issue('flow', 'warning', 'orchestration_validation',
             `Smart router "${node.label}" has no fallback chain and no LLM routing — unmatched requests may fail silently`,
             { nodeId: node.id, suggestion: 'Add a fallback_chain or enable LLM routing for resilience' }

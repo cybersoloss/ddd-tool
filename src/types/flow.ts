@@ -227,7 +227,8 @@ export interface SmartRouterSpec {
     confidence_threshold?: number;
     routes?: Record<string, string>;
   };
-  fallback_chain?: string[];
+  fallback_chain?: string[] | 'skip';
+  fallback_note?: string;
   policies?: {
     retry?: { max_attempts?: number; on_failure?: string };
     timeout?: { per_route?: number; total?: number };

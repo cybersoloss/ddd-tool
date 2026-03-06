@@ -11,6 +11,7 @@ interface Props {
 export function SmartRouterSpecEditor({ spec, onChange }: Props) {
   const rules = Array.isArray(spec.rules) ? spec.rules : [];
   const llm = spec.llm_routing ?? { enabled: false, model: 'claude-haiku', routing_prompt: '', confidence_threshold: 0.8, routes: {} };
+  const isSkip = spec.fallback_chain === 'skip';
   const fallbackChain = Array.isArray(spec.fallback_chain) ? spec.fallback_chain : [];
   const policies = spec.policies ?? {};
   const retry = policies.retry ?? { max_attempts: 3, on_failure: 'fallback' };
@@ -164,13 +165,39 @@ export function SmartRouterSpecEditor({ spec, onChange }: Props) {
       {/* Fallback Chain */}
       <div>
         <label className="label">Fallback Chain</label>
-        <input
-          className="input"
-          value={fallbackChain.join(', ')}
-          onChange={(e) => onChange({ ...spec, fallback_chain: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
-          placeholder="route1, route2, route3"
-        />
-        <p className="text-[10px] text-text-muted mt-0.5">Comma-separated route names</p>
+        <label className="flex items-center gap-1.5 text-xs text-text-secondary cursor-pointer mb-1">
+          <input
+            type="checkbox"
+            className="accent-accent"
+            checked={isSkip}
+            onChange={(e) => {
+              if (e.target.checked) {
+                onChange({ ...spec, fallback_chain: 'skip' });
+              } else {
+                onChange({ ...spec, fallback_chain: [], fallback_note: undefined });
+              }
+            }}
+          />
+          Skip (unreachable by design)
+        </label>
+        {isSkip ? (
+          <input
+            className="input"
+            value={spec.fallback_note ?? ''}
+            onChange={(e) => onChange({ ...spec, fallback_note: e.target.value || undefined })}
+            placeholder="Why is fallback unreachable? e.g., upstream query filters to known platforms"
+          />
+        ) : (
+          <>
+            <input
+              className="input"
+              value={fallbackChain.join(', ')}
+              onChange={(e) => onChange({ ...spec, fallback_chain: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
+              placeholder="route1, route2, route3"
+            />
+            <p className="text-[10px] text-text-muted mt-0.5">Comma-separated route names</p>
+          </>
+        )}
       </div>
 
       {/* Policies */}
