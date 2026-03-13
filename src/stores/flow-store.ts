@@ -10,7 +10,7 @@ import type {
   NodeSpec,
 } from '../types/flow';
 import type { Position } from '../types/sheet';
-import { computeDagLayout } from '../utils/auto-layout';
+import { computeElkLayout } from '../utils/auto-layout';
 import { defaultSpec, defaultLabel, normalizeFlowDocument } from '../utils/flow-normalizer';
 import { useChangeHistoryStore } from './change-history-store';
 
@@ -506,22 +506,25 @@ export const useFlowStore = create<FlowState>((set, get) => ({
 
     pushUndo(currentFlow.flow?.id ?? '', 'Auto layout');
 
-    const positions = computeDagLayout(currentFlow);
+    computeElkLayout(currentFlow).then((positions) => {
+      const current = get().currentFlow;
+      if (!current) return;
 
-    const triggerPos = positions.get(currentFlow.trigger.id);
-    const updated: FlowDocument = {
-      ...currentFlow,
-      trigger: {
-        ...currentFlow.trigger,
-        position: triggerPos ?? currentFlow.trigger.position,
-      },
-      nodes: currentFlow.nodes.map((n) => {
-        const pos = positions.get(n.id);
-        return pos ? { ...n, position: pos } : n;
-      }),
-    };
-    set({ currentFlow: updated, isDirty: true });
-    debouncedSave(get());
+      const triggerPos = positions.get(current.trigger.id);
+      const updated: FlowDocument = {
+        ...current,
+        trigger: {
+          ...current.trigger,
+          position: triggerPos ?? current.trigger.position,
+        },
+        nodes: current.nodes.map((n) => {
+          const pos = positions.get(n.id);
+          return pos ? { ...n, position: pos } : n;
+        }),
+      };
+      set({ currentFlow: updated, isDirty: true });
+      debouncedSave(get());
+    });
   },
 
   saveNow: async () => {
