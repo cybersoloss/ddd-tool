@@ -92,7 +92,7 @@ export function NodeToolbar({ pendingType, onSelectType, flowType = 'traditional
 
   const handleAutoLayout = useCallback(() => {
     autoLayout();
-    setTimeout(() => fitView({ duration: 300 }), 0);
+    setTimeout(() => fitView({ duration: 300, padding: 0.1 }), 0);
   }, [autoLayout, fitView]);
 
   const handleReload = useCallback(async () => {

@@ -424,6 +424,8 @@ function FlowCanvasInner() {
           nodesDraggable={!isLocked}
           nodesConnectable={!isLocked}
           colorMode="dark"
+          minZoom={0.05}
+          maxZoom={3}
           snapToGrid
           snapGrid={[20, 20]}
           defaultViewport={savedViewport ?? { x: 0, y: 0, zoom: 1 }}
