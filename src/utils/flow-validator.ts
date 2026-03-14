@@ -854,10 +854,10 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
             { nodeId: node.id, suggestion: 'Set the input collection to process in batch' }
           ));
         }
-        if (!spec.operation_template || !spec.operation_template.type) {
+        if ((!spec.operation_template || !spec.operation_template.type) && !spec.sub_flow_ref) {
           issues.push(issue('flow', 'error', 'spec_completeness',
-            `Batch "${node.label}" must have an operation template defined`,
-            { nodeId: node.id, suggestion: 'Set the operation template with a type' }
+            `Batch "${node.label}" must have an operation template or sub_flow_ref defined`,
+            { nodeId: node.id, suggestion: 'Set the operation template with a type, or set sub_flow_ref to a domain/flow-id' }
           ));
         }
         break;
@@ -1230,8 +1230,8 @@ function checkBranchingCompleteness(flow: FlowDocument): ValidationIssue[] {
         const spec = (node.spec ?? {}) as SmartRouterSpec;
         const rules = Array.isArray(spec.rules) ? spec.rules : [];
         for (const rule of rules) {
-          // Source handle is built from rule.route, not rule.id
-          const routeHandle = rule.route ?? rule.id;
+          // Source handle is the rule ID (the handle name), not rule.route (target node ID)
+          const routeHandle = rule.id ?? rule.route;
           if (routeHandle && !handles.has(routeHandle)) {
             issues.push(issue('flow', 'warning', 'graph_completeness',
               `Smart Router "${label}" is missing a connection for route "${routeHandle}"`,
