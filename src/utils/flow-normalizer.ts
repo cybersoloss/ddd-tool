@@ -410,6 +410,15 @@ export function normalizeFlowDocument(raw: Record<string, unknown>, domainId: st
       spec.prompt_template = spec.prompt;
     }
 
+    // Normalize agent_loop: terminal → is_terminal on tools
+    if (n.type === 'agent_loop' && Array.isArray(spec.tools)) {
+      for (const tool of spec.tools as Array<Record<string, unknown>>) {
+        if (tool.terminal === true && tool.is_terminal === undefined) {
+          tool.is_terminal = true;
+        }
+      }
+    }
+
     // Normalize parallel: coerce numeric branches to ParallelBranch[]
     if (n.type === 'parallel' && typeof spec.branches === 'number') {
       const count = spec.branches as number;
