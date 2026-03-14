@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, FolderOpen, Settings, GitPullRequest } from 'lucide-react';
+import { getVersion } from '@tauri-apps/api/app';
 import { open } from '@tauri-apps/plugin-dialog';
 import { useAppStore } from '../../stores/app-store';
 import { RecentProjects } from './RecentProjects';
@@ -11,6 +12,11 @@ export function ProjectLauncher() {
   const [showWizard, setShowWizard] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showClone, setShowClone] = useState(false);
+  const [appVersion, setAppVersion] = useState<string>('');
+
+  useEffect(() => {
+    getVersion().then(setAppVersion).catch(() => {});
+  }, []);
   const openProject = useAppStore((s) => s.openProject);
   const pushError = useAppStore((s) => s.pushError);
 
@@ -36,6 +42,9 @@ export function ProjectLauncher() {
           <p className="text-sm text-text-secondary">
             Domain-Driven Design — Visual Flow Editor
           </p>
+          {appVersion && (
+            <p className="text-xs text-text-muted mt-1">v{appVersion}</p>
+          )}
         </div>
 
         {/* Action Buttons */}

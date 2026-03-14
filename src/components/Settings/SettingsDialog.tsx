@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, Monitor, Terminal, GitBranch } from 'lucide-react';
+import { getVersion } from '@tauri-apps/api/app';
 import { useAppStore } from '../../stores/app-store';
 import { EditorSettings } from './EditorSettings';
 import { ClaudeCodeSettings } from './ClaudeCodeSettings';
@@ -26,6 +27,11 @@ const TAB_CONTENT: Record<TabId, React.FC> = {
 export function SettingsDialog({ onClose }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>('editor');
   const [scope, setScope] = useState<'global' | 'project'>('global');
+  const [appVersion, setAppVersion] = useState<string>('');
+
+  useEffect(() => {
+    getVersion().then(setAppVersion).catch(() => {});
+  }, []);
   const currentProjectPath = useAppStore((s) => s.currentProjectPath);
   const loadProjectSettings = useAppStore((s) => s.loadProjectSettings);
   const Content = TAB_CONTENT[activeTab];
@@ -97,6 +103,13 @@ export function SettingsDialog({ onClose }: Props) {
             <Content />
           </div>
         </div>
+
+        {/* Footer */}
+        {appVersion && (
+          <div className="px-6 py-2 border-t border-border text-right">
+            <span className="text-xs text-text-muted">DDD Tool v{appVersion}</span>
+          </div>
+        )}
       </div>
     </div>
   );
