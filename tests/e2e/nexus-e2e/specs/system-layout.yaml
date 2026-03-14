@@ -1,0 +1,31 @@
+domains:
+  ingestion:
+    x: 60
+    y: 40
+  processing:
+    x: 440
+    y: 40
+  editorial:
+    x: 820
+    y: 40
+  publishing:
+    x: 60
+    y: 260
+  analytics:
+    x: 440
+    y: 260
+  users:
+    x: 820
+    y: 260
+  content:
+    x: 60
+    y: 480
+  notifications:
+    x: 440
+    y: 480
+  settings:
+    x: 820
+    y: 480
+  monitoring:
+    x: 60
+    y: 700
