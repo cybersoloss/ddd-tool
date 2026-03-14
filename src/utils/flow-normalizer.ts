@@ -629,7 +629,7 @@ export function normalizeFlowDocument(raw: Record<string, unknown>, domainId: st
       const to = (conn.to ?? conn.target) as string;
       if (!from || !to) continue;
       if (!connsBySource.has(from)) connsBySource.set(from, []);
-      const sh = conn.sourceHandle as string | undefined;
+      const sh = (conn.sourceHandle ?? conn.handle) as string | undefined;
       const th = conn.targetHandle as string | undefined;
       connsBySource.get(from)!.push({
         targetNodeId: to,
