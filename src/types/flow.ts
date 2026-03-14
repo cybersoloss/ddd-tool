@@ -486,11 +486,13 @@ export interface ParseSpec {
 }
 
 export interface CryptoSpec {
-  operation?: 'encrypt' | 'decrypt' | 'hash' | 'sign' | 'verify' | 'generate_key' | 'generate_token';
+  operation?: 'encrypt' | 'decrypt' | 'hash' | 'sign' | 'verify' | 'jwt_sign' | 'jwt_verify' | 'generate_key' | 'generate_token';
   algorithm?: string;
   key_source?: { env?: string; vault?: string };
   input_fields?: string[];
   output_field?: string;
+  payload?: Record<string, unknown>;
+  expires_in?: string;
   encoding?: 'base64' | 'hex' | 'base64url' | 'uuid';
   length?: number;
   description?: string;

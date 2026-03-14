@@ -794,7 +794,7 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
         if (!spec.operation) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Crypto "${node.label}" must have an operation set`,
-            { nodeId: node.id, suggestion: 'Set the operation (encrypt, decrypt, hash, sign, verify, generate_key, generate_token)' }
+            { nodeId: node.id, suggestion: 'Set the operation (encrypt, decrypt, hash, sign, verify, jwt_sign, jwt_verify, generate_key, generate_token)' }
           ));
         }
         // generate_token does not use algorithm or key_source — it generates a random opaque string
@@ -821,7 +821,22 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
         }
         // key_source is only required for operations that use a stored key.
         // hash, generate_key, and verify (bcrypt) do not need an external key.
-        const keySourceRequired = spec.operation && ['encrypt', 'decrypt', 'sign'].includes(spec.operation);
+        // jwt_sign requires payload and expires_in
+        if (spec.operation === 'jwt_sign') {
+          if (!spec.payload || Object.keys(spec.payload).length === 0) {
+            issues.push(issue('flow', 'error', 'spec_completeness',
+              `Crypto "${node.label}" (jwt_sign) must have a payload defined`,
+              { nodeId: node.id, suggestion: 'Set payload with JWT claims (e.g., { sub: "$.user.id" })' }
+            ));
+          }
+          if (!spec.expires_in) {
+            issues.push(issue('flow', 'warning', 'spec_completeness',
+              `Crypto "${node.label}" (jwt_sign) should have expires_in defined`,
+              { nodeId: node.id, suggestion: 'Set expires_in to a duration (e.g., "1h", "7d")' }
+            ));
+          }
+        }
+        const keySourceRequired = spec.operation && ['encrypt', 'decrypt', 'sign', 'jwt_sign', 'jwt_verify'].includes(spec.operation);
         if (keySourceRequired && (!spec.key_source || (!spec.key_source.env && !spec.key_source.vault))) {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Crypto "${node.label}" must have a key source defined`,
