@@ -43,7 +43,7 @@ src/                          # React frontend
     SystemMap/                # L1 — system overview
     DomainMap/                # L2 — domain map with flow blocks
     FlowCanvas/               # L3 — flow graph editor (React Flow)
-      nodes/                  # 28 node type components
+      nodes/                  # 30 node type components
     SpecPanel/                # YAML spec editor sidebar
     Validation/               # Validation engine UI
     GitPanel/                 # Git integration
