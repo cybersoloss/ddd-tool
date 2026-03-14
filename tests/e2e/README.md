@@ -20,7 +20,7 @@ cd /tmp && mkdir nexus-e2e && cd nexus-e2e
 
 ## What it tests
 
-The product definition exercises every DDD feature: all 29 node types, all 13 trigger types, all UI component types, all form field types, all schema features, all infrastructure patterns, and all cross-cutting conventions.
+The product definition exercises every DDD feature: all 30 node types, all 13 trigger types, all UI component types, all form field types, all schema features, all infrastructure patterns, and all cross-cutting conventions.
 
 ## When to re-run
 

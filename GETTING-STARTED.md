@@ -253,6 +253,7 @@ The toolbar shows all available node types organized by flow type:
 - Data Store, Service Call, IPC Call, Event
 - Loop, Parallel, Sub-Flow, LLM Call
 - Delay, Cache, Transform, Collection, Parse, Crypto, Batch, Transaction
+- Text Split, WebSocket Broadcast
 
 **Agent Flow Nodes:**
 - Agent Loop, Guardrail, Human Gate
@@ -456,6 +457,8 @@ Each node type has specific configuration options in the Spec Panel:
 ### Advanced
 - **Crypto**: Encrypt/decrypt data
 - **Collection**: Aggregate/merge multiple streams
+- **Text Split**: Split text into chunks (for LLM context windowing, chunking pipelines)
+- **WebSocket Broadcast**: Broadcast messages to connected WebSocket clients
 - **Orchestrator**: Coordinate agent sub-flows (agent flows only)
 - **Handoff**: Transfer control between agents (agent flows only)
 - **Agent Group**: Group agents into logical boundaries (agent flows only)

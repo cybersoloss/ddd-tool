@@ -70,7 +70,7 @@ Levels 1 and 2 are derived views. Users can reposition blocks but cannot add/rem
 
 ## Node Output Handles (sourceHandle Routing)
 
-Nodes with multiple output paths use named `sourceHandle` values for connection routing. Single-output node types (trigger, process, terminal, sub_flow, event, guardrail, human_gate, orchestrator, handoff, agent_group) use the default unnamed handle and are not listed here.
+Nodes with multiple output paths use named `sourceHandle` values for connection routing. Single-output node types (trigger, process, terminal, sub_flow, event, guardrail, human_gate, orchestrator, handoff, agent_group, text_split, websocket_broadcast) use the default unnamed handle and are not listed here.
 
 | Node Type | Output Handles | Visual | Color |
 |-----------|---------------|--------|-------|
@@ -487,7 +487,8 @@ Each template uses `{type}-{nanoid(8)}` ID convention.
 | sheet | `src/stores/sheet-store.ts` | Navigation state, breadcrumbs, current level, history |
 | flow | `src/stores/flow-store.ts` | Current flow (L3 only), nodes, connections, spec values |
 | project | `src/stores/project-store.ts` | Domains, domain configs, schemas, system config |
-| ui | `src/stores/ui-store.ts` | UI toggles: minimap, lock state, theme |
+| specs | `src/stores/specs-store.ts` | Four Pillars specs: schemas, UI pages, infrastructure |
+| ui | `src/stores/ui-store.ts` | UI toggles: minimap, lock state, theme, specs panel |
 | git | `src/stores/git-store.ts` | Git status, staged/unstaged files, commit history |
 | implementation | `src/stores/implementation-store.ts` | Drift detection, flow-to-file mappings, sync score, reconciliation |
 | app | `src/stores/app-store.ts` | App view (launcher/first-run/project), recent projects, settings, toasts, auto-save |
@@ -632,6 +633,8 @@ Bridges external YAML formats (from `/ddd-create`) with internal `FlowDocument` 
 | `crypto` | Encrypt / decrypt / hash / sign | Key management |
 | `batch` | Batch operation runner | Concurrency config |
 | `transaction` | Atomic DB transaction block | Rollback handler |
+| `text_split` | Text chunker for LLM context windowing | Chunk size config |
+| `websocket_broadcast` | Broadcast to WebSocket clients | Channel/room config |
 
 ### Service Layer Pattern
 

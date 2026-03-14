@@ -4,7 +4,7 @@ Unimplemented features and planned enhancements. Everything in this document is 
 
 ---
 
-## Session 18: Reverse Engineer from Code
+## Session 19: Reverse Engineer from Code
 
 GUI wizard for bringing existing codebases into DDD. Corresponds to the `/ddd-reverse` CLI command.
 
@@ -15,25 +15,6 @@ GUI wizard for bringing existing codebases into DDD. Corresponds to the `/ddd-re
 4. Generate DDD specs from the detected structure
 
 **What it produces:** Full `specs/` directory with system.yaml, domain.yaml files, flow YAML files, and schema YAML files reverse-engineered from existing code.
-
----
-
-## Extended Node Types (8 remaining)
-
-These node types are defined in the spec but don't have DDD Tool spec editors or canvas components yet:
-
-| Node Type | Icon | Purpose |
-|-----------|------|---------|
-| Delay | ⏱ | Wait/throttle (fixed or random, strategy: fixed/random/exponential) |
-| Cache | ⊟ | Cache lookup with hit/miss branching (key, ttl_ms, store) |
-| Transform | ⇌ | Field mapping between schemas (input_schema → output_schema via field_mappings) |
-| Collection | ⊞ | Filter, sort, deduplicate, merge, group, aggregate, reduce, flatten |
-| Parse | ⊡ | Structured extraction (RSS, Atom, HTML, XML, JSON, CSV, Markdown) |
-| Crypto | 🔒 | Encrypt, decrypt, hash, sign, verify, generate key |
-| Batch | ▤ | Execute operation template against collection with concurrency control |
-| Transaction | ⊛ | Atomic multi-step database operation with rollback on error |
-
-All 8 have validation rules defined (see architecture notes). They need: React Flow canvas components, spec panel editors, toolbar entries, and normalization support in `normalizeFlowDocument()`.
 
 ---
 
@@ -291,8 +272,7 @@ Define layers in `specs/shared/layers.yaml` (retry policies, stealth config, cir
 ## Dependency Map
 
 ```
-Extended Node Types ──────────────────────────────────────────── (independent)
-Reverse Engineer (Session 18) ────────────────────────────────── (independent)
+Reverse Engineer (Session 19) ────────────────────────────────── (independent)
 Layer Visibility ─────────────────────────────────────────────── (independent)
 Prompt Builder ───────────────────────────────────────────────── (independent)
 Test Runner ──────────────────────► Diagram-Derived Test Gen ──► Spec Compliance
