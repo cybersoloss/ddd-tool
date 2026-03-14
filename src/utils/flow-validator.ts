@@ -28,6 +28,7 @@ import type {
   CacheSpec,
   TransformSpec,
   DelaySpec,
+  WebSocketBroadcastSpec,
 } from '../types/flow';
 import type { DomainConfig } from '../types/domain';
 import type {
@@ -904,6 +905,22 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
           issues.push(issue('flow', 'error', 'spec_completeness',
             `Transform "${node.label}" must have an output_schema defined`,
             { nodeId: node.id, suggestion: 'Set the output schema name' }
+          ));
+        }
+        break;
+      }
+      case 'websocket_broadcast': {
+        const spec = (node.spec ?? {}) as WebSocketBroadcastSpec;
+        if (isBlank(spec.channel)) {
+          issues.push(issue('flow', 'error', 'spec_completeness',
+            `WebSocket Broadcast "${node.label}" must have a channel defined`,
+            { nodeId: node.id, suggestion: 'Set the broadcast channel (e.g. "shipment-$.shipment_id")' }
+          ));
+        }
+        if (isBlank(spec.event_name)) {
+          issues.push(issue('flow', 'error', 'spec_completeness',
+            `WebSocket Broadcast "${node.label}" must have an event_name defined`,
+            { nodeId: node.id, suggestion: 'Set the WebSocket event name sent to clients' }
           ));
         }
         break;

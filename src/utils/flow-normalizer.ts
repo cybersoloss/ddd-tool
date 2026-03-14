@@ -372,6 +372,14 @@ export function normalizeFlowDocument(raw: Record<string, unknown>, domainId: st
       }
     }
 
+    // Normalize cache: `get`/`read` → `check` (the canonical operation name for read-through)
+    if (n.type === 'cache') {
+      const cacheOp = spec.operation as string | undefined;
+      if (cacheOp === 'get' || cacheOp === 'read') {
+        spec.operation = 'check';
+      }
+    }
+
     // Normalize service_call: endpoint → url
     if (n.type === 'service_call' && !spec.url && spec.endpoint) {
       spec.url = spec.endpoint;
@@ -504,6 +512,43 @@ export function normalizeFlowDocument(raw: Record<string, unknown>, domainId: st
         connections = connections.map((conn) => {
           if (conn.sourceHandle === 'valid' || conn.sourceHandle === 'output' || conn.sourceHandle === undefined) {
             return { ...conn, sourceHandle: 'result' };
+          }
+          return conn;
+        });
+      }
+    }
+
+    // Data store / service_call / parse / crypto / ipc_call / llm_call:
+    // External YAML (from/to format without handle:) often omits the handle on the
+    // happy-path connection, leaving sourceHandle: undefined. The validator requires
+    // an explicit 'success' handle. Remap the first unnamed connection → 'success'
+    // when no explicit 'success' exists. Mirrors what the collection normalizer does
+    // for 'result'.
+    if (['data_store', 'service_call', 'parse', 'crypto', 'ipc_call', 'llm_call'].includes(nodeType)) {
+      const hasSuccess = connections.some((c) => c.sourceHandle === 'success');
+      if (!hasSuccess) {
+        let remapped = false;
+        connections = connections.map((conn) => {
+          if (!remapped && conn.sourceHandle === undefined) {
+            remapped = true;
+            return { ...conn, sourceHandle: 'success' };
+          }
+          return conn;
+        });
+      }
+    }
+
+    // Batch: external YAML often omits the handle on the convergence (done) connection,
+    // leaving sourceHandle: undefined. Remap the first unnamed connection → 'done' when
+    // no explicit 'done' exists. Mirrors fix #4 (success-path inference) for batch nodes.
+    if (nodeType === 'batch') {
+      const hasDone = connections.some((c) => c.sourceHandle === 'done');
+      if (!hasDone) {
+        let remapped = false;
+        connections = connections.map((conn) => {
+          if (!remapped && conn.sourceHandle === undefined) {
+            remapped = true;
+            return { ...conn, sourceHandle: 'done' };
           }
           return conn;
         });
