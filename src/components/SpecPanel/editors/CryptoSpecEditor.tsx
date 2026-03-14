@@ -23,6 +23,8 @@ export function CryptoSpecEditor({ spec, onChange }: Props) {
           <option value="hash">Hash</option>
           <option value="sign">Sign</option>
           <option value="verify">Verify</option>
+          <option value="jwt_sign">JWT Sign</option>
+          <option value="jwt_verify">JWT Verify</option>
           <option value="generate_key">Generate Key</option>
           <option value="generate_token">Generate Token</option>
         </select>
@@ -96,6 +98,30 @@ export function CryptoSpecEditor({ spec, onChange }: Props) {
             placeholder="e.g. 32, 64"
           />
         </div>
+      )}
+      {spec.operation === 'jwt_sign' && (
+        <>
+          <div>
+            <label className="label">Payload (JSON)</label>
+            <textarea
+              className="input min-h-[60px] resize-y"
+              value={spec.payload ? JSON.stringify(spec.payload, null, 2) : ''}
+              onChange={(e) => {
+                try { onChange({ ...spec, payload: JSON.parse(e.target.value) }); } catch { /* invalid JSON */ }
+              }}
+              placeholder='{"sub": "$.user.id", "role": "$.user.role"}'
+            />
+          </div>
+          <div>
+            <label className="label">Expires In</label>
+            <input
+              className="input"
+              value={spec.expires_in ?? ''}
+              onChange={(e) => onChange({ ...spec, expires_in: e.target.value })}
+              placeholder="e.g. 1h, 7d, 15m"
+            />
+          </div>
+        </>
       )}
       <div>
         <label className="label">Description</label>
