@@ -33,6 +33,7 @@ const KNOWN_KEYS: Record<DddNodeType, Set<string>> = {
   batch: new Set(['input', 'operation_template', 'sub_flow_ref', 'concurrency', 'on_error', 'output', 'description']),
   transaction: new Set(['isolation', 'steps', 'rollback_on_error', 'description']),
   websocket_broadcast: new Set(['channel', 'event_name', 'payload', 'include_sender', 'description']),
+  text_split: new Set(['input', 'max_length', 'split_strategy', 'prefix_template', 'suffix_template', 'output', 'description']),
 };
 
 interface Props {

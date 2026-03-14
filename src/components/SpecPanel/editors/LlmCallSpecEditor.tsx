@@ -133,6 +133,23 @@ export function LlmCallSpecEditor({ spec, onChange }: Props) {
         />
         Retry Jitter
       </label>
+      {/* Model Fallback */}
+      <div>
+        <label className="label">Model Fallback</label>
+        <textarea
+          className="input min-h-[60px] resize-y font-mono text-xs"
+          value={JSON.stringify(spec.model_fallback ?? [], null, 2)}
+          onChange={(e) => {
+            try {
+              onChange({ ...spec, model_fallback: JSON.parse(e.target.value) });
+            } catch {
+              // Keep raw while editing
+            }
+          }}
+          placeholder='[{"model": "claude-sonnet", "on_error": ["rate_limited", "overloaded"]}]'
+        />
+        <p className="text-[10px] text-text-muted mt-0.5">Ordered fallback models. on_error: rate_limited, overloaded, timeout, any</p>
+      </div>
       <div>
         <label className="label">Description</label>
         <textarea

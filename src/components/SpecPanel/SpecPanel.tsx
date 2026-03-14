@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { X, Zap, FormInput, Cog, GitFork, Square, RotateCw, Shield, Hand, Network, GitBranch, ArrowLeftRight, Box, Database, ExternalLink, Repeat, Columns, GitMerge, BrainCircuit, Clock, HardDrive, Shuffle, Filter, FileText, Lock, Layers, ShieldCheck, Terminal, Radio } from 'lucide-react';
+import { X, Zap, FormInput, Cog, GitFork, Square, RotateCw, Shield, Hand, Network, GitBranch, ArrowLeftRight, Box, Database, ExternalLink, Repeat, Columns, GitMerge, BrainCircuit, Clock, HardDrive, Shuffle, Filter, FileText, Lock, Layers, ShieldCheck, Terminal, Radio, Scissors } from 'lucide-react';
 import { useFlowStore } from '../../stores/flow-store';
 import { specEditors } from './editors';
 import { CrossCuttingEditor } from './editors/CrossCuttingEditor';
@@ -36,6 +36,7 @@ const nodeIcons: Record<DddNodeType, { icon: React.ElementType; color: string }>
   batch: { icon: Layers, color: 'text-rose-400' },
   transaction: { icon: ShieldCheck, color: 'text-amber-500' },
   websocket_broadcast: { icon: Radio, color: 'text-violet-500' },
+  text_split: { icon: Scissors, color: 'text-lime-400' },
 };
 
 function findNode(flow: ReturnType<typeof useFlowStore.getState>['currentFlow'], nodeId: string): DddFlowNode | null {

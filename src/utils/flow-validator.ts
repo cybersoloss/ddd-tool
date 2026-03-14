@@ -935,6 +935,22 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
         }
         break;
       }
+      case 'text_split': {
+        const spec = (node.spec ?? {}) as Record<string, unknown>;
+        if (isBlank(spec.input as string)) {
+          issues.push(issue('flow', 'error', 'spec_completeness',
+            `Text Split "${node.label}" must have an input field reference`,
+            { nodeId: node.id, suggestion: 'Set the input field (e.g. "$.article.body")' }
+          ));
+        }
+        if (spec.max_length == null) {
+          issues.push(issue('flow', 'error', 'spec_completeness',
+            `Text Split "${node.label}" must have max_length defined`,
+            { nodeId: node.id, suggestion: 'Set the maximum character length per chunk (e.g. 280)' }
+          ));
+        }
+        break;
+      }
     }
   }
 
