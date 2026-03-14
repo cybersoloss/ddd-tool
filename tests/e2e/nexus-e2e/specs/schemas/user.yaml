@@ -1,0 +1,63 @@
+name: User
+description: User account with authentication
+inherits: _base
+fields:
+  - name: email
+    type: string
+    required: true
+    format: email
+    constraints:
+      unique: true
+      max_length: 255
+  - name: password_hash
+    type: string
+    required: true
+    encrypted: true
+    constraints:
+      max_length: 255
+  - name: role_id
+    type: uuid
+    required: true
+  - name: api_key_hash
+    type: string
+    required: false
+    encrypted: true
+  - name: plan
+    type: enum
+    required: true
+    ref: user_plan
+    default: free
+  - name: deleted_at
+    type: datetime
+    required: false
+    description: Soft delete timestamp
+
+relationships:
+  - name: role
+    type: belongs_to
+    target: Role
+    foreign_key: role_id
+  - name: api_keys
+    type: has_many
+    target: ApiKey
+    foreign_key: user_id
+  - name: notifications
+    type: has_many
+    target: Notification
+    foreign_key: user_id
+  - name: profile
+    type: has_one
+    target: UserProfile
+    foreign_key: user_id
+
+indexes:
+  - fields: [email]
+    unique: true
+  - fields: [role_id]
+    type: btree
+  - fields: [deleted_at]
+    description: "Soft delete filtering"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

@@ -1,0 +1,30 @@
+name: Rule
+description: System rules for ingestion, routing, and publishing
+inherits: _base
+fields:
+  - name: type
+    type: enum
+    required: true
+    ref: rule_type
+  - name: condition
+    type: json
+    required: true
+  - name: action
+    type: json
+    required: true
+  - name: priority
+    type: number
+    required: true
+    default: 0
+  - name: enabled
+    type: boolean
+    required: true
+    default: true
+
+indexes:
+  - fields: [type, enabled, priority]
+    description: "Active rules by type sorted by priority"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

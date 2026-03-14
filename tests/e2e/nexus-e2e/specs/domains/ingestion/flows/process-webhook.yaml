@@ -1,0 +1,157 @@
+flow:
+  id: process-webhook
+  name: "Process Webhook"
+  type: traditional
+  domain: ingestion
+  description: "Receives incoming webhook payloads with signature verification, routes them by event type to the appropriate handler for content creation, notification forwarding, or source status updates."
+  auth:
+    required: false
+
+trigger:
+  id: trigger-wH1a2B3c
+  type: trigger
+  position: { x: 100, y: 0 }
+  spec:
+    event: "webhook /api/v1/webhooks/content"
+    label: "Incoming webhook"
+    signature:
+      algorithm: sha256
+      key_source:
+        env: WEBHOOK_SECRET
+      header: X-Webhook-Signature
+
+nodes:
+  - id: input-iV4d5E6f
+    type: input
+    position: { x: 100, y: 130 }
+    spec:
+      validate:
+        type:
+          required: true
+          type: string
+        payload:
+          required: true
+          type: object
+
+  - id: smart_router-sR7g8H9i
+    type: smart_router
+    position: { x: 100, y: 260 }
+    spec:
+      rules:
+        - id: content-event
+          condition: "$.type === 'content'"
+          route: content-handler
+        - id: notification-event
+          condition: "$.type === 'notification'"
+          route: notification-handler
+        - id: status-update
+          condition: "$.type === 'status'"
+          route: status-handler
+      fallback_chain:
+        - content-event
+
+  - id: process-pC1j2K3l
+    type: process
+    position: { x: 100, y: 390 }
+    spec:
+      category: business_logic
+      description: "Transform webhook payload to content format"
+      route: content-handler
+
+  - id: data_store-dC4m5N6o
+    type: data_store
+    position: { x: 100, y: 520 }
+    spec:
+      operation: create
+      model: Content
+
+  - id: event-eC7p8Q9r
+    type: event
+    position: { x: 100, y: 650 }
+    spec:
+      direction: emit
+      event_name: ContentIngested
+
+  - id: terminal-tC1s2T3u
+    type: terminal
+    position: { x: 100, y: 780 }
+    spec:
+      status: 200
+      label: "Content webhook processed"
+
+  - id: process-pN4v5W6x
+    type: process
+    position: { x: 500, y: 390 }
+    spec:
+      category: integration
+      description: "Forward notification"
+      route: notification-handler
+
+  - id: terminal-tN7y8Z9a
+    type: terminal
+    position: { x: 500, y: 520 }
+    spec:
+      status: 200
+      label: "Notification forwarded"
+
+  - id: data_store-dU1b2C3d
+    type: data_store
+    position: { x: 900, y: 390 }
+    spec:
+      operation: update
+      model: ContentSource
+      route: status-handler
+
+  - id: terminal-tU4e5F6g
+    type: terminal
+    position: { x: 900, y: 520 }
+    spec:
+      status: 200
+      label: "Status updated"
+
+  - id: terminal-tE7h8I9j
+    type: terminal
+    position: { x: 400, y: 130 }
+    spec:
+      status: 401
+      label: "Invalid webhook signature or payload"
+      error_code: WEBHOOK_SIGNATURE_INVALID
+
+connections:
+  - source: trigger-wH1a2B3c
+    target: input-iV4d5E6f
+    sourceHandle: ""
+  - source: input-iV4d5E6f
+    target: smart_router-sR7g8H9i
+    sourceHandle: "valid"
+  - source: input-iV4d5E6f
+    target: terminal-tE7h8I9j
+    sourceHandle: "invalid"
+  - source: smart_router-sR7g8H9i
+    target: process-pC1j2K3l
+    sourceHandle: "content-handler"
+  - source: smart_router-sR7g8H9i
+    target: process-pN4v5W6x
+    sourceHandle: "notification-handler"
+  - source: smart_router-sR7g8H9i
+    target: data_store-dU1b2C3d
+    sourceHandle: "status-handler"
+  - source: process-pC1j2K3l
+    target: data_store-dC4m5N6o
+    sourceHandle: "success"
+  - source: data_store-dC4m5N6o
+    target: event-eC7p8Q9r
+    sourceHandle: "success"
+  - source: event-eC7p8Q9r
+    target: terminal-tC1s2T3u
+    sourceHandle: "success"
+  - source: process-pN4v5W6x
+    target: terminal-tN7y8Z9a
+    sourceHandle: "success"
+  - source: data_store-dU1b2C3d
+    target: terminal-tU4e5F6g
+    sourceHandle: "success"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

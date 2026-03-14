@@ -1,0 +1,53 @@
+page: notification-settings
+route: /settings/notifications
+
+sections:
+  - id: channel-prefs
+    component: detail-card
+    position: main
+    label: "Channel Preferences"
+    data_source: notifications/get-notification-preferences
+    fields:
+      email_enabled: { value: "$.email_enabled" }
+      slack_enabled: { value: "$.slack_enabled" }
+
+  - id: notification-history
+    component: item-list
+    position: main
+    label: "Notification History"
+    data_source: notifications/get-notification-preferences
+    item_template:
+      title: "$.title"
+      subtitle: "$.body"
+      badge: "$.type"
+      timestamp: "$.created_at"
+    empty_state:
+      message: "No notifications yet"
+      icon: bell-off
+
+forms:
+  - id: notification-form
+    label: "Notification Preferences"
+    position: main
+    fields:
+      - { name: email_enabled, type: toggle, label: "Email Notifications", default: true }
+      - { name: slack_enabled, type: toggle, label: "Slack Notifications", default: false }
+      - { name: event_types, type: multi-select, label: "Event Types to Notify", options: [content_ingested, content_classified, content_approved, content_published, alert_triggered] }
+      - { name: digest_frequency, type: select, label: "Digest Frequency", options: [realtime, hourly, daily, weekly], default: daily }
+      - name: slack_webhook_url
+        type: text
+        label: "Slack Webhook URL"
+        visible_when: { field: slack_enabled, value: true }
+        placeholder: "https://hooks.slack.com/services/..."
+    submit:
+      flow: notifications/update-notification-preferences
+      label: "Save Preferences"
+      loading_label: "Saving..."
+      success: { message: "Preferences saved" }
+      error: { message: "Failed to save", retry: true }
+
+state:
+  initial_fetch: [notifications/get-notification-preferences]
+
+loading: skeleton
+error: toast

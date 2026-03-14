@@ -1,0 +1,43 @@
+flow:
+  id: broadcast-dashboard-update
+  name: "Broadcast Dashboard Update"
+  type: traditional
+  domain: analytics
+  description: "Broadcasts dashboard metric updates to connected clients via WebSocket when content is published"
+
+trigger:
+  id: trigger-bD1a2B3c
+  type: trigger
+  position: { x: 250, y: 0 }
+  spec:
+    event: "event:ContentPublished"
+    label: "Content Published"
+
+nodes:
+  - id: websocket_broadcast-wB4d5E6f
+    type: websocket_broadcast
+    position: { x: 250, y: 130 }
+    spec:
+      channel: "dashboard"
+      event_name: "metric_update"
+      payload: "$.event_data"
+      include_sender: false
+
+  - id: terminal-sB7g8H9i
+    type: terminal
+    position: { x: 250, y: 260 }
+    spec:
+      status: 200
+      label: "Dashboard update broadcast complete"
+
+connections:
+  - source: trigger-bD1a2B3c
+    target: websocket_broadcast-wB4d5E6f
+    sourceHandle: ""
+  - source: websocket_broadcast-wB4d5E6f
+    target: terminal-sB7g8H9i
+    sourceHandle: "done"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

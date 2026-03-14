@@ -1,0 +1,185 @@
+flow:
+  id: manage-api-keys
+  name: "Manage API Keys"
+  type: traditional
+  domain: users
+  description: "CRUD operations for API keys: create, list, and revoke"
+  auth:
+    required: true
+    strategy: jwt
+
+trigger:
+  id: trigger-mK1a2B3c
+  type: trigger
+  position: { x: 250, y: 0 }
+  spec:
+    event: "http POST /api/v1/users/api-keys"
+    label: "API key management endpoint"
+
+nodes:
+  - id: input-vK4d5E6f
+    type: input
+    position: { x: 250, y: 130 }
+    spec:
+      validate:
+        operation:
+          required: true
+          type: string
+
+  - id: decision-oP7g8H9i
+    type: decision
+    position: { x: 250, y: 260 }
+    spec:
+      condition: "$.operation"
+      description: "Route to create, list, or revoke operation"
+      branches:
+        - value: create
+        - value: list
+        - value: revoke
+
+  - id: crypto-gK1j2K3l
+    type: crypto
+    position: { x: 0, y: 390 }
+    spec:
+      operation: generate_key
+      algorithm: random
+      length: 32
+      output_field: api_key
+
+  - id: crypto-eK4m5N6o
+    type: crypto
+    position: { x: 0, y: 520 }
+    spec:
+      operation: encrypt
+      algorithm: "aes-256-gcm"
+      input: "$.api_key"
+      output_field: encrypted_key
+
+  - id: data_store-cK7p8Q9r
+    type: data_store
+    position: { x: 0, y: 650 }
+    spec:
+      operation: create
+      model: ApiKey
+      fields:
+        - name: user_id
+          value: "$.auth.user_id"
+        - name: key_hash
+          value: "$.encrypted_key"
+        - name: name
+          value: "$.key_name"
+
+  - id: terminal-sK1s2T3u
+    type: terminal
+    position: { x: 0, y: 780 }
+    spec:
+      status: 201
+      label: "API key created"
+
+  - id: data_store-lK4v5W6x
+    type: data_store
+    position: { x: 250, y: 390 }
+    spec:
+      operation: read
+      model: ApiKey
+      query:
+        where:
+          user_id: "$.auth.user_id"
+
+  - id: terminal-lK7y8Z9a
+    type: terminal
+    position: { x: 250, y: 520 }
+    spec:
+      status: 200
+      label: "API keys listed"
+
+  - id: data_store-dK1b2C3d
+    type: data_store
+    position: { x: 500, y: 390 }
+    spec:
+      operation: delete
+      model: ApiKey
+      query:
+        where:
+          id: "$.key_id"
+
+  - id: cache-iK4e5F6g
+    type: cache
+    position: { x: 500, y: 520 }
+    spec:
+      operation: invalidate
+      key: "api-key:$.key_id"
+
+  - id: terminal-rK7h8I9j
+    type: terminal
+    position: { x: 500, y: 650 }
+    spec:
+      status: 200
+      label: "API key revoked"
+
+  - id: terminal-eV1k2L3m
+    type: terminal
+    position: { x: 550, y: 130 }
+    spec:
+      status: 422
+      label: "Invalid request data"
+      error_code: VALIDATION_ERROR
+
+  - id: terminal-eD4n5O6p
+    type: terminal
+    position: { x: 550, y: 650 }
+    spec:
+      status: 500
+      label: "Data store error"
+      error_code: DATA_STORE_ERROR
+
+connections:
+  - source: trigger-mK1a2B3c
+    target: input-vK4d5E6f
+    sourceHandle: ""
+  - source: input-vK4d5E6f
+    target: decision-oP7g8H9i
+    sourceHandle: "valid"
+  - source: input-vK4d5E6f
+    target: terminal-eV1k2L3m
+    sourceHandle: "invalid"
+  - source: decision-oP7g8H9i
+    target: crypto-gK1j2K3l
+    sourceHandle: "create"
+  - source: decision-oP7g8H9i
+    target: data_store-lK4v5W6x
+    sourceHandle: "list"
+  - source: decision-oP7g8H9i
+    target: data_store-dK1b2C3d
+    sourceHandle: "revoke"
+  - source: crypto-gK1j2K3l
+    target: crypto-eK4m5N6o
+    sourceHandle: "success"
+  - source: crypto-eK4m5N6o
+    target: data_store-cK7p8Q9r
+    sourceHandle: "success"
+  - source: data_store-cK7p8Q9r
+    target: terminal-sK1s2T3u
+    sourceHandle: "success"
+  - source: data_store-cK7p8Q9r
+    target: terminal-eD4n5O6p
+    sourceHandle: "error"
+  - source: data_store-lK4v5W6x
+    target: terminal-lK7y8Z9a
+    sourceHandle: "success"
+  - source: data_store-lK4v5W6x
+    target: terminal-eD4n5O6p
+    sourceHandle: "error"
+  - source: data_store-dK1b2C3d
+    target: cache-iK4e5F6g
+    sourceHandle: "success"
+  - source: data_store-dK1b2C3d
+    target: terminal-eD4n5O6p
+    sourceHandle: "error"
+  - source: cache-iK4e5F6g
+    target: terminal-rK7h8I9j
+    sourceHandle: "success"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

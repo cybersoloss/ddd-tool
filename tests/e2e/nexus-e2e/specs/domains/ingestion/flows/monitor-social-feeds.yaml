@@ -1,0 +1,129 @@
+flow:
+  id: monitor-social-feeds
+  name: "Monitor Social Feeds"
+  type: traditional
+  domain: ingestion
+  description: "Monitors social media content sources on a schedule, fetches posts via Twitter API with OAuth1a and circuit breaker protection, merges results, and emits ContentIngested and SourceUpdated events."
+
+trigger:
+  id: trigger-mS1a2B3c
+  type: trigger
+  position: { x: 100, y: 0 }
+  spec:
+    event: "cron */30 * * * *"
+    label: "Every 30 minutes"
+
+nodes:
+  - id: data_store-dR4d5E6f
+    type: data_store
+    position: { x: 100, y: 130 }
+    spec:
+      operation: read
+      model: ContentSource
+      query:
+        where:
+          type: social
+
+  - id: loop-lS7g8H9i
+    type: loop
+    position: { x: 100, y: 260 }
+    spec:
+      collection: "$.sources"
+      iterator: "source"
+
+  - id: service_call-sT1j2K3l
+    type: service_call
+    position: { x: 100, y: 390 }
+    spec:
+      method: GET
+      url: "https://api.twitter.com/2/tweets/search/recent"
+      integration: twitter_api
+      oauth1a_config:
+        consumer_key_env: TWITTER_API_KEY
+        consumer_secret_env: TWITTER_API_SECRET
+        access_token_env: TWITTER_ACCESS_TOKEN
+        access_token_secret_env: TWITTER_ACCESS_TOKEN_SECRET
+
+  - id: collection-cM4m5N6o
+    type: collection
+    position: { x: 100, y: 520 }
+    spec:
+      operation: merge
+
+  - id: data_store-dC7p8Q9r
+    type: data_store
+    position: { x: 100, y: 650 }
+    spec:
+      operation: create
+      model: Content
+
+  - id: event-eI1s2T3u
+    type: event
+    position: { x: 100, y: 780 }
+    spec:
+      direction: emit
+      event_name: ContentIngested
+
+  - id: event-eU4v5W6x
+    type: event
+    position: { x: 100, y: 1040 }
+    spec:
+      direction: emit
+      event_name: SourceUpdated
+
+  - id: terminal-tS7y8Z9a
+    type: terminal
+    position: { x: 100, y: 1170 }
+    spec:
+      status: 200
+      label: "Social feeds monitored"
+
+  - id: terminal-tE1b2C3d
+    type: terminal
+    position: { x: 400, y: 390 }
+    spec:
+      status: 503
+      label: "Circuit breaker open"
+      error_code: CIRCUIT_BREAKER_OPEN
+
+connections:
+  - source: trigger-mS1a2B3c
+    target: data_store-dR4d5E6f
+    sourceHandle: ""
+  - source: data_store-dR4d5E6f
+    target: loop-lS7g8H9i
+    sourceHandle: "success"
+  - source: loop-lS7g8H9i
+    target: service_call-sT1j2K3l
+    sourceHandle: "body"
+  - source: service_call-sT1j2K3l
+    target: collection-cM4m5N6o
+    sourceHandle: "success"
+    behavior: circuit_break
+    circuit_break_config:
+      failure_threshold: 5
+      recovery_timeout_ms: 60000
+      half_open_max_calls: 2
+  - source: service_call-sT1j2K3l
+    target: terminal-tE1b2C3d
+    sourceHandle: "error"
+  - source: collection-cM4m5N6o
+    target: data_store-dC7p8Q9r
+    sourceHandle: "success"
+  - source: data_store-dC7p8Q9r
+    target: event-eI1s2T3u
+    sourceHandle: "success"
+  - source: event-eI1s2T3u
+    target: loop-lS7g8H9i
+    sourceHandle: "success"
+    label: "Continue loop"
+  - source: loop-lS7g8H9i
+    target: event-eU4v5W6x
+    sourceHandle: "done"
+  - source: event-eU4v5W6x
+    target: terminal-tS7y8Z9a
+    sourceHandle: "success"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

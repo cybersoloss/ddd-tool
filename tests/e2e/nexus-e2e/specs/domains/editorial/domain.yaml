@@ -1,0 +1,124 @@
+name: Editorial
+description: "Human review with async AI assistance"
+role: process
+
+depends_on:
+  - domain: content
+    reason: "Reads and updates content status"
+    flows_affected:
+      - review-content
+      - bulk-approve
+      - list-editorial-queue
+  - domain: users
+    reason: "Reads reviewer assignments and roles"
+    flows_affected:
+      - assign-reviewer
+      - list-editorial-queue
+
+owns_schemas: []
+
+flows:
+  - id: review-content
+    name: "Review Content"
+    description: "Human editorial review with AI-generated suggestions"
+    type: traditional
+    tags:
+      - public-api
+    criticality: high
+
+  - id: escalate-to-senior
+    name: "Escalate To Senior"
+    description: "Escalate content to senior editor for complex decisions"
+    type: traditional
+    tags:
+      - internal
+
+  - id: co-author-review
+    name: "Co-Author Review"
+    description: "AI-assisted co-authoring during editorial review"
+    type: agentic
+    tags:
+      - internal
+
+  - id: assign-reviewer
+    name: "Assign Reviewer"
+    description: "Assign content to available reviewer based on expertise"
+    type: traditional
+    tags:
+      - internal
+
+  - id: list-editorial-queue
+    name: "List Editorial Queue"
+    description: "List pending content in the editorial review queue"
+    type: traditional
+    tags:
+      - public-api
+
+  - id: bulk-approve
+    name: "Bulk Approve"
+    description: "Approve multiple content items in a single operation"
+    type: traditional
+    tags:
+      - public-api
+
+  - id: get-review-stats
+    name: "Get Review Stats"
+    description: "Retrieve editorial review statistics and metrics"
+    type: traditional
+    tags:
+      - public-api
+
+  - id: trigger-bulk-reprocess
+    name: "Trigger Bulk Reprocess"
+    description: "Trigger reprocessing of previously reviewed content"
+    type: traditional
+    tags:
+      - internal
+
+  - id: quick-approve
+    name: "Quick Approve"
+    description: "One-click approval for high-confidence content"
+    type: traditional
+    tags:
+      - public-api
+    keyboard_shortcut: "Cmd+Shift+A"
+
+publishes_events:
+  - event: ContentApproved
+    from_flow: review-content
+    description: "Content approved for publishing"
+    payload:
+      content_id: uuid
+      approved_by: uuid
+      approved_at: datetime
+
+  - event: ContentRejected
+    from_flow: review-content
+    description: "Content rejected"
+    payload:
+      content_id: uuid
+      reason: string
+      rejected_by: uuid
+
+consumes_events:
+  - event: ContentClassified
+    handled_by_flow: review-content
+    description: "Review content after AI classification"
+    payload:
+      content_id: uuid
+      category: string
+      confidence: number
+      quality_score: number
+
+layout:
+  flows:
+    review-content: { x: 100, y: 100 }
+    escalate-to-senior: { x: 100, y: 300 }
+    co-author-review: { x: 100, y: 500 }
+    assign-reviewer: { x: 100, y: 700 }
+    list-editorial-queue: { x: 100, y: 900 }
+    bulk-approve: { x: 100, y: 1100 }
+    get-review-stats: { x: 100, y: 1300 }
+    trigger-bulk-reprocess: { x: 100, y: 1500 }
+    quick-approve: { x: 100, y: 1700 }
+  portals: {}

@@ -1,0 +1,97 @@
+page: dashboard
+route: /
+
+sections:
+  - id: ingested-today
+    component: stat-card
+    position: top
+    label: "Ingested Today"
+    data_source: analytics/query-analytics
+    fields:
+      value: "$.ingested_today"
+      subtitle: "items ingested"
+      urgency:
+        field: "$.ingested_today"
+        rules:
+          - { threshold: 100, level: critical, color: red }
+          - { threshold: 50, level: warning, color: amber }
+          - { threshold: 0, level: normal, color: green }
+    trend:
+      value: "$.ingested_yesterday"
+      direction: auto
+      format: percent
+    actions:
+      click: { navigate: /content }
+
+  - id: processed-today
+    component: stat-card
+    position: top
+    label: "Processed Today"
+    data_source: analytics/query-analytics
+    fields:
+      value: "$.processed_today"
+      subtitle: "items processed"
+    trend:
+      value: "$.processed_yesterday"
+      direction: auto
+      format: percent
+
+  - id: published-today
+    component: stat-card
+    position: top
+    label: "Published Today"
+    data_source: analytics/query-analytics
+    fields:
+      value: "$.published_today"
+      subtitle: "items published"
+    trend:
+      value: "$.published_yesterday"
+      direction: auto
+      format: percent
+
+  - id: ingestion-chart
+    component: chart
+    position: main
+    label: "Ingestion Rate"
+    data_source: analytics/query-analytics
+    chart_type: area
+    fields:
+      labels: "$.hourly_labels"
+      series:
+        - { name: "Ingested", values: "$.hourly_ingested" }
+
+  - id: recent-alerts
+    component: item-list
+    position: sidebar
+    label: "Recent Alerts"
+    data_source: analytics/query-analytics
+    item_template:
+      title: "$.alert_type"
+      subtitle: "$.metric — threshold: $.threshold"
+      timestamp: "$.occurred_at"
+    empty_state:
+      message: "No alerts — system running normally"
+      icon: check-circle
+
+  - id: pipeline-health
+    component: status-bar
+    position: footer
+    label: "Pipeline Health"
+    data_source: monitoring/health-check
+    fields:
+      items:
+        - { label: "API", value: "$.services.api", color_when: [{ value: "healthy", color: green }, { value: "degraded", color: amber }, { value: "down", color: red }] }
+        - { label: "Worker", value: "$.services.worker", color_when: [{ value: "healthy", color: green }, { value: "down", color: red }] }
+        - { label: "Database", value: "$.services.postgres", color_when: [{ value: "healthy", color: green }, { value: "down", color: red }] }
+        - { label: "Cache", value: "$.services.redis", color_when: [{ value: "healthy", color: green }, { value: "down", color: red }] }
+
+forms: []
+
+state:
+  store: dashboard-store
+  initial_fetch: [analytics/query-analytics, monitoring/health-check]
+  realtime: analytics/broadcast-dashboard-update
+
+loading: skeleton
+error: retry-banner
+refresh: auto-30s

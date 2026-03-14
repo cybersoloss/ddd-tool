@@ -1,0 +1,44 @@
+enums:
+  content_category:
+    values: [news, opinion, research, other]
+    description: Content classification categories
+
+  content_status:
+    values: [draft, review, approved, rejected, published, archived]
+    description: Content lifecycle status
+
+  source_type:
+    values: [rss, web, csv, webhook, social, filesystem]
+    description: Content ingestion source types
+
+  channel_type:
+    values: [website, twitter, linkedin, newsletter, webhook]
+    description: Publishing channel types
+
+  user_plan:
+    values: [free, pro, enterprise]
+    description: User subscription plan tiers
+
+  rule_type:
+    values: [ingestion, routing, publishing]
+    description: System rule categories
+
+  publish_status:
+    values: [pending, success, failed]
+    description: Publication attempt status
+
+  schedule_status:
+    values: [pending, executed, cancelled]
+    description: Scheduled publication status
+
+  notification_type:
+    values: [email, slack, push, in_app]
+    description: Notification delivery channels
+
+  digest_frequency:
+    values: [realtime, hourly, daily, weekly]
+    description: Notification digest frequency options
+
+  event_type_category:
+    values: [content, user, system, publishing, editorial]
+    description: Analytics event type categories

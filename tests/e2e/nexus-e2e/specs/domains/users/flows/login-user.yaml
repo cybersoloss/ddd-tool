@@ -1,0 +1,178 @@
+flow:
+  id: login-user
+  name: "Login User"
+  type: traditional
+  domain: users
+  description: "User login with password verification, JWT generation, and encrypted session storage"
+  auth:
+    required: false
+
+trigger:
+  id: trigger-lU1a2B3c
+  type: trigger
+  position: { x: 250, y: 0 }
+  spec:
+    event: "http POST /api/v1/auth/login"
+    label: "User login endpoint"
+
+nodes:
+  - id: input-vL4d5E6f
+    type: input
+    position: { x: 250, y: 130 }
+    spec:
+      validate:
+        email:
+          required: true
+          type: string
+        password:
+          required: true
+          type: string
+
+  - id: data_store-fU7g8H9i
+    type: data_store
+    position: { x: 250, y: 260 }
+    spec:
+      operation: read
+      model: User
+      query:
+        where:
+          email: "$.email"
+
+  - id: decision-fD1j2K3l
+    type: decision
+    position: { x: 250, y: 390 }
+    spec:
+      condition: "$.user != null"
+      description: "Check if user was found"
+
+  - id: terminal-nF4m5N6o
+    type: terminal
+    position: { x: 550, y: 390 }
+    spec:
+      status: 401
+      label: "User not found"
+      error_code: UNAUTHORIZED
+
+  - id: crypto-vP7p8Q9r
+    type: crypto
+    position: { x: 250, y: 520 }
+    spec:
+      operation: hash
+      algorithm: bcrypt
+      input: "$.password"
+      compare_to: "$.user.password_hash"
+
+  - id: decision-mT1s2T3u
+    type: decision
+    position: { x: 250, y: 650 }
+    spec:
+      condition: "$.password_valid == true"
+      description: "Check if password hash matches"
+
+  - id: terminal-bP4v5W6x
+    type: terminal
+    position: { x: 550, y: 650 }
+    spec:
+      status: 401
+      label: "Invalid password"
+      error_code: UNAUTHORIZED
+
+  - id: process-gJ7y8Z9a
+    type: process
+    position: { x: 250, y: 780 }
+    spec:
+      category: security
+      description: "Generate JWT token"
+
+  - id: crypto-eR1b2C3d
+    type: crypto
+    position: { x: 250, y: 910 }
+    spec:
+      operation: encrypt
+      algorithm: "aes-256-gcm"
+      input: "$.refresh_token"
+      output_field: encrypted_refresh
+
+  - id: cache-sS4e5F6g
+    type: cache
+    position: { x: 250, y: 1040 }
+    spec:
+      operation: set
+      key: "session:$.user.id"
+      value: "$.encrypted_refresh"
+      store: redis
+      ttl_ms: 604800000
+
+  - id: terminal-sL7h8I9j
+    type: terminal
+    position: { x: 250, y: 1170 }
+    spec:
+      status: 200
+      label: "Login successful"
+
+  - id: terminal-eI1k2L3m
+    type: terminal
+    position: { x: 550, y: 130 }
+    spec:
+      status: 422
+      label: "Invalid login data"
+      error_code: VALIDATION_ERROR
+
+  - id: terminal-eC4n5O6p
+    type: terminal
+    position: { x: 550, y: 910 }
+    spec:
+      status: 500
+      label: "Crypto error"
+      error_code: CRYPTO_ERROR
+
+connections:
+  - source: trigger-lU1a2B3c
+    target: input-vL4d5E6f
+    sourceHandle: ""
+  - source: input-vL4d5E6f
+    target: data_store-fU7g8H9i
+    sourceHandle: "valid"
+  - source: input-vL4d5E6f
+    target: terminal-eI1k2L3m
+    sourceHandle: "invalid"
+  - source: data_store-fU7g8H9i
+    target: decision-fD1j2K3l
+    sourceHandle: "success"
+  - source: data_store-fU7g8H9i
+    target: terminal-nF4m5N6o
+    sourceHandle: "error"
+  - source: decision-fD1j2K3l
+    target: terminal-nF4m5N6o
+    sourceHandle: "false"
+  - source: decision-fD1j2K3l
+    target: crypto-vP7p8Q9r
+    sourceHandle: "true"
+  - source: crypto-vP7p8Q9r
+    target: decision-mT1s2T3u
+    sourceHandle: "success"
+  - source: crypto-vP7p8Q9r
+    target: terminal-eC4n5O6p
+    sourceHandle: "error"
+  - source: decision-mT1s2T3u
+    target: terminal-bP4v5W6x
+    sourceHandle: "false"
+  - source: decision-mT1s2T3u
+    target: process-gJ7y8Z9a
+    sourceHandle: "true"
+  - source: process-gJ7y8Z9a
+    target: crypto-eR1b2C3d
+    sourceHandle: "success"
+  - source: crypto-eR1b2C3d
+    target: cache-sS4e5F6g
+    sourceHandle: "success"
+  - source: crypto-eR1b2C3d
+    target: terminal-eC4n5O6p
+    sourceHandle: "error"
+  - source: cache-sS4e5F6g
+    target: terminal-sL7h8I9j
+    sourceHandle: "success"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

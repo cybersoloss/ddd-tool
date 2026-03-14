@@ -1,0 +1,118 @@
+flow:
+  id: generate-weekly-digest
+  name: "Generate Weekly Digest"
+  type: traditional
+  domain: analytics
+  description: "Generates a weekly analytics digest every Monday at 6 AM and sends it via email"
+
+trigger:
+  id: trigger-gW1a2B3c
+  type: trigger
+  position: { x: 250, y: 0 }
+  spec:
+    event: "cron 0 6 * * 1"
+    label: "Weekly on Monday at 6:00 AM"
+
+nodes:
+  - id: data_store-rW4d5E6f
+    type: data_store
+    position: { x: 250, y: 130 }
+    spec:
+      operation: read
+      model: AnalyticsEvent
+      query:
+        where:
+          occurred_at:
+            gte: "$.week_start"
+            lt: "$.week_end"
+
+  - id: collection-aW7g8H9i
+    type: collection
+    position: { x: 250, y: 260 }
+    spec:
+      operation: aggregate
+      functions:
+        - function: count
+          field: id
+          alias: total
+
+  - id: data_store-cW1j2K3l
+    type: data_store
+    position: { x: 250, y: 390 }
+    spec:
+      operation: create
+      model: WeeklyDigest
+      fields:
+        - name: week_start
+          value: "$.week_start"
+        - name: week_end
+          value: "$.week_end"
+        - name: total_events
+          value: "$.total"
+        - name: generated_at
+          value: "$.now"
+
+  - id: service_call-sW4m5N6o
+    type: service_call
+    position: { x: 250, y: 520 }
+    spec:
+      service: SendGrid
+      method: send
+      integration: sendgrid
+      description: "Send weekly digest email"
+      params:
+        template: weekly_digest
+        data: "$.digest"
+
+  - id: terminal-sW7p8Q9r
+    type: terminal
+    position: { x: 250, y: 650 }
+    spec:
+      status: 200
+      label: "Weekly digest generated and sent"
+
+  - id: terminal-eW1s2T3u
+    type: terminal
+    position: { x: 550, y: 520 }
+    spec:
+      status: 500
+      label: "SendGrid delivery error"
+      error_code: SERVICE_CALL_ERROR
+
+  - id: terminal-eW4v5W6x
+    type: terminal
+    position: { x: 550, y: 130 }
+    spec:
+      status: 500
+      label: "Data store error"
+      error_code: DATA_STORE_ERROR
+
+connections:
+  - source: trigger-gW1a2B3c
+    target: data_store-rW4d5E6f
+    sourceHandle: ""
+  - source: data_store-rW4d5E6f
+    target: collection-aW7g8H9i
+    sourceHandle: "success"
+  - source: data_store-rW4d5E6f
+    target: terminal-eW4v5W6x
+    sourceHandle: "error"
+  - source: collection-aW7g8H9i
+    target: data_store-cW1j2K3l
+    sourceHandle: "result"
+  - source: data_store-cW1j2K3l
+    target: service_call-sW4m5N6o
+    sourceHandle: "success"
+  - source: data_store-cW1j2K3l
+    target: terminal-eW4v5W6x
+    sourceHandle: "error"
+  - source: service_call-sW4m5N6o
+    target: terminal-sW7p8Q9r
+    sourceHandle: "success"
+  - source: service_call-sW4m5N6o
+    target: terminal-eW1s2T3u
+    sourceHandle: "error"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

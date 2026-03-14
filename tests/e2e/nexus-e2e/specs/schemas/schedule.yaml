@@ -1,0 +1,49 @@
+name: Schedule
+description: Scheduled content publication
+inherits: _base
+fields:
+  - name: content_id
+    type: uuid
+    required: true
+  - name: publish_at
+    type: datetime
+    required: true
+  - name: channel_id
+    type: uuid
+    required: true
+  - name: created_by
+    type: uuid
+    required: true
+  - name: status
+    type: enum
+    required: true
+    ref: schedule_status
+    default: pending
+
+relationships:
+  - name: content
+    type: belongs_to
+    target: Content
+    foreign_key: content_id
+  - name: channel
+    type: belongs_to
+    target: Channel
+    foreign_key: channel_id
+
+indexes:
+  - fields: [publish_at]
+    type: btree
+    description: "Find upcoming scheduled publications"
+  - fields: [status, publish_at]
+    description: "Query pending publications sorted by date"
+
+transitions:
+  field: status
+  states:
+    - from: pending
+      to: [executed, cancelled]
+  on_invalid: reject
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

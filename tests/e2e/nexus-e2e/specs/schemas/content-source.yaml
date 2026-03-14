@@ -1,0 +1,46 @@
+name: ContentSource
+description: Content ingestion source configuration
+inherits: _base
+fields:
+  - name: type
+    type: enum
+    required: true
+    ref: source_type
+  - name: name
+    type: string
+    required: true
+    constraints:
+      max_length: 200
+  - name: url
+    type: string
+    required: false
+  - name: config
+    type: json
+    required: true
+    default: {}
+  - name: last_synced_at
+    type: datetime
+    required: false
+  - name: enabled
+    type: boolean
+    required: true
+    default: true
+
+indexes:
+  - fields: [type]
+    type: btree
+  - fields: [enabled]
+    type: btree
+
+seed:
+  - name: sample-sources
+    description: "Sample ingestion sources for development"
+    strategy: fixture
+    data:
+      - { type: rss, name: "TechCrunch RSS", url: "https://techcrunch.com/feed/", config: { check_interval_minutes: 15 }, enabled: true }
+      - { type: rss, name: "Hacker News RSS", url: "https://hnrss.org/frontpage", config: { check_interval_minutes: 30 }, enabled: true }
+      - { type: webhook, name: "Custom Webhook", config: { secret: "WEBHOOK_SECRET" }, enabled: true }
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

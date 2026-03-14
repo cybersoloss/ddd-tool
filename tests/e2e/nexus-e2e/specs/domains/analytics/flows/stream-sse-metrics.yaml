@@ -1,0 +1,60 @@
+flow:
+  id: stream-sse-metrics
+  name: "Stream SSE Metrics"
+  type: traditional
+  domain: analytics
+  description: "Server-Sent Events stream for metrics data"
+  auth:
+    required: true
+    strategy: jwt
+
+trigger:
+  id: trigger-sS1a2B3c
+  type: trigger
+  position: { x: 250, y: 0 }
+  spec:
+    event: "sse /api/v1/metrics/stream"
+    label: "SSE metrics stream"
+
+nodes:
+  - id: data_store-rM4d5E6f
+    type: data_store
+    position: { x: 250, y: 130 }
+    spec:
+      operation: read
+      model: AnalyticsEvent
+      query:
+        where:
+          occurred_at:
+            gte: "$.recent_threshold"
+
+  - id: terminal-sE7g8H9i
+    type: terminal
+    position: { x: 250, y: 260 }
+    spec:
+      status: 200
+      response_type: sse
+      label: "SSE metrics stream active"
+
+  - id: terminal-eD1j2K3l
+    type: terminal
+    position: { x: 550, y: 130 }
+    spec:
+      status: 500
+      label: "Data store error"
+      error_code: DATA_STORE_ERROR
+
+connections:
+  - source: trigger-sS1a2B3c
+    target: data_store-rM4d5E6f
+    sourceHandle: ""
+  - source: data_store-rM4d5E6f
+    target: terminal-sE7g8H9i
+    sourceHandle: "success"
+  - source: data_store-rM4d5E6f
+    target: terminal-eD1j2K3l
+    sourceHandle: "error"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

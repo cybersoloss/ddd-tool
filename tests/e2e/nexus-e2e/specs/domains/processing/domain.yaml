@@ -1,0 +1,190 @@
+name: Processing
+description: "AI-powered analysis pipeline with multi-agent orchestration"
+role: orchestration
+
+depends_on:
+  - domain: content
+    reason: "Reads and updates content entities"
+    flows_affected:
+      - classify-content
+      - score-quality
+      - summarize-batch
+  - domain: settings
+    reason: "Reads AI model configuration and quality thresholds"
+    flows_affected:
+      - classify-content
+      - score-quality
+
+owns_schemas: []
+
+sla_config:
+  max_latency_ms: 30000
+  max_error_rate: 0.05
+  alert_channel: monitoring
+
+memory_stores:
+  - name: analysis-context
+    type: key_value
+    description: "Shared context store for orchestrated analysis agents"
+  - name: bias-knowledge
+    type: vector_store
+    description: "Bias detection knowledge base with historical examples"
+  - name: fact-check-history
+    type: conversation_history
+    description: "Conversation history for fact-check agent sessions"
+
+event_groups:
+  - name: content_lifecycle
+    description: "All content lifecycle events for unified processing"
+    events:
+      - ContentIngested
+      - ContentUpdated
+      - ContentRestored
+    correlation_key: "content_id"
+
+flows:
+  - id: classify-content
+    name: "Classify Content"
+    description: "AI-powered content classification with confidence scoring"
+    type: traditional
+    tags:
+      - internal
+    criticality: high
+
+  - id: summarize-batch
+    name: "Summarize Batch"
+    description: "Batch content summarization using LLM"
+    type: traditional
+    tags:
+      - internal
+
+  - id: fact-check-agent
+    name: "Fact Check Agent"
+    description: "Autonomous fact-checking agent with web search capabilities"
+    type: agentic
+    tags:
+      - internal
+
+  - id: bias-check-agent
+    name: "Bias Check Agent"
+    description: "Bias detection agent using vector knowledge base"
+    type: agentic
+    tags:
+      - internal
+
+  - id: resolve-conflict-agent
+    name: "Resolve Conflict Agent"
+    description: "Agent that resolves conflicting analysis results"
+    type: agentic
+    tags:
+      - internal
+
+  - id: score-quality
+    name: "Score Quality"
+    description: "Multi-dimensional content quality scoring"
+    type: traditional
+    tags:
+      - internal
+    criticality: high
+
+  - id: orchestrate-analysis
+    name: "Orchestrate Analysis"
+    description: "Orchestrates the full analysis pipeline across agents"
+    type: traditional
+    tags:
+      - internal
+
+  - id: analyze-with-agents
+    name: "Analyze With Agents"
+    description: "Dispatches content to specialized analysis agents"
+    type: agentic
+    tags:
+      - internal
+
+  - id: pipeline-agents
+    name: "Pipeline Agents"
+    description: "Sequential agent pipeline for deep content analysis"
+    type: agentic
+    tags:
+      - internal
+
+  - id: ai-consensus-review
+    name: "AI Consensus Review"
+    description: "Multi-agent consensus mechanism for quality decisions"
+    type: agentic
+    tags:
+      - internal
+
+  - id: route-to-specialist
+    name: "Route To Specialist"
+    description: "Smart routing to domain-specialist analysis agents"
+    type: traditional
+    tags:
+      - internal
+
+  - id: collaborative-review
+    name: "Collaborative Review"
+    description: "Multi-agent collaborative review with shared context"
+    type: agentic
+    tags:
+      - internal
+
+  - id: handle-any-content-event
+    name: "Handle Any Content Event"
+    description: "Unified handler for content lifecycle event group"
+    type: traditional
+    tags:
+      - internal
+
+publishes_events:
+  - event: ContentClassified
+    schema: Content
+    from_flow: classify-content
+    description: "Content has been classified by AI"
+    payload:
+      content_id: uuid
+      category: string
+      confidence: number
+      quality_score: number
+
+consumes_events:
+  - event: ContentIngested
+    handled_by_flow: classify-content
+    description: "Classify newly ingested content"
+    payload:
+      content_id: uuid
+      source_type: string
+      raw_url: string
+      ingested_at: datetime
+
+  - event: ContentUpdated
+    handled_by_flow: handle-any-content-event
+    description: "Handle content updates via unified event group"
+    payload:
+      content_id: uuid
+      changed_fields: "string[]"
+      updated_by: uuid
+
+  - event: ContentRestored
+    handled_by_flow: handle-any-content-event
+    description: "Handle content restoration via unified event group"
+    payload:
+      content_id: uuid
+      restored_by: uuid
+
+layout:
+  flows:
+    classify-content: { x: 100, y: 100 }
+    summarize-batch: { x: 100, y: 300 }
+    fact-check-agent: { x: 100, y: 500 }
+    bias-check-agent: { x: 100, y: 700 }
+    resolve-conflict-agent: { x: 100, y: 900 }
+    score-quality: { x: 100, y: 1100 }
+    orchestrate-analysis: { x: 100, y: 1300 }
+    analyze-with-agents: { x: 100, y: 1500 }
+    pipeline-agents: { x: 100, y: 1700 }
+    ai-consensus-review: { x: 100, y: 1900 }
+    route-to-specialist: { x: 100, y: 2100 }
+    collaborative-review: { x: 100, y: 2300 }
+    handle-any-content-event: { x: 100, y: 2500 }
+  portals: {}

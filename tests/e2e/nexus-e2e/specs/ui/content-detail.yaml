@@ -1,0 +1,93 @@
+page: content-detail
+route: /content/:id
+
+sections:
+  - id: content-body
+    component: detail-card
+    position: main
+    label: "Content"
+    data_source: content/get-content
+    tabs: [content, analysis, history]
+    fields:
+      title:
+        value: "$.title"
+        editable: true
+        update_flow: content/update-content
+      category:
+        value: "$.category"
+        editable: true
+        update_flow: content/update-content
+      status:
+        value: "$.status"
+      quality_score:
+        value: "$.quality_score"
+      bias_score:
+        value: "$.bias_score"
+      source_type:
+        value: "$.source_type"
+      created_at:
+        value: "$.created_at"
+    actions:
+      - { label: Publish, icon: send, flow: publishing/publish-content, args: { content_id: "$.id" }, variant: primary }
+      - { label: Reject, icon: x-circle, flow: editorial/review-content, args: { content_id: "$.id", action: reject }, variant: danger, confirm: true, confirm_message: "Reject this content?" }
+
+  - id: version-history
+    component: timeline
+    position: sidebar
+    label: "Version History"
+    data_source: content/get-content
+    timestamp_field: "$.versions[].changed_at"
+    title_field: "$.versions[].change_summary"
+    status_field: "$.versions[].status"
+    color_when:
+      - { value: approved, color: green }
+      - { value: rejected, color: red }
+      - { value: draft, color: gray }
+      - { value: review, color: amber }
+    direction: vertical
+
+  - id: content-preview
+    component: markdown-viewer
+    position: main
+    label: "Content Preview"
+    data_source: content/get-content
+    fields:
+      content: "$.body"
+    copy_button: true
+    syntax_highlight: true
+
+  - id: content-actions
+    component: button-group
+    position: bottom
+    label: "Actions"
+    buttons:
+      - { label: Publish, icon: send, flow: publishing/publish-content, variant: primary }
+      - { label: Archive, icon: archive, flow: content/delete-content, variant: secondary, confirm: true, confirm_message: "Archive this content?" }
+
+forms:
+  - id: edit-content
+    label: "Edit Content"
+    position: main
+    fields:
+      - { name: title, type: text, label: "Title", required: true, placeholder: "Content title" }
+      - { name: body, type: textarea, label: "Body", required: true }
+      - name: rich_body
+        type: markdown
+        label: "Rich Body"
+        markdown_config: { mode: split, toolbar: true, min_height: 300 }
+      - { name: category, type: select, label: "Category", options: [news, opinion, research, other], required: true }
+      - { name: schedule_date, type: date, label: "Schedule Date" }
+      - { name: publish_at, type: datetime, label: "Publish At" }
+      - { name: media, type: file, label: "Attach Media" }
+    submit:
+      flow: content/update-content
+      label: "Save Changes"
+      loading_label: "Saving..."
+      success: { message: "Content updated successfully" }
+      error: { message: "Failed to update content", retry: true }
+
+state:
+  initial_fetch: [content/get-content]
+
+loading: blur
+error: error-page

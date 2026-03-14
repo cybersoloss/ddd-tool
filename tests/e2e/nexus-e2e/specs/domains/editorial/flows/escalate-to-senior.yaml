@@ -1,0 +1,51 @@
+flow:
+  id: escalate-to-senior
+  name: Escalate to Senior
+  description: Transfers escalated content to a senior reviewer via handoff to the review-content flow
+  type: traditional
+  domain: editorial
+  version: "1.0.0"
+  trigger:
+    type: event
+    event: ContentEscalated
+  auth: null
+
+nodes:
+  - id: trigger-b1c2d3e4
+    type: trigger
+    name: Content Escalated Event
+    config:
+      event: ContentEscalated
+
+  - id: handoff-f5g6h7i8
+    type: handoff
+    name: Transfer to Senior Review
+    config:
+      mode: transfer
+      target:
+        flow: "editorial/review-content"
+      context_transfer:
+        include_types:
+          - content_data
+          - review_history
+      on_complete: done
+      on_failure: retry
+      notify_customer: false
+
+  - id: terminal-j9k0l1m2
+    type: terminal
+    name: Escalation Success
+    config:
+      status: 200
+      response_type: success
+
+connections:
+  - from: trigger-b1c2d3e4
+    to: handoff-f5g6h7i8
+
+  - from: handoff-f5g6h7i8
+    to: terminal-j9k0l1m2
+
+metadata:
+  created_at: "2026-03-14T00:00:00Z"
+  updated_at: "2026-03-14T00:00:00Z"

@@ -1,0 +1,176 @@
+flow:
+  id: register-user
+  name: "Register User"
+  type: traditional
+  domain: users
+  description: "User registration with password hashing, API key generation, and event emission"
+  auth:
+    required: false
+
+trigger:
+  id: trigger-rU1a2B3c
+  type: trigger
+  position: { x: 250, y: 0 }
+  spec:
+    event: "http POST /api/v1/auth/register"
+    label: "User registration endpoint"
+
+nodes:
+  - id: input-vR4d5E6f
+    type: input
+    position: { x: 250, y: 130 }
+    spec:
+      validate:
+        email:
+          required: true
+          type: string
+        password:
+          required: true
+          type: string
+
+  - id: data_store-cE7g8H9i
+    type: data_store
+    position: { x: 250, y: 260 }
+    spec:
+      operation: read
+      model: User
+      query:
+        where:
+          email: "$.email"
+      safety: strict
+
+  - id: decision-eX1j2K3l
+    type: decision
+    position: { x: 250, y: 390 }
+    spec:
+      condition: "$.user != null"
+      description: "Check if user with this email already exists"
+
+  - id: terminal-dP4m5N6o
+    type: terminal
+    position: { x: 550, y: 390 }
+    spec:
+      status: 409
+      label: "Email already registered"
+      error_code: DUPLICATE_ENTRY
+
+  - id: crypto-hP7p8Q9r
+    type: crypto
+    position: { x: 250, y: 520 }
+    spec:
+      operation: hash
+      algorithm: bcrypt
+      input: "$.password"
+      output_field: password_hash
+
+  - id: crypto-gK1s2T3u
+    type: crypto
+    position: { x: 250, y: 650 }
+    spec:
+      operation: generate_key
+      algorithm: random
+      length: 32
+      output_field: api_key
+
+  - id: data_store-cU4v5W6x
+    type: data_store
+    position: { x: 250, y: 780 }
+    spec:
+      operation: create
+      model: User
+      fields:
+        - name: email
+          value: "$.email"
+        - name: password_hash
+          value: "$.password_hash"
+        - name: api_key
+          value: "$.api_key"
+
+  - id: event-uR7y8Z9a
+    type: event
+    position: { x: 250, y: 910 }
+    spec:
+      direction: emit
+      event_name: UserRegistered
+      payload:
+        user_id: "$.user.id"
+        email: "$.email"
+
+  - id: terminal-sC1b2C3d
+    type: terminal
+    position: { x: 250, y: 1040 }
+    spec:
+      status: 201
+      label: "User registered successfully"
+
+  - id: terminal-eV4e5F6g
+    type: terminal
+    position: { x: 550, y: 130 }
+    spec:
+      status: 422
+      label: "Invalid registration data"
+      error_code: VALIDATION_ERROR
+
+  - id: terminal-eC7h8I9j
+    type: terminal
+    position: { x: 550, y: 520 }
+    spec:
+      status: 500
+      label: "Crypto error"
+      error_code: CRYPTO_ERROR
+
+  - id: terminal-eD1k2L3m
+    type: terminal
+    position: { x: 550, y: 780 }
+    spec:
+      status: 500
+      label: "Data store error"
+      error_code: DATA_STORE_ERROR
+
+connections:
+  - source: trigger-rU1a2B3c
+    target: input-vR4d5E6f
+    sourceHandle: ""
+  - source: input-vR4d5E6f
+    target: data_store-cE7g8H9i
+    sourceHandle: "valid"
+  - source: input-vR4d5E6f
+    target: terminal-eV4e5F6g
+    sourceHandle: "invalid"
+  - source: data_store-cE7g8H9i
+    target: decision-eX1j2K3l
+    sourceHandle: "success"
+  - source: data_store-cE7g8H9i
+    target: terminal-eD1k2L3m
+    sourceHandle: "error"
+  - source: decision-eX1j2K3l
+    target: terminal-dP4m5N6o
+    sourceHandle: "true"
+  - source: decision-eX1j2K3l
+    target: crypto-hP7p8Q9r
+    sourceHandle: "false"
+  - source: crypto-hP7p8Q9r
+    target: crypto-gK1s2T3u
+    sourceHandle: "success"
+  - source: crypto-hP7p8Q9r
+    target: terminal-eC7h8I9j
+    sourceHandle: "error"
+  - source: crypto-gK1s2T3u
+    target: data_store-cU4v5W6x
+    sourceHandle: "success"
+  - source: crypto-gK1s2T3u
+    target: terminal-eC7h8I9j
+    sourceHandle: "error"
+  - source: data_store-cU4v5W6x
+    target: event-uR7y8Z9a
+    sourceHandle: "success"
+  - source: data_store-cU4v5W6x
+    target: terminal-eD1k2L3m
+    sourceHandle: "error"
+  - source: event-uR7y8Z9a
+    target: terminal-sC1b2C3d
+    sourceHandle: "success"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

@@ -1,0 +1,133 @@
+flow:
+  id: watch-filesystem
+  name: "Watch Filesystem"
+  type: traditional
+  domain: ingestion
+  description: "Watches the filesystem for new files via IPC, reads file contents, routes by file extension to appropriate parsers (CSV or raw text), creates content records, and emits ContentIngested events."
+
+trigger:
+  id: trigger-fW1a2B3c
+  type: trigger
+  position: { x: 100, y: 0 }
+  spec:
+    event: "ipc:file_watch"
+    label: "File system change detected"
+
+nodes:
+  - id: ipc_call-iR4d5E6f
+    type: ipc_call
+    position: { x: 100, y: 130 }
+    spec:
+      command: readFile
+      args:
+        path: "$.file_path"
+      return_type: string
+      result_condition: "$.content.length > 0"
+
+  - id: decision-dF7g8H9i
+    type: decision
+    position: { x: 100, y: 260 }
+    spec:
+      condition: "$.file_path.endsWith('.csv')"
+
+  - id: parse-pC1j2K3l
+    type: parse
+    position: { x: 100, y: 390 }
+    spec:
+      format: csv
+
+  - id: data_store-dC4m5N6o
+    type: data_store
+    position: { x: 100, y: 520 }
+    spec:
+      operation: create
+      model: Content
+
+  - id: event-eI7p8Q9r
+    type: event
+    position: { x: 100, y: 650 }
+    spec:
+      direction: emit
+      event_name: ContentIngested
+
+  - id: terminal-tS1s2T3u
+    type: terminal
+    position: { x: 100, y: 780 }
+    spec:
+      status: 200
+      label: "CSV file ingested"
+
+  - id: process-pR4v5W6x
+    type: process
+    position: { x: 500, y: 390 }
+    spec:
+      category: business_logic
+      description: "Process raw text content"
+
+  - id: data_store-dT7y8Z9a
+    type: data_store
+    position: { x: 500, y: 520 }
+    spec:
+      operation: create
+      model: Content
+
+  - id: event-eT1b2C3d
+    type: event
+    position: { x: 500, y: 650 }
+    spec:
+      direction: emit
+      event_name: ContentIngested
+
+  - id: terminal-tS4e5F6g
+    type: terminal
+    position: { x: 500, y: 780 }
+    spec:
+      status: 200
+      label: "Text file ingested"
+
+  - id: terminal-tE7h8I9j
+    type: terminal
+    position: { x: 400, y: 130 }
+    spec:
+      status: 500
+      label: "IPC read error"
+      error_code: IPC_ERROR
+
+connections:
+  - source: trigger-fW1a2B3c
+    target: ipc_call-iR4d5E6f
+    sourceHandle: ""
+  - source: ipc_call-iR4d5E6f
+    target: decision-dF7g8H9i
+    sourceHandle: "success"
+  - source: ipc_call-iR4d5E6f
+    target: terminal-tE7h8I9j
+    sourceHandle: "error"
+  - source: decision-dF7g8H9i
+    target: parse-pC1j2K3l
+    sourceHandle: "true"
+  - source: decision-dF7g8H9i
+    target: process-pR4v5W6x
+    sourceHandle: "false"
+  - source: parse-pC1j2K3l
+    target: data_store-dC4m5N6o
+    sourceHandle: "success"
+  - source: data_store-dC4m5N6o
+    target: event-eI7p8Q9r
+    sourceHandle: "success"
+  - source: event-eI7p8Q9r
+    target: terminal-tS1s2T3u
+    sourceHandle: "success"
+  - source: process-pR4v5W6x
+    target: data_store-dT7y8Z9a
+    sourceHandle: "success"
+  - source: data_store-dT7y8Z9a
+    target: event-eT1b2C3d
+    sourceHandle: "success"
+  - source: event-eT1b2C3d
+    target: terminal-tS4e5F6g
+    sourceHandle: "success"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

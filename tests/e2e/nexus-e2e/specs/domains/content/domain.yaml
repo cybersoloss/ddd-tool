@@ -1,0 +1,97 @@
+name: Content
+description: "Central content entity and cross-domain event hub"
+role: entity
+
+auth:
+  required: true
+  strategy: jwt
+
+owns_schemas:
+  - Content
+  - ContentVersion
+  - ContentRejection
+
+flows:
+  - id: create-content
+    name: "Create Content"
+    description: "Create a new content entity"
+    type: traditional
+    tags:
+      - public-api
+
+  - id: get-content
+    name: "Get Content"
+    description: "Retrieve content by ID with version history"
+    type: traditional
+    tags:
+      - public-api
+
+  - id: update-content
+    name: "Update Content"
+    description: "Update content fields with version tracking"
+    type: traditional
+    tags:
+      - public-api
+
+  - id: delete-content
+    name: "Delete Content"
+    description: "Soft delete content with cascade notifications"
+    type: traditional
+    tags:
+      - public-api
+
+  - id: list-content
+    name: "List Content"
+    description: "List content with filters, sorting, and pagination"
+    type: traditional
+    tags:
+      - public-api
+
+  - id: drag-reorder
+    name: "Drag Reorder"
+    description: "Reorder content items via drag-and-drop position updates"
+    type: traditional
+    tags:
+      - public-api
+
+publishes_events:
+  - event: ContentCreated
+    from_flow: create-content
+    description: "New content entity created"
+    payload:
+      content_id: uuid
+      title: string
+      category: string
+
+  - event: ContentUpdated
+    from_flow: update-content
+    description: "Content entity updated"
+    payload:
+      content_id: uuid
+      changed_fields: "string[]"
+      updated_by: uuid
+
+  - event: ContentDeleted
+    from_flow: delete-content
+    description: "Content entity deleted"
+    payload:
+      content_id: uuid
+      deleted_by: uuid
+
+  - event: ContentRestored
+    description: "Content entity restored from deletion"
+    payload:
+      content_id: uuid
+      restored_by: uuid
+
+consumes_events: []
+
+layout:
+  flows:
+    create-content: { x: 100, y: 100 }
+    get-content: { x: 100, y: 300 }
+    update-content: { x: 100, y: 500 }
+    delete-content: { x: 100, y: 700 }
+    list-content: { x: 100, y: 900 }
+    drag-reorder: { x: 100, y: 1100 }
+  portals: {}

@@ -1,0 +1,57 @@
+page: content-feed
+route: /content
+
+sections:
+  - id: content-filters
+    component: filter-bar
+    position: top
+    label: "Filters"
+    fields:
+      - { key: category, type: search-select, label: "Category", search_source: content/list-content }
+      - { key: status, type: multi-select, label: "Status", options: [draft, review, approved, rejected, published, archived] }
+      - { key: date_range, type: date-range, label: "Created" }
+      - { key: show_deleted, type: toggle, label: "Show Deleted" }
+    apply_flow: content/list-content
+
+  - id: content-list
+    component: item-list
+    position: main
+    label: "Content"
+    data_source: content/list-content
+    item_template:
+      title: "$.title"
+      subtitle: "$.source_type · $.category"
+      badge: "$.status"
+      timestamp: "$.created_at"
+    item_actions:
+      - { label: View, icon: eye, flow: content/get-content, args: { id: "$.id" } }
+      - { label: Delete, icon: trash, flow: content/delete-content, args: { id: "$.id" }, confirm: true, confirm_message: "Delete this content item?", variant: danger }
+    interactions:
+      - pattern: bulk-select
+        actions:
+          - { label: "Bulk Approve", flow: editorial/bulk-approve, confirm: true }
+          - { label: "Delete Selected", flow: content/delete-content, confirm: true, confirm_message: "Delete selected items?" }
+      - pattern: inline-edit
+        editable_fields: ["title"]
+        update_flow: content/update-content
+    empty_state:
+      message: "No content found"
+      icon: file-x
+      action: { label: "Import content", navigate: /sources }
+    pagination: { type: cursor, page_size: 20 }
+
+  - id: bulk-actions
+    component: button-group
+    position: bottom
+    label: "Actions"
+    buttons:
+      - { label: "Import CSV", icon: upload, flow: ingestion/import-csv-content, variant: secondary }
+
+forms: []
+
+state:
+  initial_fetch: [content/list-content]
+
+loading: skeleton
+error: toast
+refresh: manual

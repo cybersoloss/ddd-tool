@@ -1,0 +1,72 @@
+flow:
+  id: delete-user
+  name: "Delete User"
+  type: traditional
+  domain: users
+  description: "Soft-deletes a user by setting deleted_at and invalidating their session cache"
+  auth:
+    required: true
+    strategy: jwt
+
+trigger:
+  id: trigger-dU1a2B3c
+  type: trigger
+  position: { x: 250, y: 0 }
+  spec:
+    event: "http DELETE /api/v1/users/:id"
+    label: "Delete user endpoint"
+
+nodes:
+  - id: data_store-sD4d5E6f
+    type: data_store
+    position: { x: 250, y: 130 }
+    spec:
+      operation: update
+      model: User
+      query:
+        where:
+          id: "$.params.id"
+      fields:
+        - name: deleted_at
+          value: "$.now"
+
+  - id: cache-iU7g8H9i
+    type: cache
+    position: { x: 250, y: 260 }
+    spec:
+      operation: invalidate
+      key: "session:$.params.id"
+
+  - id: terminal-sD1j2K3l
+    type: terminal
+    position: { x: 250, y: 390 }
+    spec:
+      status: 204
+      response_type: empty
+      label: "User deleted"
+
+  - id: terminal-eD4m5N6o
+    type: terminal
+    position: { x: 550, y: 130 }
+    spec:
+      status: 500
+      label: "Data store error"
+      error_code: DATA_STORE_ERROR
+
+connections:
+  - source: trigger-dU1a2B3c
+    target: data_store-sD4d5E6f
+    sourceHandle: ""
+  - source: data_store-sD4d5E6f
+    target: cache-iU7g8H9i
+    sourceHandle: "success"
+  - source: data_store-sD4d5E6f
+    target: terminal-eD4m5N6o
+    sourceHandle: "error"
+  - source: cache-iU7g8H9i
+    target: terminal-sD1j2K3l
+    sourceHandle: "success"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

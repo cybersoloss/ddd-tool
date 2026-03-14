@@ -1,0 +1,40 @@
+name: AnalyticsEvent
+description: Analytics event records for reporting
+inherits: _base
+fields:
+  - name: event_type
+    type: string
+    required: true
+    constraints:
+      max_length: 100
+  - name: entity_id
+    type: uuid
+    required: false
+  - name: entity_type
+    type: string
+    required: false
+    constraints:
+      max_length: 50
+  - name: actor_id
+    type: uuid
+    required: false
+  - name: metadata
+    type: json
+    required: false
+  - name: occurred_at
+    type: datetime
+    required: true
+
+indexes:
+  - fields: [event_type, occurred_at]
+    type: btree
+    description: "Query events by type and time"
+  - fields: [entity_id]
+    type: btree
+  - fields: [metadata]
+    type: gin
+    description: "JSONB queries on event metadata"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

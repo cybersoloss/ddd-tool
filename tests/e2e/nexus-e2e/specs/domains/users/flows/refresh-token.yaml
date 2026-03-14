@@ -1,0 +1,125 @@
+flow:
+  id: refresh-token
+  name: "Refresh Token"
+  type: traditional
+  domain: users
+  description: "Refreshes a JWT access token using an encrypted refresh token"
+  auth:
+    required: false
+
+trigger:
+  id: trigger-rT1a2B3c
+  type: trigger
+  position: { x: 250, y: 0 }
+  spec:
+    event: "http POST /api/v1/auth/refresh"
+    label: "Refresh token endpoint"
+
+nodes:
+  - id: input-vT4d5E6f
+    type: input
+    position: { x: 250, y: 130 }
+    spec:
+      validate:
+        refresh_token:
+          required: true
+          type: string
+
+  - id: crypto-dR7g8H9i
+    type: crypto
+    position: { x: 250, y: 260 }
+    spec:
+      operation: decrypt
+      algorithm: "aes-256-gcm"
+      input: "$.refresh_token"
+
+  - id: decision-vT1j2K3l
+    type: decision
+    position: { x: 250, y: 390 }
+    spec:
+      condition: "$.decrypted_token != null"
+      description: "Check if decrypted refresh token is valid"
+
+  - id: terminal-iT4m5N6o
+    type: terminal
+    position: { x: 550, y: 390 }
+    spec:
+      status: 401
+      label: "Invalid refresh token"
+      error_code: UNAUTHORIZED
+
+  - id: process-vE7p8Q9r
+    type: process
+    position: { x: 250, y: 520 }
+    spec:
+      category: security
+      description: "Validate expiry and generate new JWT"
+
+  - id: crypto-nJ1s2T3u
+    type: crypto
+    position: { x: 250, y: 650 }
+    spec:
+      operation: generate_key
+      algorithm: jwt
+      claims:
+        sub: "$.user_id"
+      expires_in: 3600
+
+  - id: terminal-sT4v5W6x
+    type: terminal
+    position: { x: 250, y: 780 }
+    spec:
+      status: 200
+      label: "Token refreshed successfully"
+
+  - id: terminal-eI7y8Z9a
+    type: terminal
+    position: { x: 550, y: 130 }
+    spec:
+      status: 422
+      label: "Invalid request data"
+      error_code: VALIDATION_ERROR
+
+  - id: terminal-eC1b2C3d
+    type: terminal
+    position: { x: 550, y: 260 }
+    spec:
+      status: 401
+      label: "Crypto decryption error"
+      error_code: CRYPTO_ERROR
+
+connections:
+  - source: trigger-rT1a2B3c
+    target: input-vT4d5E6f
+    sourceHandle: ""
+  - source: input-vT4d5E6f
+    target: crypto-dR7g8H9i
+    sourceHandle: "valid"
+  - source: input-vT4d5E6f
+    target: terminal-eI7y8Z9a
+    sourceHandle: "invalid"
+  - source: crypto-dR7g8H9i
+    target: decision-vT1j2K3l
+    sourceHandle: "success"
+  - source: crypto-dR7g8H9i
+    target: terminal-eC1b2C3d
+    sourceHandle: "error"
+  - source: decision-vT1j2K3l
+    target: terminal-iT4m5N6o
+    sourceHandle: "false"
+  - source: decision-vT1j2K3l
+    target: process-vE7p8Q9r
+    sourceHandle: "true"
+  - source: process-vE7p8Q9r
+    target: crypto-nJ1s2T3u
+    sourceHandle: "success"
+  - source: crypto-nJ1s2T3u
+    target: terminal-sT4v5W6x
+    sourceHandle: "success"
+  - source: crypto-nJ1s2T3u
+    target: terminal-eC1b2C3d
+    sourceHandle: "error"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

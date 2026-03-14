@@ -1,0 +1,114 @@
+app_type: web
+framework: "Next.js 14"
+router: app
+state_management: zustand
+component_library: "shadcn/ui"
+
+theme:
+  color_scheme: light
+  primary_color: "#2563eb"
+  font_family: "Inter"
+  border_radius: 8
+
+pages:
+  - id: dashboard
+    route: /
+    name: Dashboard
+    description: "Real-time metrics, pipeline health, and alerts overview"
+    layout: sidebar
+    auth_required: true
+  - id: content-feed
+    route: /content
+    name: Content Feed
+    description: "Browse, filter, and manage all content items"
+    layout: full
+    auth_required: true
+  - id: content-detail
+    route: /content/:id
+    name: Content Detail
+    description: "View and edit content with analysis and version history"
+    layout: split
+    auth_required: true
+  - id: editorial-queue
+    route: /editorial
+    name: Editorial Queue
+    description: "Review queue with AI scores and assistant"
+    layout: full
+    auth_required: true
+  - id: review-panel
+    route: /editorial/review/:id
+    name: Review Panel
+    description: "Content review with approve/reject/escalate actions"
+    layout: split
+    auth_required: true
+  - id: sources
+    route: /sources
+    name: Sources
+    description: "Manage content ingestion sources"
+    layout: full
+    auth_required: true
+  - id: publishing
+    route: /publishing
+    name: Publishing
+    description: "Publishing queue with channel status"
+    layout: full
+    auth_required: true
+  - id: analytics
+    route: /analytics
+    name: Analytics
+    description: "Charts, metrics, anomaly alerts, and geo distribution"
+    layout: sidebar
+    auth_required: true
+  - id: users-admin
+    route: /admin/users
+    name: Users
+    description: "User management and role assignment"
+    layout: full
+    auth_required: true
+  - id: general-settings
+    route: /settings/general
+    name: General Settings
+    description: "System configuration and feature flags"
+    layout: centered
+    auth_required: true
+  - id: notification-settings
+    route: /settings/notifications
+    name: Notification Settings
+    description: "Channel preferences and digest frequency"
+    layout: centered
+    auth_required: true
+  - id: api-key-management
+    route: /settings/api-keys
+    name: API Keys
+    description: "Create and manage API access keys"
+    layout: full
+    auth_required: true
+  - id: rule-editor
+    route: /settings/rules
+    name: Rule Editor
+    description: "Configure ingestion, routing, and publishing rules"
+    layout: split
+    auth_required: true
+
+navigation:
+  type: sidebar
+  items:
+    - { page: dashboard, icon: layout-dashboard, label: Dashboard }
+    - { page: content-feed, icon: file-text, label: Content }
+    - { page: editorial-queue, icon: clipboard-check, label: Editorial, badge: pending_reviews }
+    - { page: publishing, icon: send, label: Publishing }
+    - { page: sources, icon: rss, label: Sources }
+    - { page: analytics, icon: bar-chart-2, label: Analytics }
+    - { page: users-admin, icon: users, label: Users }
+    - { page: general-settings, icon: settings, label: Settings }
+
+shared_components:
+  - id: content-card
+    description: "Displays a content item with title, status badge, category, quality score, and source info"
+    used_by: [content-feed, editorial-queue, dashboard]
+  - id: user-avatar
+    description: "User avatar with name tooltip and online indicator"
+    used_by: [editorial-queue, review-panel, users-admin]
+  - id: notification-badge
+    description: "Badge showing unread notification count with dropdown preview"
+    used_by: [dashboard, editorial-queue]

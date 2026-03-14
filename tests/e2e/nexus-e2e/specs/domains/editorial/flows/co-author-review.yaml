@@ -1,0 +1,51 @@
+flow:
+  id: co-author-review
+  name: Co-Author Review
+  description: Collaborative review handoff that merges co-author feedback into the editorial review flow
+  type: traditional
+  domain: editorial
+  version: "1.0.0"
+  trigger:
+    type: event
+    event: ContentClassified
+  auth: null
+
+nodes:
+  - id: trigger-n3o4p5q6
+    type: trigger
+    name: Content Classified Event
+    config:
+      event: ContentClassified
+
+  - id: handoff-r7s8t9u0
+    type: handoff
+    name: Collaborate on Review
+    config:
+      mode: collaborate
+      target:
+        flow: "editorial/review-content"
+      context_transfer:
+        include_types:
+          - content_data
+          - review_history
+        max_context_tokens: 4000
+      on_complete: merge
+      on_failure: escalate
+
+  - id: terminal-v1w2x3y4
+    type: terminal
+    name: Collaboration Success
+    config:
+      status: 200
+      response_type: success
+
+connections:
+  - from: trigger-n3o4p5q6
+    to: handoff-r7s8t9u0
+
+  - from: handoff-r7s8t9u0
+    to: terminal-v1w2x3y4
+
+metadata:
+  created_at: "2026-03-14T00:00:00Z"
+  updated_at: "2026-03-14T00:00:00Z"

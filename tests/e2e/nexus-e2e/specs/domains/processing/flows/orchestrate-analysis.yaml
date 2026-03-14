@@ -1,0 +1,97 @@
+flow:
+  id: orchestrate-analysis
+  name: "Orchestrate Analysis"
+  type: agent
+  domain: processing
+  description: "Supervisor orchestrator coordinating fact-check, bias, and quality agents"
+
+trigger:
+  id: trigger-oA1a2B3c
+  type: trigger
+  position: { x: 100, y: 0 }
+  spec:
+    event: "event:ContentIngested"
+    label: "Content Ingested"
+
+nodes:
+  - id: orchestrator-oS4d5E6f
+    type: orchestrator
+    position: { x: 100, y: 130 }
+    spec:
+      strategy: supervisor
+      model: "anthropic/claude-sonnet"
+      agents:
+        - flow: "processing/fact-check-agent"
+          role: "Fact Checker"
+        - flow: "processing/bias-check-agent"
+          role: "Bias Detector"
+        - flow: "processing/score-quality"
+          role: "Quality Scorer"
+      result_merge_strategy: supervisor_picks
+      fallback_chain:
+        - "score-quality"
+      memory:
+        - type: key_value
+          store: "analysis-context"
+
+  - id: data_store-dU7g8H9i
+    type: data_store
+    position: { x: 100, y: 260 }
+    spec:
+      operation: update
+      model: Content
+      query:
+        where:
+          id: "$.content_id"
+      fields:
+        - name: analysis_result
+          value: "$.result"
+
+  - id: event-eC1j2K3l
+    type: event
+    position: { x: 100, y: 390 }
+    spec:
+      direction: emit
+      event_name: ContentClassified
+      payload:
+        content_id: "$.content_id"
+        category: "$.category"
+
+  - id: terminal-tS4m5N6o
+    type: terminal
+    position: { x: 100, y: 520 }
+    spec:
+      status: 200
+      label: "Analysis orchestration complete"
+
+  - id: terminal-tE7p8Q9r
+    type: terminal
+    position: { x: 400, y: 130 }
+    spec:
+      status: 500
+      label: "Orchestrator error"
+      error_code: ORCHESTRATOR_ERROR
+
+connections:
+  - source: trigger-oA1a2B3c
+    target: orchestrator-oS4d5E6f
+    sourceHandle: ""
+  - source: orchestrator-oS4d5E6f
+    target: data_store-dU7g8H9i
+    sourceHandle: "success"
+  - source: orchestrator-oS4d5E6f
+    target: terminal-tE7p8Q9r
+    sourceHandle: "error"
+  - source: data_store-dU7g8H9i
+    target: event-eC1j2K3l
+    sourceHandle: "success"
+  - source: data_store-dU7g8H9i
+    target: terminal-tE7p8Q9r
+    sourceHandle: "error"
+  - source: event-eC1j2K3l
+    target: terminal-tS4m5N6o
+    sourceHandle: "success"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

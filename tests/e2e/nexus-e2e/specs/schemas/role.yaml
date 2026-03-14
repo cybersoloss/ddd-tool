@@ -1,0 +1,31 @@
+name: Role
+description: User role with permission sets
+inherits: _base
+fields:
+  - name: name
+    type: string
+    required: true
+    constraints:
+      unique: true
+      max_length: 50
+  - name: permissions
+    type: json
+    required: true
+
+indexes:
+  - fields: [name]
+    unique: true
+
+seed:
+  - name: default-roles
+    description: "System roles with permission sets"
+    strategy: migration
+    data:
+      - { name: admin, permissions: { manage_users: true, manage_content: true, manage_settings: true, review_content: true, publish_content: true } }
+      - { name: editor, permissions: { manage_content: true, review_content: true, publish_content: true } }
+      - { name: reviewer, permissions: { review_content: true } }
+      - { name: viewer, permissions: { view_content: true } }
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

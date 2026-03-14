@@ -1,0 +1,124 @@
+flow:
+  id: summarize-batch
+  name: "Summarize Batch"
+  type: traditional
+  domain: processing
+  description: "Batch content summarization using LLM on an hourly schedule"
+
+trigger:
+  id: trigger-sB1a2B3c
+  type: trigger
+  position: { x: 100, y: 0 }
+  spec:
+    event: "cron 0 * * * *"
+    label: "Every hour"
+
+nodes:
+  - id: data_store-dR4d5E6f
+    type: data_store
+    position: { x: 100, y: 130 }
+    spec:
+      operation: read
+      model: Content
+      query:
+        where:
+          status: draft
+          summary: null
+        limit: 50
+
+  - id: collection-cK7g8H9i
+    type: collection
+    position: { x: 100, y: 260 }
+    spec:
+      operation: reduce
+      expression: "chunk into batches of 10"
+      output_field: batches
+
+  - id: batch-bP1j2K3l
+    type: batch
+    position: { x: 100, y: 390 }
+    spec:
+      sub_flow_ref: "processing/score-quality"
+      concurrency: 3
+
+  - id: collection-cF4m5N6o
+    type: collection
+    position: { x: 100, y: 520 }
+    spec:
+      operation: flatten
+
+  - id: data_store-dU7p8Q9r
+    type: data_store
+    position: { x: 100, y: 650 }
+    spec:
+      operation: update_many
+      model: Content
+      fields:
+        - name: summary
+          value: "$.summary"
+
+  - id: terminal-tS1s2T3u
+    type: terminal
+    position: { x: 100, y: 780 }
+    spec:
+      status: 200
+      label: "Batch summarization complete"
+
+  - id: terminal-tE4v5W6x
+    type: terminal
+    position: { x: 400, y: 130 }
+    spec:
+      status: 500
+      label: "Data store error"
+      error_code: DATA_STORE_ERROR
+
+  - id: terminal-tN7y8Z9a
+    type: terminal
+    position: { x: 100, y: 300 }
+    spec:
+      status: 200
+      label: "Nothing to process"
+
+  - id: terminal-tE1b2C3d
+    type: terminal
+    position: { x: 400, y: 390 }
+    spec:
+      status: 500
+      label: "Batch processing error"
+      error_code: BATCH_ERROR
+
+connections:
+  - source: trigger-sB1a2B3c
+    target: data_store-dR4d5E6f
+    sourceHandle: ""
+  - source: data_store-dR4d5E6f
+    target: collection-cK7g8H9i
+    sourceHandle: "success"
+  - source: data_store-dR4d5E6f
+    target: terminal-tE4v5W6x
+    sourceHandle: "error"
+  - source: collection-cK7g8H9i
+    target: batch-bP1j2K3l
+    sourceHandle: "result"
+  - source: collection-cK7g8H9i
+    target: terminal-tN7y8Z9a
+    sourceHandle: "empty"
+  - source: batch-bP1j2K3l
+    target: collection-cF4m5N6o
+    sourceHandle: "done"
+  - source: batch-bP1j2K3l
+    target: terminal-tE1b2C3d
+    sourceHandle: "error"
+  - source: collection-cF4m5N6o
+    target: data_store-dU7p8Q9r
+    sourceHandle: "result"
+  - source: data_store-dU7p8Q9r
+    target: terminal-tS1s2T3u
+    sourceHandle: "success"
+  - source: data_store-dU7p8Q9r
+    target: terminal-tE4v5W6x
+    sourceHandle: "error"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

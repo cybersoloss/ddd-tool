@@ -1,0 +1,80 @@
+errors:
+  VALIDATION_ERROR:
+    http_status: 422
+    message_template: "Validation failed: {details}"
+    log_level: warn
+
+  UNAUTHORIZED:
+    http_status: 401
+    message_template: "Authentication required"
+    log_level: warn
+
+  FORBIDDEN:
+    http_status: 403
+    message_template: "Insufficient permissions"
+    log_level: warn
+
+  NOT_FOUND:
+    http_status: 404
+    message_template: "{resource} not found"
+    log_level: info
+
+  DUPLICATE_ENTRY:
+    http_status: 409
+    message_template: "{resource} already exists"
+    log_level: warn
+
+  RATE_LIMITED:
+    http_status: 429
+    message_template: "Too many requests, try again in {retry_after}s"
+    log_level: warn
+
+  INTERNAL_ERROR:
+    http_status: 500
+    message_template: "An unexpected error occurred"
+    log_level: error
+
+  SERVICE_UNAVAILABLE:
+    http_status: 503
+    message_template: "{service} is temporarily unavailable"
+    log_level: error
+
+  CONTENT_NOT_FOUND:
+    http_status: 404
+    message_template: "Content item not found"
+    log_level: info
+
+  INVALID_CONTENT_STATUS:
+    http_status: 422
+    message_template: "Invalid status transition: {from} -> {to}"
+    log_level: warn
+
+  WEBHOOK_SIGNATURE_INVALID:
+    http_status: 401
+    message_template: "Invalid webhook signature"
+    log_level: warn
+
+  AI_PROCESSING_FAILED:
+    http_status: 502
+    message_template: "AI service error: {details}"
+    log_level: error
+
+  PUBLISH_FAILED:
+    http_status: 502
+    message_template: "Publication failed: {details}"
+    log_level: error
+
+  CIRCUIT_BREAKER_OPEN:
+    http_status: 503
+    message_template: "Circuit breaker open for {service}"
+    log_level: error
+
+  QUOTA_EXCEEDED:
+    http_status: 429
+    message_template: "API quota exceeded for {service}"
+    log_level: warn
+
+  INVALID_API_KEY:
+    http_status: 401
+    message_template: "Invalid or expired API key"
+    log_level: warn

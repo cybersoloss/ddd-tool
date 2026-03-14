@@ -1,0 +1,48 @@
+page: api-key-management
+route: /settings/api-keys
+
+sections:
+  - id: key-list
+    component: item-list
+    position: main
+    label: "API Keys"
+    data_source: users/manage-api-keys
+    item_template:
+      title: "$.name"
+      subtitle: "Last used: $.last_used_at · Expires: $.expires_at"
+      badge: "$.status"
+    item_actions:
+      - { label: Revoke, icon: x-circle, flow: users/manage-api-keys, args: { action: revoke, id: "$.id" }, confirm: true, confirm_message: "Revoke this API key? This cannot be undone.", variant: danger }
+    empty_state:
+      message: "No API keys"
+      icon: key
+      action: { label: "Create a key" }
+
+  - id: key-actions
+    component: button-group
+    position: top
+    label: "Actions"
+    buttons:
+      - { label: "Create API Key", icon: plus, variant: primary }
+
+forms:
+  - id: create-key
+    label: "Create API Key"
+    position: sidebar
+    fields:
+      - { name: name, type: text, label: "Key Name", required: true, placeholder: "My API Key" }
+      - { name: expires_at, type: date, label: "Expires At" }
+      - { name: scopes, type: multi-select, label: "Allowed Scopes", options: [read, write, admin, publish] }
+      - { name: ip_allowlist, type: tag-input, label: "IP Allowlist", placeholder: "Add IP address" }
+    submit:
+      flow: users/manage-api-keys
+      label: "Create Key"
+      loading_label: "Creating..."
+      success: { message: "API key created — copy it now, it won't be shown again" }
+      error: { message: "Failed to create key", retry: true }
+
+state:
+  initial_fetch: [users/manage-api-keys]
+
+loading: skeleton
+error: toast

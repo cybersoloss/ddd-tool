@@ -1,0 +1,24 @@
+name: WeeklyDigest
+description: Weekly analytics digest reports
+inherits: _base
+fields:
+  - name: period_start
+    type: datetime
+    required: true
+  - name: period_end
+    type: datetime
+    required: true
+  - name: stats
+    type: json
+    required: true
+  - name: generated_at
+    type: datetime
+    required: true
+
+indexes:
+  - fields: [period_start, period_end]
+    description: "Find digest for a specific period"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

@@ -1,0 +1,85 @@
+flow:
+  id: generate-session-token
+  name: "Generate Session Token"
+  type: traditional
+  domain: users
+  description: "Generates a cryptographic session token and persists the session record"
+  auth:
+    required: true
+    strategy: jwt
+
+trigger:
+  id: trigger-gS1a2B3c
+  type: trigger
+  position: { x: 250, y: 0 }
+  spec:
+    event: "http POST /api/v1/auth/session"
+    label: "Generate session token endpoint"
+
+nodes:
+  - id: crypto-gT4d5E6f
+    type: crypto
+    position: { x: 250, y: 130 }
+    spec:
+      operation: generate_token
+      length: 32
+      encoding: base64url
+      output_field: token
+
+  - id: data_store-cS7g8H9i
+    type: data_store
+    position: { x: 250, y: 260 }
+    spec:
+      operation: create
+      model: User
+      fields:
+        - name: user_id
+          value: "$.auth.user_id"
+        - name: session_token
+          value: "$.token"
+        - name: expires_at
+          value: "$.expiry"
+
+  - id: terminal-sT1j2K3l
+    type: terminal
+    position: { x: 250, y: 390 }
+    spec:
+      status: 200
+      label: "Session token generated"
+
+  - id: terminal-eC4m5N6o
+    type: terminal
+    position: { x: 550, y: 130 }
+    spec:
+      status: 500
+      label: "Crypto error"
+      error_code: CRYPTO_ERROR
+
+  - id: terminal-eD7p8Q9r
+    type: terminal
+    position: { x: 550, y: 260 }
+    spec:
+      status: 500
+      label: "Data store error"
+      error_code: DATA_STORE_ERROR
+
+connections:
+  - source: trigger-gS1a2B3c
+    target: crypto-gT4d5E6f
+    sourceHandle: ""
+  - source: crypto-gT4d5E6f
+    target: data_store-cS7g8H9i
+    sourceHandle: "success"
+  - source: crypto-gT4d5E6f
+    target: terminal-eC4m5N6o
+    sourceHandle: "error"
+  - source: data_store-cS7g8H9i
+    target: terminal-sT1j2K3l
+    sourceHandle: "success"
+  - source: data_store-cS7g8H9i
+    target: terminal-eD7p8Q9r
+    sourceHandle: "error"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

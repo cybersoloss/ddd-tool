@@ -1,0 +1,83 @@
+page: editorial-queue
+route: /editorial
+
+sections:
+  - id: queue-header
+    component: page-header
+    position: top
+    label: "Editorial Queue"
+    data_source: editorial/get-review-stats
+    fields:
+      title: "Editorial Queue"
+      subtitle: "$.pending_count pending · $.reviewed_today reviewed today"
+
+  - id: queue-filters
+    component: filter-bar
+    position: top
+    label: "Filters"
+    fields:
+      - { key: reviewer, type: search-select, label: "Reviewer", search_source: users/list-users, display_field: email, value_field: id }
+      - { key: priority, type: select, label: "Priority", options: [critical, high, normal, low] }
+      - { key: submitted_after, type: date, label: "Submitted After" }
+      - { key: unassigned, type: toggle, label: "Unassigned Only" }
+    apply_flow: editorial/list-editorial-queue
+
+  - id: queue-list
+    component: item-list
+    position: main
+    label: "Queue"
+    data_source: editorial/list-editorial-queue
+    item_template:
+      title: "$.title"
+      subtitle: "$.category · Score: $.quality_score"
+      badge: "$.status"
+      timestamp: "$.submitted_at"
+    item_actions:
+      - { label: Review, icon: eye, flow: content/get-content, args: { id: "$.content_id" } }
+      - { label: "Quick Approve", icon: check, flow: editorial/quick-approve, args: { content_id: "$.content_id" } }
+    interactions:
+      - pattern: bulk-select
+        actions:
+          - { label: "Bulk Approve", flow: editorial/bulk-approve, confirm: true, confirm_message: "Approve all selected items?" }
+          - { label: "Bulk Reject", flow: editorial/bulk-approve, args: { action: reject }, confirm: true }
+      - pattern: reorder
+        update_flow: content/drag-reorder
+    empty_state:
+      message: "Queue is empty — all caught up!"
+      icon: check-circle
+    realtime_behavior:
+      on_new_item: prepend
+      on_update: highlight
+      highlight_duration_ms: 3000
+
+  - id: ai-assistant
+    component: chat-interface
+    position: sidebar
+    label: "AI Assistant"
+    data_source: processing/classify-content
+    message_roles: { user: "Editor", assistant: "Nexus AI" }
+    streaming_source: processing/classify-content
+    input_config:
+      placeholder: "Ask about this content..."
+      submit_flow: processing/classify-content
+      submit_key: "Enter"
+    typing_indicator: true
+    message_template:
+      content_field: "$.message"
+      role_field: "$.role"
+      timestamp_field: "$.timestamp"
+    streaming_behavior:
+      source: sse
+      target_field: "$.message"
+      append: true
+      typing_indicator: true
+
+forms: []
+
+state:
+  initial_fetch: [editorial/list-editorial-queue, editorial/get-review-stats]
+  realtime: editorial/list-editorial-queue
+
+loading: skeleton
+error: retry-banner
+refresh: pull-to-refresh

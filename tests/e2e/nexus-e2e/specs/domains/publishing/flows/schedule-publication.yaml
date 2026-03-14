@@ -1,0 +1,100 @@
+flow:
+  id: schedule-publication
+  name: Schedule Publication
+  description: Schedules content for future publication at a specified time
+  type: traditional
+  domain: publishing
+  version: "1.0.0"
+  trigger:
+    type: http
+    method: POST
+    path: /api/v1/publishing/schedule
+  auth:
+    required: true
+    strategy: jwt
+
+nodes:
+  - id: trigger-k1l2m3n4
+    type: trigger
+    name: HTTP POST Schedule
+    config:
+      method: POST
+      path: /api/v1/publishing/schedule
+
+  - id: input-o5p6q7r8
+    type: input
+    name: Validate Schedule Input
+    config:
+      fields:
+        - name: content_id
+          type: string
+          required: true
+        - name: publish_at
+          type: datetime
+          required: true
+        - name: channel_ids
+          type: array
+          required: true
+
+  - id: data_store-s9t0u1v2
+    type: data_store
+    name: Create Schedule
+    config:
+      operation: create
+      model: Schedule
+      data:
+        content_id: "$.content_id"
+        publish_at: "$.publish_at"
+        channel_ids: "$.channel_ids"
+        status: scheduled
+
+  - id: delay-w3x4y5z6
+    type: delay
+    name: Wait Until Publish Time
+    config:
+      strategy: scheduled
+      min_ms: "calculated from publish_at"
+
+  - id: sub_flow-a7b8c9d0
+    type: sub_flow
+    name: Execute Publish Content
+    config:
+      flow_ref: "publishing/publish-content"
+
+  - id: terminal-e1f2g3h4
+    type: terminal
+    name: Schedule Created
+    config:
+      status: 201
+      response_type: json
+
+  - id: terminal-i5j6k7l8
+    type: terminal
+    name: Validation Error
+    config:
+      status: 422
+      response_type: error
+
+connections:
+  - from: trigger-k1l2m3n4
+    to: input-o5p6q7r8
+
+  - from: input-o5p6q7r8
+    to: data_store-s9t0u1v2
+
+  - from: input-o5p6q7r8
+    to: terminal-i5j6k7l8
+    handle: invalid
+
+  - from: data_store-s9t0u1v2
+    to: delay-w3x4y5z6
+
+  - from: delay-w3x4y5z6
+    to: sub_flow-a7b8c9d0
+
+  - from: sub_flow-a7b8c9d0
+    to: terminal-e1f2g3h4
+
+metadata:
+  created_at: "2026-03-14T00:00:00Z"
+  updated_at: "2026-03-14T00:00:00Z"

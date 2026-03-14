@@ -1,0 +1,162 @@
+flow:
+  id: health-check
+  name: "Health Check"
+  type: traditional
+  domain: monitoring
+  description: "Periodic health check of all system components with parallel probes and status aggregation"
+
+trigger:
+  id: trigger-hC1a2B3c
+  type: trigger
+  position: { x: 250, y: 0 }
+  spec:
+    event: "timer 60000"
+    label: "Every 60 seconds"
+
+nodes:
+  - id: parallel-hP4d5E6f
+    type: parallel
+    position: { x: 250, y: 130 }
+    spec:
+      failure_policy: best_effort
+      branches:
+        - id: branch-0
+          output_key: api
+        - id: branch-1
+          output_key: db
+        - id: branch-2
+          output_key: redis
+        - id: branch-3
+          output_key: worker
+
+  - id: service_call-hA7g8H9i
+    type: service_call
+    position: { x: 0, y: 260 }
+    spec:
+      method: GET
+      url: "http://localhost:3001/api/v1/health"
+      description: "Check API server health"
+
+  - id: service_call-hD1j2K3l
+    type: service_call
+    position: { x: 200, y: 260 }
+    spec:
+      service: PostgreSQL
+      method: pg_isready
+      description: "Check database connectivity"
+
+  - id: service_call-hR4m5N6o
+    type: service_call
+    position: { x: 400, y: 260 }
+    spec:
+      service: Redis
+      method: ping
+      description: "Check Redis connectivity"
+
+  - id: service_call-hW7p8Q9r
+    type: service_call
+    position: { x: 600, y: 260 }
+    spec:
+      service: Worker
+      method: health
+      description: "Check worker process health"
+
+  - id: collection-mR1s2T3u
+    type: collection
+    position: { x: 250, y: 390 }
+    spec:
+      operation: merge
+
+  - id: decision-aH4v5W6x
+    type: decision
+    position: { x: 250, y: 520 }
+    spec:
+      condition: "$.api.healthy && $.db.healthy && $.redis.healthy && $.worker.healthy"
+      description: "Check if all components are healthy"
+
+  - id: event-hS7y8Z9a
+    type: event
+    position: { x: 100, y: 650 }
+    spec:
+      direction: emit
+      event_name: HealthStatus
+      payload:
+        status: healthy
+        components: "$.health_results"
+        checked_at: "$.now"
+
+  - id: terminal-sH1b2C3d
+    type: terminal
+    position: { x: 100, y: 780 }
+    spec:
+      status: 200
+      label: "All components healthy"
+
+  - id: event-hD4e5F6g
+    type: event
+    position: { x: 400, y: 650 }
+    spec:
+      direction: emit
+      event_name: HealthStatus
+      payload:
+        status: degraded
+        components: "$.health_results"
+        checked_at: "$.now"
+
+  - id: terminal-sD7h8I9j
+    type: terminal
+    position: { x: 400, y: 780 }
+    spec:
+      status: 200
+      label: "System degraded - some components unhealthy"
+
+connections:
+  - source: trigger-hC1a2B3c
+    target: parallel-hP4d5E6f
+    sourceHandle: ""
+  - source: parallel-hP4d5E6f
+    target: service_call-hA7g8H9i
+    sourceHandle: "branch-0"
+  - source: parallel-hP4d5E6f
+    target: service_call-hD1j2K3l
+    sourceHandle: "branch-1"
+  - source: parallel-hP4d5E6f
+    target: service_call-hR4m5N6o
+    sourceHandle: "branch-2"
+  - source: parallel-hP4d5E6f
+    target: service_call-hW7p8Q9r
+    sourceHandle: "branch-3"
+  - source: service_call-hA7g8H9i
+    target: parallel-hP4d5E6f
+    sourceHandle: "complete"
+  - source: service_call-hD1j2K3l
+    target: parallel-hP4d5E6f
+    sourceHandle: "complete"
+  - source: service_call-hR4m5N6o
+    target: parallel-hP4d5E6f
+    sourceHandle: "complete"
+  - source: service_call-hW7p8Q9r
+    target: parallel-hP4d5E6f
+    sourceHandle: "complete"
+  - source: parallel-hP4d5E6f
+    target: collection-mR1s2T3u
+    sourceHandle: "merged"
+  - source: collection-mR1s2T3u
+    target: decision-aH4v5W6x
+    sourceHandle: "result"
+  - source: decision-aH4v5W6x
+    target: event-hS7y8Z9a
+    sourceHandle: "true"
+  - source: decision-aH4v5W6x
+    target: event-hD4e5F6g
+    sourceHandle: "false"
+  - source: event-hS7y8Z9a
+    target: terminal-sH1b2C3d
+    sourceHandle: "success"
+  - source: event-hD4e5F6g
+    target: terminal-sD7h8I9j
+    sourceHandle: "success"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

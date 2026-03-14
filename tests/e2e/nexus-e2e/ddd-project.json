@@ -1,0 +1,14 @@
+{
+  "domains": [
+    { "name": "Ingestion", "description": "Acquires content from all external source types", "role": "process" },
+    { "name": "Processing", "description": "AI-powered analysis pipeline with multi-agent orchestration", "role": "orchestration" },
+    { "name": "Editorial", "description": "Human review with async AI assistance", "role": "process" },
+    { "name": "Publishing", "description": "Multi-channel content distribution", "role": "process" },
+    { "name": "Analytics", "description": "Real-time and historical reporting", "role": "entity" },
+    { "name": "Users", "description": "Auth and user management", "role": "entity" },
+    { "name": "Content", "description": "Central content entity and cross-domain event hub", "role": "entity" },
+    { "name": "Notifications", "description": "Multi-channel alert delivery", "role": "process" },
+    { "name": "Settings", "description": "System configuration", "role": "entity" },
+    { "name": "Monitoring", "description": "Health and anomaly detection", "role": "gateway" }
+  ]
+}

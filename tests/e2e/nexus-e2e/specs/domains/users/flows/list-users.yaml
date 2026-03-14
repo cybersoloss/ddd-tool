@@ -1,0 +1,88 @@
+flow:
+  id: list-users
+  name: "List Users"
+  type: traditional
+  domain: users
+  description: "Admin-only endpoint to list users with optional filters, sorting, and cursor pagination"
+  auth:
+    required: true
+    strategy: jwt
+    roles:
+      - admin
+
+trigger:
+  id: trigger-lU1a2B3c
+  type: trigger
+  position: { x: 250, y: 0 }
+  spec:
+    event: "http GET /api/v1/users"
+    label: "List users endpoint"
+
+nodes:
+  - id: data_store-rU4d5E6f
+    type: data_store
+    position: { x: 250, y: 130 }
+    spec:
+      operation: read
+      model: User
+      filters:
+        - field: role_id
+          required: false
+        - field: plan
+          required: false
+      sort:
+        default: created_at
+      pagination:
+        type: cursor
+
+  - id: collection-fS7g8H9i
+    type: collection
+    position: { x: 250, y: 260 }
+    spec:
+      operation: filter
+      sort: "$.sort_field"
+      first:
+        count: 20
+
+  - id: terminal-sL1j2K3l
+    type: terminal
+    position: { x: 250, y: 390 }
+    spec:
+      status: 200
+      label: "Users listed successfully"
+
+  - id: terminal-eL4m5N6o
+    type: terminal
+    position: { x: 550, y: 130 }
+    spec:
+      status: 500
+      label: "Data store error"
+      error_code: DATA_STORE_ERROR
+
+  - id: terminal-eE7p8Q9r
+    type: terminal
+    position: { x: 550, y: 260 }
+    spec:
+      status: 200
+      label: "No users found - empty list"
+
+connections:
+  - source: trigger-lU1a2B3c
+    target: data_store-rU4d5E6f
+    sourceHandle: ""
+  - source: data_store-rU4d5E6f
+    target: collection-fS7g8H9i
+    sourceHandle: "success"
+  - source: data_store-rU4d5E6f
+    target: terminal-eL4m5N6o
+    sourceHandle: "error"
+  - source: collection-fS7g8H9i
+    target: terminal-sL1j2K3l
+    sourceHandle: "result"
+  - source: collection-fS7g8H9i
+    target: terminal-eE7p8Q9r
+    sourceHandle: "empty"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

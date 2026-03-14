@@ -1,0 +1,204 @@
+flow:
+  id: review-content
+  name: Review Content
+  description: Editorial review workflow with human approval gate supporting approve, reject, escalate, and defer actions
+  type: traditional
+  domain: editorial
+  version: "1.0.0"
+  trigger:
+    type: event
+    event: ContentClassified
+  auth: null
+
+nodes:
+  - id: trigger-a1b2c3d4
+    type: trigger
+    name: Content Classified Event
+    config:
+      event: ContentClassified
+
+  - id: data_store-e5f6g7h8
+    type: data_store
+    name: Read Content
+    config:
+      operation: read
+      model: Content
+      query:
+        id: "$.content_id"
+
+  - id: human_gate-i9j0k1l2
+    type: human_gate
+    name: Editorial Review Gate
+    config:
+      approval_options:
+        - id: approve
+          label: "Approve"
+        - id: reject
+          label: "Reject"
+          requires_input: true
+        - id: escalate
+          label: "Escalate"
+        - id: defer
+          label: "Defer"
+      notification_channels:
+        - slack
+        - email
+      timeout:
+        duration: "24h"
+        action: escalate
+      context_for_human:
+        content_id: "$.content_id"
+        title: "$.title"
+        quality_score: "$.quality_score"
+
+  - id: data_store-m3n4o5p6
+    type: data_store
+    name: Update Content Status Approved
+    config:
+      operation: update
+      model: Content
+      set:
+        status: approved
+
+  - id: event-q7r8s9t0
+    type: event
+    name: Emit ContentApproved
+    config:
+      event_name: ContentApproved
+      payload: "$.content"
+
+  - id: terminal-u1v2w3x4
+    type: terminal
+    name: Approved Success
+    config:
+      status: 200
+      response_type: success
+
+  - id: data_store-y5z6a7b8
+    type: data_store
+    name: Create ContentRejection
+    config:
+      operation: create
+      model: ContentRejection
+      data:
+        content_id: "$.content_id"
+        reason: "$.rejection_reason"
+        reviewer_id: "$.reviewer_id"
+
+  - id: data_store-c9d0e1f2
+    type: data_store
+    name: Update Content Status Rejected
+    config:
+      operation: update
+      model: Content
+      set:
+        status: rejected
+
+  - id: event-g3h4i5j6
+    type: event
+    name: Emit ContentRejected
+    config:
+      event_name: ContentRejected
+      payload: "$.content"
+
+  - id: terminal-k7l8m9n0
+    type: terminal
+    name: Rejected Success
+    config:
+      status: 200
+      response_type: success
+
+  - id: event-o1p2q3r4
+    type: event
+    name: Emit ContentEscalated
+    config:
+      event_name: ContentEscalated
+      payload: "$.content"
+
+  - id: terminal-s5t6u7v8
+    type: terminal
+    name: Escalated Success
+    config:
+      status: 200
+      response_type: success
+
+  - id: terminal-w9x0y1z2
+    type: terminal
+    name: Deferred Success
+    config:
+      status: 200
+      response_type: success
+
+  - id: terminal-a3b4c5d6
+    type: terminal
+    name: Data Store Error
+    config:
+      status: 500
+      response_type: error
+
+connections:
+  - from: trigger-a1b2c3d4
+    to: data_store-e5f6g7h8
+
+  - from: data_store-e5f6g7h8
+    to: human_gate-i9j0k1l2
+    condition: "$.quality_score > 0.9"
+    label: fast-track
+
+  - from: data_store-e5f6g7h8
+    to: human_gate-i9j0k1l2
+    label: standard-review
+
+  - from: human_gate-i9j0k1l2
+    to: data_store-m3n4o5p6
+    handle: approve
+
+  - from: data_store-m3n4o5p6
+    to: event-q7r8s9t0
+
+  - from: event-q7r8s9t0
+    to: terminal-u1v2w3x4
+
+  - from: human_gate-i9j0k1l2
+    to: data_store-y5z6a7b8
+    handle: reject
+
+  - from: data_store-y5z6a7b8
+    to: data_store-c9d0e1f2
+
+  - from: data_store-c9d0e1f2
+    to: event-g3h4i5j6
+
+  - from: event-g3h4i5j6
+    to: terminal-k7l8m9n0
+
+  - from: human_gate-i9j0k1l2
+    to: event-o1p2q3r4
+    handle: escalate
+
+  - from: event-o1p2q3r4
+    to: terminal-s5t6u7v8
+
+  - from: human_gate-i9j0k1l2
+    to: terminal-w9x0y1z2
+    handle: defer
+
+  - from: data_store-e5f6g7h8
+    to: terminal-a3b4c5d6
+    handle: error
+
+  - from: data_store-m3n4o5p6
+    to: terminal-a3b4c5d6
+    handle: error
+
+  - from: data_store-y5z6a7b8
+    to: terminal-a3b4c5d6
+    handle: error
+
+  - from: data_store-c9d0e1f2
+    to: terminal-a3b4c5d6
+    handle: error
+
+metadata:
+  created_at: "2026-03-14T00:00:00Z"
+  updated_at: "2026-03-14T00:00:00Z"

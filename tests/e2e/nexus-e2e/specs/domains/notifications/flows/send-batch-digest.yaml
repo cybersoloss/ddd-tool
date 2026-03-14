@@ -1,0 +1,106 @@
+flow:
+  id: send-batch-digest
+  name: "Send Batch Digest"
+  type: traditional
+  domain: notifications
+  description: "Batched digest notification delivery triggered by content publication"
+
+trigger:
+  id: trigger-bD1a2B3c
+  type: trigger
+  position: { x: 250, y: 0 }
+  spec:
+    event: "event:ContentPublished"
+    label: "Content Published"
+
+nodes:
+  - id: collection-fP4d5E6f
+    type: collection
+    position: { x: 250, y: 130 }
+    spec:
+      operation: filter
+      condition: "$.status == 'pending'"
+      description: "Filter pending notifications"
+
+  - id: batch-bD7g8H9i
+    type: batch
+    position: { x: 250, y: 260 }
+    spec:
+      concurrency: 5
+
+  - id: service_call-sG1j2K3l
+    type: service_call
+    position: { x: 250, y: 390 }
+    spec:
+      service: SendGrid
+      method: send_batch
+      integration: sendgrid
+      description: "Send batched digest emails via SendGrid"
+      params:
+        template: digest
+        recipients: "$.batch_recipients"
+        data: "$.digest_data"
+
+  - id: data_store-uN4m5N6o
+    type: data_store
+    position: { x: 250, y: 520 }
+    spec:
+      operation: update
+      model: Notification
+      fields:
+        - name: status
+          value: "sent"
+        - name: sent_at
+          value: "$.now"
+
+  - id: terminal-sB7p8Q9r
+    type: terminal
+    position: { x: 250, y: 650 }
+    spec:
+      status: 200
+      label: "Batch digest sent"
+
+  - id: terminal-eB1s2T3u
+    type: terminal
+    position: { x: 550, y: 130 }
+    spec:
+      status: 200
+      label: "No pending notifications"
+
+  - id: terminal-eS4v5W6x
+    type: terminal
+    position: { x: 550, y: 390 }
+    spec:
+      status: 500
+      label: "Batch send error"
+      error_code: BATCH_SEND_ERROR
+
+connections:
+  - source: trigger-bD1a2B3c
+    target: collection-fP4d5E6f
+    sourceHandle: ""
+  - source: collection-fP4d5E6f
+    target: batch-bD7g8H9i
+    sourceHandle: "result"
+  - source: collection-fP4d5E6f
+    target: terminal-eB1s2T3u
+    sourceHandle: "empty"
+  - source: batch-bD7g8H9i
+    target: service_call-sG1j2K3l
+    sourceHandle: "done"
+  - source: service_call-sG1j2K3l
+    target: data_store-uN4m5N6o
+    sourceHandle: "success"
+  - source: service_call-sG1j2K3l
+    target: terminal-eS4v5W6x
+    sourceHandle: "error"
+  - source: data_store-uN4m5N6o
+    target: terminal-sB7p8Q9r
+    sourceHandle: "success"
+  - source: data_store-uN4m5N6o
+    target: terminal-eS4v5W6x
+    sourceHandle: "error"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

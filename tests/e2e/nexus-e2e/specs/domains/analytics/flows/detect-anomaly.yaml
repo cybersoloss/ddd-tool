@@ -1,0 +1,110 @@
+flow:
+  id: detect-anomaly
+  name: "Detect Anomaly"
+  type: traditional
+  domain: analytics
+  description: "Detects metric anomalies using pattern matching and LLM analysis, then triggers alerts"
+
+trigger:
+  id: trigger-dA1a2B3c
+  type: trigger
+  position: { x: 250, y: 0 }
+  spec:
+    event: "pattern:MetricThresholdBreach"
+    label: "Metric threshold breach detected"
+    pattern_config:
+      group_by: metric_name
+      threshold: 3
+      window_ms: 300000
+
+nodes:
+  - id: data_store-rM4d5E6f
+    type: data_store
+    position: { x: 250, y: 130 }
+    spec:
+      operation: read
+      model: AnalyticsEvent
+      query:
+        where:
+          metric_name: "$.metric_name"
+          occurred_at:
+            gte: "$.window_start"
+
+  - id: llm_call-lA7g8H9i
+    type: llm_call
+    position: { x: 250, y: 260 }
+    spec:
+      model: "anthropic/claude-sonnet"
+      prompt: "Analyze this metric anomaly and explain possible causes"
+      temperature: 0.3
+      max_tokens: 1000
+      structured_output:
+        properties:
+          explanation:
+            type: string
+          severity:
+            type: string
+          recommendation:
+            type: string
+      context_sources:
+        - ref: "$.metrics_data"
+          transform: json_stringify
+
+  - id: event-eA1j2K3l
+    type: event
+    position: { x: 250, y: 390 }
+    spec:
+      direction: emit
+      event_name: AlertTriggered
+      payload:
+        metric_name: "$.metric_name"
+        explanation: "$.explanation"
+        severity: "$.severity"
+        recommendation: "$.recommendation"
+
+  - id: terminal-sA4m5N6o
+    type: terminal
+    position: { x: 250, y: 520 }
+    spec:
+      status: 200
+      label: "Anomaly detected and alert triggered"
+
+  - id: terminal-eL7p8Q9r
+    type: terminal
+    position: { x: 550, y: 260 }
+    spec:
+      status: 500
+      label: "LLM analysis error"
+      error_code: LLM_CALL_ERROR
+
+  - id: terminal-eD1s2T3u
+    type: terminal
+    position: { x: 550, y: 130 }
+    spec:
+      status: 500
+      label: "Data store error"
+      error_code: DATA_STORE_ERROR
+
+connections:
+  - source: trigger-dA1a2B3c
+    target: data_store-rM4d5E6f
+    sourceHandle: ""
+  - source: data_store-rM4d5E6f
+    target: llm_call-lA7g8H9i
+    sourceHandle: "success"
+  - source: data_store-rM4d5E6f
+    target: terminal-eD1s2T3u
+    sourceHandle: "error"
+  - source: llm_call-lA7g8H9i
+    target: event-eA1j2K3l
+    sourceHandle: "success"
+  - source: llm_call-lA7g8H9i
+    target: terminal-eL7p8Q9r
+    sourceHandle: "error"
+  - source: event-eA1j2K3l
+    target: terminal-sA4m5N6o
+    sourceHandle: "success"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

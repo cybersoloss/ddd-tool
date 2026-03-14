@@ -1,0 +1,106 @@
+name: Notifications
+description: "Multi-channel alert delivery"
+role: process
+
+owns_schemas:
+  - Notification
+
+flows:
+  - id: send-realtime-alert
+    name: "Send Realtime Alert"
+    description: "Multi-channel real-time alert with best-effort delivery"
+    type: traditional
+    tags:
+      - internal
+
+  - id: send-batch-digest
+    name: "Send Batch Digest"
+    description: "Batched digest notification delivery"
+    type: traditional
+    tags:
+      - internal
+
+  - id: get-notification-preferences
+    name: "Get Notification Preferences"
+    description: "Get user notification preferences"
+    type: traditional
+    tags:
+      - public-api
+
+  - id: route-notification
+    name: "Route Notification"
+    description: "Round-robin orchestrator for notification routing"
+    type: traditional
+    tags:
+      - internal
+
+  - id: send-templated-notification
+    name: "Send Templated Notification"
+    description: "Parameterized template-based notification"
+    type: traditional
+    tags:
+      - internal
+    template: true
+    parameters:
+      - name: template_name
+        type: string
+        required: true
+      - name: recipient_id
+        type: uuid
+        required: true
+      - name: variables
+        type: json
+        required: false
+
+publishes_events: []
+
+consumes_events:
+  - event: AlertTriggered
+    handled_by_flow: send-realtime-alert
+    description: "Send real-time alert when anomaly detected"
+    payload:
+      alert_type: string
+      metric: string
+      threshold: number
+      current_value: number
+
+  - event: UserRegistered
+    handled_by_flow: send-templated-notification
+    description: "Send welcome notification to new user"
+    payload:
+      user_id: uuid
+      email: string
+      plan: string
+
+  - event: ContentApproved
+    handled_by_flow: send-batch-digest
+    description: "Batch approved content notifications"
+    payload:
+      content_id: uuid
+      approved_by: uuid
+      approved_at: datetime
+
+  - event: ContentRejected
+    handled_by_flow: send-realtime-alert
+    description: "Send real-time alert on content rejection"
+    payload:
+      content_id: uuid
+      reason: string
+      rejected_by: uuid
+
+  - event: ContentPublished
+    handled_by_flow: send-batch-digest
+    description: "Batch published content notifications"
+    payload:
+      content_id: uuid
+      channel_ids: "uuid[]"
+      published_at: datetime
+
+layout:
+  flows:
+    send-realtime-alert: { x: 100, y: 100 }
+    send-batch-digest: { x: 100, y: 300 }
+    get-notification-preferences: { x: 100, y: 500 }
+    route-notification: { x: 100, y: 700 }
+    send-templated-notification: { x: 100, y: 900 }
+  portals: {}

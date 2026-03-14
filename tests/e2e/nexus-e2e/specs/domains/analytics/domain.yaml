@@ -1,0 +1,137 @@
+name: Analytics
+description: "Real-time and historical reporting"
+role: entity
+
+owns_schemas:
+  - AnalyticsEvent
+  - WeeklyDigest
+
+stores:
+  - name: metrics-store
+    shape:
+      liveMetrics: "Record<string, number>"
+      lastUpdate: datetime
+    access_pattern: read_write
+
+flows:
+  - id: record-event
+    name: "Record Event"
+    description: "Record an analytics event from any domain"
+    type: traditional
+    tags:
+      - internal
+
+  - id: query-analytics
+    name: "Query Analytics"
+    description: "Query historical analytics with filters and aggregations"
+    type: traditional
+    tags:
+      - public-api
+
+  - id: stream-live-metrics
+    name: "Stream Live Metrics"
+    description: "Stream live metrics via WebSocket connection"
+    type: traditional
+    tags:
+      - public-api
+
+  - id: stream-sse-metrics
+    name: "Stream SSE Metrics"
+    description: "Stream metrics via Server-Sent Events"
+    type: traditional
+    tags:
+      - public-api
+
+  - id: detect-anomaly
+    name: "Detect Anomaly"
+    description: "Statistical anomaly detection on metric streams"
+    type: traditional
+    tags:
+      - internal
+    criticality: high
+
+  - id: generate-daily-report
+    name: "Generate Daily Report"
+    description: "Generate daily analytics summary report"
+    type: traditional
+    tags:
+      - cron
+
+  - id: generate-weekly-digest
+    name: "Generate Weekly Digest"
+    description: "Generate weekly analytics digest with trends"
+    type: traditional
+    tags:
+      - cron
+
+  - id: broadcast-dashboard-update
+    name: "Broadcast Dashboard Update"
+    description: "Push real-time dashboard updates via WebSocket"
+    type: traditional
+    tags:
+      - internal
+
+publishes_events:
+  - event: AlertTriggered
+    from_flow: detect-anomaly
+    description: "Anomaly detected in metrics"
+    payload:
+      alert_type: string
+      metric: string
+      threshold: number
+      current_value: number
+
+consumes_events:
+  - event: ContentIngested
+    handled_by_flow: record-event
+    description: "Record ingestion analytics"
+    payload:
+      content_id: uuid
+      source_type: string
+      raw_url: string
+      ingested_at: datetime
+
+  - event: ContentPublished
+    handled_by_flow: record-event
+    description: "Record publishing analytics"
+    payload:
+      content_id: uuid
+      channel_ids: "uuid[]"
+      published_at: datetime
+
+  - event: ContentApproved
+    handled_by_flow: record-event
+    description: "Record approval analytics"
+    payload:
+      content_id: uuid
+      approved_by: uuid
+      approved_at: datetime
+
+  - event: RoleChanged
+    handled_by_flow: record-event
+    description: "Record role change analytics"
+    payload:
+      user_id: uuid
+      old_role: string
+      new_role: string
+      changed_by: uuid
+
+  - event: ContentPublished
+    handled_by_flow: broadcast-dashboard-update
+    description: "Update dashboard when content is published"
+    payload:
+      content_id: uuid
+      channel_ids: "uuid[]"
+      published_at: datetime
+
+layout:
+  flows:
+    record-event: { x: 100, y: 100 }
+    query-analytics: { x: 100, y: 300 }
+    stream-live-metrics: { x: 100, y: 500 }
+    stream-sse-metrics: { x: 100, y: 700 }
+    detect-anomaly: { x: 100, y: 900 }
+    generate-daily-report: { x: 100, y: 1100 }
+    generate-weekly-digest: { x: 100, y: 1300 }
+    broadcast-dashboard-update: { x: 100, y: 1500 }
+  portals: {}

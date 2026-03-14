@@ -1,0 +1,71 @@
+flow:
+  id: drag-reorder
+  name: Drag Reorder
+  description: Handles drag-and-drop reordering of content with debounce and WebSocket broadcast
+  type: traditional
+  domain: content
+  version: "1.0.0"
+  trigger:
+    type: ui
+    event: DragDrop
+    debounce_ms: 200
+  auth: null
+
+nodes:
+  - id: trigger-w1x2y3z4
+    type: trigger
+    name: UI DragDrop Trigger
+    config:
+      type: ui
+      event: DragDrop
+      debounce_ms: 200
+
+  - id: data_store-a5b6c7d8
+    type: data_store
+    name: Update Content Positions
+    config:
+      operation: update_many
+      model: Content
+      set:
+        position: "$.new_positions"
+
+  - id: websocket_broadcast-e9f0g1h2
+    type: websocket_broadcast
+    name: Broadcast Reorder
+    config:
+      channel: "content"
+      event_name: "reordered"
+      payload: "$.new_order"
+
+  - id: terminal-i3j4k5l6
+    type: terminal
+    name: Reorder Success
+    config:
+      status: 200
+      response_type: success
+
+  - id: terminal-m7n8o9p0
+    type: terminal
+    name: Data Store Error
+    config:
+      status: 500
+      response_type: error
+
+connections:
+  - from: trigger-w1x2y3z4
+    to: data_store-a5b6c7d8
+
+  - from: data_store-a5b6c7d8
+    to: websocket_broadcast-e9f0g1h2
+
+  - from: data_store-a5b6c7d8
+    to: terminal-m7n8o9p0
+    handle: error
+
+  - from: websocket_broadcast-e9f0g1h2
+    to: terminal-i3j4k5l6
+    handle: done
+
+metadata:
+  created_at: "2026-03-14T00:00:00Z"
+  updated_at: "2026-03-14T00:00:00Z"

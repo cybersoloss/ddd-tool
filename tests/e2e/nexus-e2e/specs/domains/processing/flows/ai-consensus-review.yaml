@@ -1,0 +1,102 @@
+flow:
+  id: ai-consensus-review
+  name: "AI Consensus Review"
+  type: agent
+  domain: processing
+  description: "Multi-agent consensus mechanism with three quality reviewers"
+
+trigger:
+  id: trigger-aC1a2B3c
+  type: trigger
+  position: { x: 100, y: 0 }
+  spec:
+    event: "event:ContentClassified"
+    label: "Content Classified"
+
+nodes:
+  - id: orchestrator-oC4d5E6f
+    type: orchestrator
+    position: { x: 100, y: 130 }
+    spec:
+      strategy: consensus
+      model: "anthropic/claude-sonnet"
+      agents:
+        - flow: "processing/score-quality"
+          role: "Reviewer 1"
+        - flow: "processing/score-quality"
+          role: "Reviewer 2"
+        - flow: "processing/score-quality"
+          role: "Reviewer 3"
+      result_merge_strategy: best_of
+      consensus_threshold: 0.66
+
+  - id: decision-dC7g8H9i
+    type: decision
+    position: { x: 100, y: 260 }
+    spec:
+      condition: "$.consensus_reached"
+
+  - id: data_store-dU1j2K3l
+    type: data_store
+    position: { x: 100, y: 390 }
+    spec:
+      operation: update
+      model: Content
+      query:
+        where:
+          id: "$.content_id"
+      fields:
+        - name: quality_score
+          value: "$.consensus_score"
+        - name: review_status
+          value: "consensus_reached"
+
+  - id: terminal-tS4m5N6o
+    type: terminal
+    position: { x: 100, y: 520 }
+    spec:
+      status: 200
+      label: "Consensus reached"
+
+  - id: terminal-tE7p8Q9r
+    type: terminal
+    position: { x: 400, y: 260 }
+    spec:
+      status: 409
+      label: "No consensus reached"
+      error_code: NO_CONSENSUS
+
+  - id: terminal-tE1s2T3u
+    type: terminal
+    position: { x: 400, y: 130 }
+    spec:
+      status: 500
+      label: "Orchestrator error"
+      error_code: ORCHESTRATOR_ERROR
+
+connections:
+  - source: trigger-aC1a2B3c
+    target: orchestrator-oC4d5E6f
+    sourceHandle: ""
+  - source: orchestrator-oC4d5E6f
+    target: decision-dC7g8H9i
+    sourceHandle: "success"
+  - source: orchestrator-oC4d5E6f
+    target: terminal-tE1s2T3u
+    sourceHandle: "error"
+  - source: decision-dC7g8H9i
+    target: data_store-dU1j2K3l
+    sourceHandle: "true"
+  - source: decision-dC7g8H9i
+    target: terminal-tE7p8Q9r
+    sourceHandle: "false"
+  - source: data_store-dU1j2K3l
+    target: terminal-tS4m5N6o
+    sourceHandle: "success"
+  - source: data_store-dU1j2K3l
+    target: terminal-tE1s2T3u
+    sourceHandle: "error"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

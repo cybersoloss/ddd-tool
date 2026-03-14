@@ -1,0 +1,110 @@
+flow:
+  id: resolve-conflict-agent
+  name: "Resolve Conflict Agent"
+  type: agent
+  domain: processing
+  description: "Agent that resolves conflicting analysis results with human confirmation"
+
+trigger:
+  id: trigger-rC1a2B3c
+  type: trigger
+  position: { x: 100, y: 0 }
+  spec:
+    event: "event:ContentClassified"
+    label: "Content Classified"
+
+nodes:
+  - id: data_store-dR4d5E6f
+    type: data_store
+    position: { x: 100, y: 130 }
+    spec:
+      operation: read
+      model: Content
+      query:
+        where:
+          id: "$.content_id"
+
+  - id: agent_loop-aL7g8H9i
+    type: agent_loop
+    position: { x: 100, y: 260 }
+    spec:
+      model: "anthropic/claude-sonnet"
+      max_iterations: 5
+      tools:
+        - name: propose_resolution
+          description: "Propose a conflict resolution"
+          parameters:
+            resolution:
+              type: string
+            reasoning:
+              type: string
+          requires_confirmation: true
+        - name: finalize
+          description: "Finalize the resolution"
+          parameters:
+            final_decision:
+              type: string
+          is_terminal: true
+
+  - id: data_store-dU1j2K3l
+    type: data_store
+    position: { x: 100, y: 390 }
+    spec:
+      operation: update
+      model: Content
+      query:
+        where:
+          id: "$.content_id"
+      fields:
+        - name: conflict_resolution
+          value: "$.final_decision"
+
+  - id: terminal-tS4m5N6o
+    type: terminal
+    position: { x: 100, y: 520 }
+    spec:
+      status: 200
+      label: "Conflict resolved"
+
+  - id: terminal-tE7p8Q9r
+    type: terminal
+    position: { x: 400, y: 260 }
+    spec:
+      status: 500
+      label: "Agent loop error"
+      error_code: AGENT_LOOP_ERROR
+
+  - id: terminal-tE1s2T3u
+    type: terminal
+    position: { x: 400, y: 130 }
+    spec:
+      status: 500
+      label: "Data store error"
+      error_code: DATA_STORE_ERROR
+
+connections:
+  - source: trigger-rC1a2B3c
+    target: data_store-dR4d5E6f
+    sourceHandle: ""
+  - source: data_store-dR4d5E6f
+    target: agent_loop-aL7g8H9i
+    sourceHandle: "success"
+  - source: data_store-dR4d5E6f
+    target: terminal-tE1s2T3u
+    sourceHandle: "error"
+  - source: agent_loop-aL7g8H9i
+    target: data_store-dU1j2K3l
+    sourceHandle: "done"
+  - source: agent_loop-aL7g8H9i
+    target: terminal-tE7p8Q9r
+    sourceHandle: "error"
+  - source: data_store-dU1j2K3l
+    target: terminal-tS4m5N6o
+    sourceHandle: "success"
+  - source: data_store-dU1j2K3l
+    target: terminal-tE1s2T3u
+    sourceHandle: "error"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

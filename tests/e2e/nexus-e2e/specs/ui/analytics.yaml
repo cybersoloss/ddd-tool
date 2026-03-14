@@ -1,0 +1,84 @@
+page: analytics
+route: /analytics
+
+sections:
+  - id: analytics-totals
+    component: stat-card
+    position: top
+    label: "Total Events"
+    data_source: analytics/query-analytics
+    fields:
+      value: "$.total_events"
+      subtitle: "all-time events"
+    trend:
+      value: "$.events_last_period"
+      direction: auto
+      format: delta
+
+  - id: analytics-filters
+    component: filter-bar
+    position: top
+    label: "Filters"
+    fields:
+      - { key: period, type: date-range, label: "Period" }
+      - { key: event_types, type: multi-select, label: "Event Types", options: [content, user, system, publishing, editorial] }
+      - { key: granularity, type: select, label: "Granularity", options: [hour, day, week] }
+    apply_flow: analytics/query-analytics
+
+  - id: time-series
+    component: chart
+    position: main
+    label: "Activity Over Time"
+    data_source: analytics/query-analytics
+    chart_type: line
+    fields:
+      labels: "$.time_labels"
+      series:
+        - { name: "Ingested", values: "$.ingested_series" }
+        - { name: "Processed", values: "$.processed_series" }
+        - { name: "Published", values: "$.published_series" }
+
+  - id: category-breakdown
+    component: chart
+    position: sidebar
+    label: "Content by Category"
+    data_source: analytics/query-analytics
+    chart_type: donut
+    fields:
+      labels: "$.category_labels"
+      values: "$.category_counts"
+
+  - id: anomaly-alerts
+    component: item-list
+    position: sidebar
+    label: "Anomaly Alerts"
+    data_source: analytics/query-analytics
+    item_template:
+      title: "$.alert_type"
+      subtitle: "$.metric: $.current_value (threshold: $.threshold)"
+      timestamp: "$.occurred_at"
+    empty_state:
+      message: "No anomalies detected"
+      icon: shield-check
+
+  - id: geo-distribution
+    component: map-view
+    position: main
+    label: "Content Source Distribution"
+    data_source: analytics/query-analytics
+    center_lat: 40.0
+    center_lng: -95.0
+    zoom: 4
+    markers:
+      - { lat_field: "$.sources[].lat", lng_field: "$.sources[].lng", label_field: "$.sources[].name", color_field: "$.sources[].type" }
+    realtime: true
+
+forms: []
+
+state:
+  initial_fetch: [analytics/query-analytics]
+  realtime: analytics/broadcast-dashboard-update
+
+loading: skeleton
+error: retry-banner
+refresh: manual

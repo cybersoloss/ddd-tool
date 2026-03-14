@@ -1,0 +1,147 @@
+flow:
+  id: route-by-source-type
+  name: "Route by Source Type"
+  type: traditional
+  domain: ingestion
+  description: "Listens for SourceUpdated events and routes to the appropriate ingestion flow based on the source type (RSS, web, XML, social, or CSV)."
+
+trigger:
+  id: trigger-rT1a2B3c
+  type: trigger
+  position: { x: 100, y: 0 }
+  spec:
+    event: "event:SourceUpdated"
+    label: "Source updated"
+
+nodes:
+  - id: smart_router-sR4d5E6f
+    type: smart_router
+    position: { x: 100, y: 130 }
+    spec:
+      rules:
+        - id: rss-handler
+          condition: "$.source_type === 'rss'"
+          route: rss
+        - id: web-handler
+          condition: "$.source_type === 'web'"
+          route: web
+        - id: xml-handler
+          condition: "$.source_type === 'xml'"
+          route: xml
+        - id: social-handler
+          condition: "$.source_type === 'social'"
+          route: social
+        - id: csv-handler
+          condition: "$.source_type === 'csv'"
+          route: csv
+      fallback_chain: skip
+      fallback_note: "Sources pre-filtered by type from database query"
+
+  - id: process-pR7g8H9i
+    type: process
+    position: { x: 100, y: 260 }
+    spec:
+      description: "Trigger RSS ingestion flow"
+      route: rss
+
+  - id: terminal-tR1j2K3l
+    type: terminal
+    position: { x: 100, y: 390 }
+    spec:
+      status: 200
+      label: "RSS flow triggered"
+
+  - id: process-pW4m5N6o
+    type: process
+    position: { x: 400, y: 260 }
+    spec:
+      description: "Trigger web scraping flow"
+      route: web
+
+  - id: terminal-tW7p8Q9r
+    type: terminal
+    position: { x: 400, y: 390 }
+    spec:
+      status: 200
+      label: "Web flow triggered"
+
+  - id: process-pX1s2T3u
+    type: process
+    position: { x: 700, y: 260 }
+    spec:
+      description: "Trigger XML feed processing flow"
+      route: xml
+
+  - id: terminal-tX4v5W6x
+    type: terminal
+    position: { x: 700, y: 390 }
+    spec:
+      status: 200
+      label: "XML flow triggered"
+
+  - id: process-pS7y8Z9a
+    type: process
+    position: { x: 1000, y: 260 }
+    spec:
+      description: "Trigger social feed monitoring flow"
+      route: social
+
+  - id: terminal-tS1b2C3d
+    type: terminal
+    position: { x: 1000, y: 390 }
+    spec:
+      status: 200
+      label: "Social flow triggered"
+
+  - id: process-pC4e5F6g
+    type: process
+    position: { x: 1300, y: 260 }
+    spec:
+      description: "Trigger CSV import flow"
+      route: csv
+
+  - id: terminal-tC7h8I9j
+    type: terminal
+    position: { x: 1300, y: 390 }
+    spec:
+      status: 200
+      label: "CSV flow triggered"
+
+connections:
+  - source: trigger-rT1a2B3c
+    target: smart_router-sR4d5E6f
+    sourceHandle: ""
+  - source: smart_router-sR4d5E6f
+    target: process-pR7g8H9i
+    sourceHandle: "rss"
+  - source: smart_router-sR4d5E6f
+    target: process-pW4m5N6o
+    sourceHandle: "web"
+  - source: smart_router-sR4d5E6f
+    target: process-pX1s2T3u
+    sourceHandle: "xml"
+  - source: smart_router-sR4d5E6f
+    target: process-pS7y8Z9a
+    sourceHandle: "social"
+  - source: smart_router-sR4d5E6f
+    target: process-pC4e5F6g
+    sourceHandle: "csv"
+  - source: process-pR7g8H9i
+    target: terminal-tR1j2K3l
+    sourceHandle: "success"
+  - source: process-pW4m5N6o
+    target: terminal-tW7p8Q9r
+    sourceHandle: "success"
+  - source: process-pX1s2T3u
+    target: terminal-tX4v5W6x
+    sourceHandle: "success"
+  - source: process-pS7y8Z9a
+    target: terminal-tS1b2C3d
+    sourceHandle: "success"
+  - source: process-pC4e5F6g
+    target: terminal-tC7h8I9j
+    sourceHandle: "success"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"
