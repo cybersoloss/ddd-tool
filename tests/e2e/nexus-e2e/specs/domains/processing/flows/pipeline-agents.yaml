@@ -1,0 +1,88 @@
+flow:
+  id: pipeline-agents
+  name: "Pipeline Agents"
+  type: agent
+  domain: processing
+  description: "Sequential agent pipeline for deep content analysis with round-robin coordination"
+
+trigger:
+  id: trigger-pA1a2B3c
+  type: trigger
+  position: { x: 100, y: 0 }
+  spec:
+    event: "event:ContentIngested"
+    label: "Content Ingested"
+
+nodes:
+  - id: agent_group-aG4d5E6f
+    type: agent_group
+    position: { x: 100, y: 130 }
+    spec:
+      name: "pipeline-group"
+      members:
+        - flow: "processing/classify-content"
+        - flow: "processing/fact-check-agent"
+        - flow: "processing/bias-check-agent"
+      coordination:
+        communication: sequential
+        selection_strategy: round_robin
+      shared_memory:
+        type: key_value
+        store: "analysis-context"
+
+  - id: data_store-dU7g8H9i
+    type: data_store
+    position: { x: 100, y: 260 }
+    spec:
+      operation: update
+      model: Content
+      query:
+        where:
+          id: "$.content_id"
+      fields:
+        - name: pipeline_result
+          value: "$.result"
+
+  - id: terminal-tS1j2K3l
+    type: terminal
+    position: { x: 100, y: 390 }
+    spec:
+      status: 200
+      label: "Pipeline complete"
+
+  - id: terminal-tE4m5N6o
+    type: terminal
+    position: { x: 400, y: 130 }
+    spec:
+      status: 500
+      label: "Agent group error"
+      error_code: AGENT_GROUP_ERROR
+
+  - id: terminal-tE7p8Q9r
+    type: terminal
+    position: { x: 400, y: 260 }
+    spec:
+      status: 500
+      label: "Data store error"
+      error_code: DATA_STORE_ERROR
+
+connections:
+  - source: trigger-pA1a2B3c
+    target: agent_group-aG4d5E6f
+    sourceHandle: ""
+  - source: agent_group-aG4d5E6f
+    target: data_store-dU7g8H9i
+    sourceHandle: "done"
+  - source: agent_group-aG4d5E6f
+    target: terminal-tE4m5N6o
+    sourceHandle: "error"
+  - source: data_store-dU7g8H9i
+    target: terminal-tS1j2K3l
+    sourceHandle: "success"
+  - source: data_store-dU7g8H9i
+    target: terminal-tE7p8Q9r
+    sourceHandle: "error"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

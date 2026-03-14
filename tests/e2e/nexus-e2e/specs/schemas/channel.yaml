@@ -1,0 +1,39 @@
+name: Channel
+description: Publishing channel configuration
+inherits: _base
+fields:
+  - name: name
+    type: string
+    required: true
+    constraints:
+      unique: true
+      max_length: 100
+  - name: type
+    type: enum
+    required: true
+    ref: channel_type
+  - name: config
+    type: json
+    required: true
+    default: {}
+  - name: enabled
+    type: boolean
+    required: true
+    default: true
+
+indexes:
+  - fields: [name]
+    unique: true
+
+seed:
+  - name: default-channels
+    description: "Default publishing channels"
+    strategy: migration
+    data:
+      - { name: "Website", type: website, config: { cms_url: "https://cms.example.com/api" }, enabled: true }
+      - { name: "Newsletter", type: newsletter, config: { sendgrid_list_id: "default" }, enabled: true }
+      - { name: "Twitter", type: twitter, config: { account: "@nexus" }, enabled: true }
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

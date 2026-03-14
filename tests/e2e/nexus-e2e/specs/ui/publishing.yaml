@@ -1,0 +1,72 @@
+page: publishing
+route: /publishing
+
+sections:
+  - id: channel-health
+    component: status-bar
+    position: top
+    label: "Channel Health"
+    data_source: publishing/list-queue
+    fields:
+      items:
+        - { label: "Website", value: "$.channels.website", color_when: [{ value: "online", color: green }, { value: "offline", color: red }] }
+        - { label: "Twitter", value: "$.channels.twitter", color_when: [{ value: "online", color: green }, { value: "rate_limited", color: amber }, { value: "offline", color: red }] }
+        - { label: "Newsletter", value: "$.channels.newsletter", color_when: [{ value: "online", color: green }, { value: "offline", color: red }] }
+
+  - id: pub-filters
+    component: filter-bar
+    position: top
+    label: "Filters"
+    fields:
+      - { key: channel, type: select, label: "Channel", options: [website, twitter, linkedin, newsletter] }
+      - { key: status, type: select, label: "Status", options: [pending, success, failed] }
+    apply_flow: publishing/list-queue
+
+  - id: pub-queue
+    component: item-list
+    position: main
+    label: "Publishing Queue"
+    data_source: publishing/list-queue
+    item_template:
+      title: "$.content_title"
+      subtitle: "$.channel · Attempts: $.attempts"
+      badge: "$.status"
+      timestamp: "$.scheduled_at"
+    item_actions:
+      - { label: Retry, icon: refresh-cw, flow: publishing/retry-failed-publish, args: { id: "$.id" }, visible_when: "$.status === 'failed'" }
+      - { label: Cancel, icon: x, flow: publishing/cancel-publish, args: { id: "$.id" }, confirm: true, confirm_message: "Cancel this publication?", visible_when: "$.status === 'pending'" }
+    interactions:
+      - pattern: reorder
+        update_flow: publishing/reorder-queue
+      - pattern: bulk-select
+        actions:
+          - { label: "Retry Failed", flow: publishing/retry-failed-publish, confirm: true }
+    empty_state:
+      message: "Publishing queue is empty"
+      icon: send
+    realtime_behavior:
+      on_new_item: prepend
+      on_update: highlight
+      highlight_duration_ms: 2000
+
+forms:
+  - id: schedule-publish
+    label: "Schedule Publication"
+    position: sidebar
+    fields:
+      - { name: publish_at, type: datetime, label: "Publish At", required: true }
+      - { name: channels, type: multi-select, label: "Channels", options: [website, twitter, linkedin, newsletter], required: true }
+    submit:
+      flow: publishing/schedule-publication
+      label: "Schedule"
+      loading_label: "Scheduling..."
+      success: { message: "Publication scheduled" }
+      error: { message: "Failed to schedule", retry: true }
+
+state:
+  initial_fetch: [publishing/list-queue]
+  realtime: publishing/broadcast-metric-update
+
+loading: skeleton
+error: toast
+refresh: auto-30s

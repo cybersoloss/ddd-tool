@@ -1,0 +1,84 @@
+flow:
+  id: trigger-bulk-reprocess
+  name: Trigger Bulk Reprocess
+  description: Manually triggers reprocessing of selected content by emitting ContentIngested events
+  type: traditional
+  domain: editorial
+  version: "1.0.0"
+  trigger:
+    type: manual
+  auth: null
+
+nodes:
+  - id: trigger-b7c8d9e0
+    type: trigger
+    name: Manual Trigger
+    config:
+      type: manual
+
+  - id: data_store-f1g2h3i4
+    type: data_store
+    name: Read Selected Content
+    config:
+      operation: read
+      model: Content
+      query:
+        id:
+          in: "$.selected_ids"
+
+  - id: loop-j5k6l7m8
+    type: loop
+    name: Iterate Content Items
+    config:
+      collection: "$.content_items"
+      iterator: "item"
+
+  - id: event-n9o0p1q2
+    type: event
+    name: Emit ContentIngested
+    config:
+      event_name: ContentIngested
+      target_queue: processing
+      payload:
+        content_id: "$.item.id"
+
+  - id: terminal-r3s4t5u6
+    type: terminal
+    name: Reprocess Success
+    config:
+      status: 200
+      response_type: success
+
+  - id: terminal-v7w8x9y0
+    type: terminal
+    name: Data Store Error
+    config:
+      status: 500
+      response_type: error
+
+connections:
+  - from: trigger-b7c8d9e0
+    to: data_store-f1g2h3i4
+
+  - from: data_store-f1g2h3i4
+    to: loop-j5k6l7m8
+
+  - from: data_store-f1g2h3i4
+    to: terminal-v7w8x9y0
+    handle: error
+
+  - from: loop-j5k6l7m8
+    to: event-n9o0p1q2
+    handle: body
+
+  - from: event-n9o0p1q2
+    to: loop-j5k6l7m8
+    label: next iteration
+
+  - from: loop-j5k6l7m8
+    to: terminal-r3s4t5u6
+    handle: done
+
+metadata:
+  created_at: "2026-03-14T00:00:00Z"
+  updated_at: "2026-03-14T00:00:00Z"

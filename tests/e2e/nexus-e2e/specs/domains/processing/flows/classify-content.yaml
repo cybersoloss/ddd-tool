@@ -1,0 +1,183 @@
+flow:
+  id: classify-content
+  name: "Classify Content"
+  type: traditional
+  domain: processing
+  description: "AI-powered content classification with guardrails and fallback"
+  metrics:
+    - name: classification_duration_ms
+      type: histogram
+      labels: [category]
+
+trigger:
+  id: trigger-cL1a2B3c
+  type: trigger
+  position: { x: 100, y: 0 }
+  spec:
+    event: "event:ContentIngested"
+    label: "Content Ingested"
+    filter:
+      source_type: { ne: null }
+
+nodes:
+  - id: guardrail-gI4d5E6f
+    type: guardrail
+    position: { x: 100, y: 130 }
+    spec:
+      position: input
+      checks:
+        - type: content_policy
+          action: block
+          description: "Block unsafe content"
+        - type: pii_detection
+          action: warn
+          description: "Flag PII"
+
+  - id: data_store-dR7g8H9i
+    type: data_store
+    position: { x: 100, y: 260 }
+    spec:
+      operation: read
+      model: Content
+      query:
+        where:
+          id: "$.content_id"
+
+  - id: llm_call-lC1j2K3l
+    type: llm_call
+    position: { x: 100, y: 390 }
+    spec:
+      model: "anthropic/claude-sonnet"
+      prompt: "Classify this content into categories"
+      temperature: 0.3
+      max_tokens: 500
+      structured_output:
+        properties:
+          category:
+            type: string
+            ref: content_category
+          confidence:
+            type: number
+          reasoning:
+            type: string
+      context_sources:
+        - ref: "$.content.body"
+          transform: truncate
+          max_length: 4000
+        - ref: "$.content.metadata"
+          transform: json_stringify
+
+  - id: guardrail-gO4m5N6o
+    type: guardrail
+    position: { x: 100, y: 520 }
+    spec:
+      position: output
+      checks:
+        - type: business_rule
+          action: log
+          description: "Log low confidence"
+          rule: "$.confidence < 0.5"
+
+  - id: data_store-dU7p8Q9r
+    type: data_store
+    position: { x: 100, y: 650 }
+    spec:
+      operation: update
+      model: Content
+      query:
+        where:
+          id: "$.content_id"
+      fields:
+        - name: category
+          value: "$.category"
+        - name: quality_score
+          value: "$.quality_score"
+
+  - id: event-eC1s2T3u
+    type: event
+    position: { x: 100, y: 780 }
+    spec:
+      direction: emit
+      event_name: ContentClassified
+      payload:
+        content_id: "$.content_id"
+        category: "$.category"
+        confidence: "$.confidence"
+
+  - id: terminal-tS4v5W6x
+    type: terminal
+    position: { x: 100, y: 910 }
+    spec:
+      status: 200
+      label: "Content classified"
+
+  - id: terminal-tE7y8Z9a
+    type: terminal
+    position: { x: 400, y: 130 }
+    spec:
+      status: 422
+      label: "Guardrail blocked"
+      error_code: CONTENT_POLICY_VIOLATION
+
+  - id: service_call-sF1b2C3d
+    type: service_call
+    position: { x: 400, y: 390 }
+    spec:
+      service: OpenAI
+      method: classify
+      description: "Fallback to OpenAI classifier"
+      fallback:
+        value:
+          category: "other"
+          confidence: 0.3
+        log: true
+
+  - id: terminal-tE4e5F6g
+    type: terminal
+    position: { x: 400, y: 650 }
+    spec:
+      status: 500
+      label: "Data store error"
+      error_code: DATA_STORE_ERROR
+
+connections:
+  - source: trigger-cL1a2B3c
+    target: guardrail-gI4d5E6f
+    sourceHandle: ""
+  - source: guardrail-gI4d5E6f
+    target: data_store-dR7g8H9i
+    sourceHandle: "pass"
+  - source: guardrail-gI4d5E6f
+    target: terminal-tE7y8Z9a
+    sourceHandle: "block"
+  - source: data_store-dR7g8H9i
+    target: llm_call-lC1j2K3l
+    sourceHandle: "success"
+  - source: data_store-dR7g8H9i
+    target: terminal-tE4e5F6g
+    sourceHandle: "error"
+  - source: llm_call-lC1j2K3l
+    target: guardrail-gO4m5N6o
+    sourceHandle: "success"
+  - source: llm_call-lC1j2K3l
+    target: service_call-sF1b2C3d
+    sourceHandle: "error"
+  - source: service_call-sF1b2C3d
+    target: data_store-dU7p8Q9r
+    sourceHandle: "success"
+  - source: guardrail-gO4m5N6o
+    target: data_store-dU7p8Q9r
+    sourceHandle: "pass"
+  - source: data_store-dU7p8Q9r
+    target: event-eC1s2T3u
+    sourceHandle: "success"
+  - source: data_store-dU7p8Q9r
+    target: terminal-tE4e5F6g
+    sourceHandle: "error"
+  - source: event-eC1s2T3u
+    target: terminal-tS4v5W6x
+    sourceHandle: "success"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

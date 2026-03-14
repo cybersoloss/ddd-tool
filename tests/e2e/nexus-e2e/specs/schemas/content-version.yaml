@@ -1,0 +1,39 @@
+name: ContentVersion
+description: Content version history snapshots
+inherits: _base
+fields:
+  - name: content_id
+    type: uuid
+    required: true
+  - name: body_snapshot
+    type: text
+    required: true
+  - name: changed_by
+    type: uuid
+    required: true
+  - name: change_summary
+    type: string
+    required: false
+    constraints:
+      max_length: 500
+  - name: changed_at
+    type: datetime
+    required: true
+
+relationships:
+  - name: content
+    type: belongs_to
+    target: Content
+    foreign_key: content_id
+  - name: author
+    type: belongs_to
+    target: User
+    foreign_key: changed_by
+
+indexes:
+  - fields: [content_id, changed_at]
+    description: "Version history for a content item"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

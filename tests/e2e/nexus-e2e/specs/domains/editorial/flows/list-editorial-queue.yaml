@@ -1,0 +1,117 @@
+flow:
+  id: list-editorial-queue
+  name: List Editorial Queue
+  description: Returns the editorial review queue filtered, sorted, and paginated
+  type: traditional
+  domain: editorial
+  version: "1.0.0"
+  trigger:
+    type: http
+    method: GET
+    path: /api/v1/editorial/queue
+  auth:
+    required: true
+    strategy: jwt
+
+nodes:
+  - id: trigger-f7g8h9i0
+    type: trigger
+    name: HTTP GET Editorial Queue
+    config:
+      method: GET
+      path: /api/v1/editorial/queue
+
+  - id: data_store-j1k2l3m4
+    type: data_store
+    name: Read Content in Review
+    config:
+      operation: read
+      model: Content
+      query:
+        status: review
+
+  - id: collection-n5o6p7q8
+    type: collection
+    name: Filter by Reviewer and Priority
+    config:
+      operation: filter
+      condition: "$.reviewer_id && $.priority"
+
+  - id: collection-r9s0t1u2
+    type: collection
+    name: Sort by Submitted At
+    config:
+      operation: sort
+      field: submitted_at
+      order: desc
+
+  - id: collection-v3w4x5y6
+    type: collection
+    name: Join with Content Details
+    config:
+      operation: join
+      right: "Content"
+      on: "$.content_id === $.id"
+      join_type: inner
+
+  - id: collection-z7a8b9c0
+    type: collection
+    name: Take First 20
+    config:
+      operation: first
+      count: 20
+
+  - id: terminal-d1e2f3g4
+    type: terminal
+    name: Queue Response
+    config:
+      status: 200
+      response_type: json
+
+  - id: terminal-h5i6j7k8
+    type: terminal
+    name: Data Store Error
+    config:
+      status: 500
+      response_type: error
+
+  - id: terminal-l9m0n1o2
+    type: terminal
+    name: Empty Queue Response
+    config:
+      status: 200
+      response_type: json
+      body:
+        data: []
+        has_more: false
+
+connections:
+  - from: trigger-f7g8h9i0
+    to: data_store-j1k2l3m4
+
+  - from: data_store-j1k2l3m4
+    to: collection-n5o6p7q8
+
+  - from: data_store-j1k2l3m4
+    to: terminal-h5i6j7k8
+    handle: error
+
+  - from: collection-n5o6p7q8
+    to: collection-r9s0t1u2
+
+  - from: collection-n5o6p7q8
+    to: terminal-l9m0n1o2
+    handle: empty
+
+  - from: collection-r9s0t1u2
+    to: collection-v3w4x5y6
+
+  - from: collection-v3w4x5y6
+    to: collection-z7a8b9c0
+
+  - from: collection-z7a8b9c0
+    to: terminal-d1e2f3g4
+
+metadata:
+  created_at: "2026-03-14T00:00:00Z"
+  updated_at: "2026-03-14T00:00:00Z"

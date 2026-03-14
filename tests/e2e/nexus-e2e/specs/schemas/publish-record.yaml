@@ -1,0 +1,54 @@
+name: PublishRecord
+description: Publication attempt records per content per channel
+inherits: _base
+fields:
+  - name: content_id
+    type: uuid
+    required: true
+  - name: channel_id
+    type: uuid
+    required: true
+  - name: status
+    type: enum
+    required: true
+    ref: publish_status
+    default: pending
+  - name: published_at
+    type: datetime
+    required: false
+  - name: error
+    type: string
+    required: false
+  - name: attempts
+    type: number
+    required: true
+    default: 0
+
+relationships:
+  - name: content
+    type: belongs_to
+    target: Content
+    foreign_key: content_id
+  - name: channel
+    type: belongs_to
+    target: Channel
+    foreign_key: channel_id
+
+indexes:
+  - fields: [content_id, channel_id]
+    description: "Find publish records for content+channel"
+  - fields: [status]
+    type: btree
+
+transitions:
+  field: status
+  states:
+    - from: pending
+      to: [success, failed]
+    - from: failed
+      to: [pending]
+  on_invalid: reject
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

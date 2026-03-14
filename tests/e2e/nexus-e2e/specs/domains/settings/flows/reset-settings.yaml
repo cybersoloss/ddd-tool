@@ -1,0 +1,127 @@
+flow:
+  id: reset-settings
+  name: "Reset Settings"
+  type: traditional
+  domain: settings
+  description: "Admin-only endpoint to reset all settings to defaults within a transaction"
+  auth:
+    required: true
+    strategy: jwt
+    roles:
+      - admin
+
+trigger:
+  id: trigger-rS1a2B3c
+  type: trigger
+  position: { x: 250, y: 0 }
+  spec:
+    event: "http POST /api/v1/settings/reset"
+    label: "Reset settings endpoint"
+
+nodes:
+  - id: transaction-tB4d5E6f
+    type: transaction
+    position: { x: 250, y: 130 }
+    spec:
+      operation: begin
+      description: "Begin transaction for settings reset"
+
+  - id: data_store-rD7g8H9i
+    type: data_store
+    position: { x: 250, y: 260 }
+    spec:
+      operation: read
+      model: Setting
+      query:
+        where:
+          type: default
+
+  - id: data_store-uM1j2K3l
+    type: data_store
+    position: { x: 250, y: 390 }
+    spec:
+      operation: update_many
+      model: Setting
+      fields:
+        - name: value
+          value: "$.defaults"
+        - name: updated_at
+          value: "$.now"
+
+  - id: transaction-tC4m5N6o
+    type: transaction
+    position: { x: 250, y: 520 }
+    spec:
+      operation: commit
+      description: "Commit the settings reset transaction"
+
+  - id: event-sR7p8Q9r
+    type: event
+    position: { x: 250, y: 650 }
+    spec:
+      direction: emit
+      event_name: SettingsReset
+      payload:
+        reset_by: "$.auth.user_id"
+        reset_at: "$.now"
+
+  - id: terminal-sR1s2T3u
+    type: terminal
+    position: { x: 250, y: 780 }
+    spec:
+      status: 200
+      label: "Settings reset to defaults"
+
+  - id: transaction-tR4v5W6x
+    type: transaction
+    position: { x: 550, y: 390 }
+    spec:
+      operation: rollback
+      description: "Rollback transaction on failure"
+
+  - id: terminal-eR7y8Z9a
+    type: terminal
+    position: { x: 550, y: 520 }
+    spec:
+      status: 500
+      label: "Settings reset failed - rolled back"
+      error_code: SETTINGS_RESET_ERROR
+
+connections:
+  - source: trigger-rS1a2B3c
+    target: transaction-tB4d5E6f
+    sourceHandle: ""
+  - source: transaction-tB4d5E6f
+    target: data_store-rD7g8H9i
+    sourceHandle: "success"
+  - source: transaction-tB4d5E6f
+    target: terminal-eR7y8Z9a
+    sourceHandle: "error"
+  - source: data_store-rD7g8H9i
+    target: data_store-uM1j2K3l
+    sourceHandle: "success"
+  - source: data_store-rD7g8H9i
+    target: transaction-tR4v5W6x
+    sourceHandle: "error"
+  - source: data_store-uM1j2K3l
+    target: transaction-tC4m5N6o
+    sourceHandle: "success"
+  - source: data_store-uM1j2K3l
+    target: transaction-tR4v5W6x
+    sourceHandle: "error"
+  - source: transaction-tC4m5N6o
+    target: event-sR7p8Q9r
+    sourceHandle: "committed"
+  - source: transaction-tC4m5N6o
+    target: transaction-tR4v5W6x
+    sourceHandle: "error"
+  - source: transaction-tR4v5W6x
+    target: terminal-eR7y8Z9a
+    sourceHandle: "rolled_back"
+  - source: event-sR7p8Q9r
+    target: terminal-sR1s2T3u
+    sourceHandle: "success"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

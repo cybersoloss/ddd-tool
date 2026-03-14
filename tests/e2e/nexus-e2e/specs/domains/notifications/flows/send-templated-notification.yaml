@@ -1,0 +1,132 @@
+flow:
+  id: send-templated-notification
+  name: "Send Templated Notification"
+  type: traditional
+  domain: notifications
+  description: "Parameterized template-based notification delivery across multiple channels"
+  template: true
+  parameters:
+    channel:
+      type: string
+      values:
+        - email
+        - slack
+        - push
+    template_id:
+      type: string
+    recipient_id:
+      type: string
+
+trigger:
+  id: trigger-tN1a2B3c
+  type: trigger
+  position: { x: 250, y: 0 }
+  spec:
+    event: "event:UserRegistered"
+    label: "User registered"
+
+nodes:
+  - id: data_store-rT4d5E6f
+    type: data_store
+    position: { x: 250, y: 130 }
+    spec:
+      operation: read
+      model: Notification
+      query:
+        where:
+          template_id: "$.template_id"
+
+  - id: transform-mT7g8H9i
+    type: transform
+    position: { x: 250, y: 260 }
+    spec:
+      mode: expression
+      field_mappings:
+        subject: "$.template.subject"
+        body: "$.template.body"
+        recipient: "$.recipient_id"
+        channel: "$.channel"
+
+  - id: service_call-dN1j2K3l
+    type: service_call
+    position: { x: 250, y: 390 }
+    spec:
+      service: NotificationService
+      method: deliver
+      description: "Send notification through the appropriate channel"
+      params:
+        channel: "$.channel"
+        recipient: "$.recipient"
+        subject: "$.subject"
+        body: "$.body"
+
+  - id: data_store-cN4m5N6o
+    type: data_store
+    position: { x: 250, y: 520 }
+    spec:
+      operation: create
+      model: Notification
+      fields:
+        - name: template_id
+          value: "$.template_id"
+        - name: recipient_id
+          value: "$.recipient_id"
+        - name: channel
+          value: "$.channel"
+        - name: status
+          value: "sent"
+        - name: sent_at
+          value: "$.now"
+
+  - id: terminal-sT7p8Q9r
+    type: terminal
+    position: { x: 250, y: 650 }
+    spec:
+      status: 200
+      label: "Templated notification sent"
+
+  - id: terminal-eT1s2T3u
+    type: terminal
+    position: { x: 550, y: 390 }
+    spec:
+      status: 500
+      label: "Service call error"
+      error_code: SERVICE_CALL_ERROR
+
+  - id: terminal-eD4v5W6x
+    type: terminal
+    position: { x: 550, y: 130 }
+    spec:
+      status: 500
+      label: "Data store error"
+      error_code: DATA_STORE_ERROR
+
+connections:
+  - source: trigger-tN1a2B3c
+    target: data_store-rT4d5E6f
+    sourceHandle: ""
+  - source: data_store-rT4d5E6f
+    target: transform-mT7g8H9i
+    sourceHandle: "success"
+  - source: data_store-rT4d5E6f
+    target: terminal-eD4v5W6x
+    sourceHandle: "error"
+  - source: transform-mT7g8H9i
+    target: service_call-dN1j2K3l
+    sourceHandle: "success"
+  - source: service_call-dN1j2K3l
+    target: data_store-cN4m5N6o
+    sourceHandle: "success"
+  - source: service_call-dN1j2K3l
+    target: terminal-eT1s2T3u
+    sourceHandle: "error"
+  - source: data_store-cN4m5N6o
+    target: terminal-sT7p8Q9r
+    sourceHandle: "success"
+  - source: data_store-cN4m5N6o
+    target: terminal-eD4v5W6x
+    sourceHandle: "error"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

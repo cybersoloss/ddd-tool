@@ -1,0 +1,72 @@
+page: review-panel
+route: /editorial/review/:id
+
+sections:
+  - id: content-preview
+    component: detail-card
+    position: main
+    label: "Content"
+    data_source: content/get-content
+    fields:
+      title: { value: "$.title" }
+      body: { value: "$.body" }
+      category: { value: "$.category" }
+      quality_score: { value: "$.quality_score" }
+      bias_score: { value: "$.bias_score" }
+      source: { value: "$.source_type" }
+
+  - id: review-actions
+    component: button-group
+    position: sidebar
+    label: "Review Actions"
+    buttons:
+      - { label: Approve, icon: check, flow: editorial/review-content, args: { action: approve }, variant: primary }
+      - { label: Reject, icon: x, flow: editorial/review-content, args: { action: reject }, variant: danger }
+      - { label: Escalate, icon: arrow-up, flow: editorial/escalate-to-senior, variant: secondary }
+      - { label: Defer, icon: clock, flow: editorial/review-content, args: { action: defer }, variant: secondary }
+
+  - id: ai-findings
+    component: item-list
+    position: sidebar
+    label: "AI Analysis"
+    data_source: content/get-content
+    item_template:
+      title: "$.findings[].type"
+      subtitle: "$.findings[].detail"
+      badge: "$.findings[].severity"
+    empty_state:
+      message: "No AI analysis available"
+      icon: brain
+
+forms:
+  - id: rejection-form
+    label: "Rejection Details"
+    position: sidebar
+    fields:
+      - name: reason
+        type: textarea
+        label: "Rejection Reason"
+        placeholder: "Explain why this content is being rejected..."
+        required_when: { field: action, value: reject }
+      - name: escalate_to
+        type: search-select
+        label: "Escalate To"
+        search_source: users/list-users
+        display_field: email
+        value_field: id
+      - name: notify_author
+        type: toggle
+        label: "Notify Author"
+        default: true
+    submit:
+      flow: editorial/review-content
+      label: "Submit Review"
+      loading_label: "Submitting..."
+      success: { message: "Review submitted", redirect: /editorial }
+      error: { message: "Failed to submit review", retry: true }
+
+state:
+  initial_fetch: [content/get-content, editorial/get-review-stats]
+
+loading: spinner
+error: toast

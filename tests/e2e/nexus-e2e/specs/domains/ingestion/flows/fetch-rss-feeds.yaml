@@ -1,0 +1,161 @@
+flow:
+  id: fetch-rss-feeds
+  name: "Fetch RSS Feeds"
+  type: traditional
+  domain: ingestion
+  description: "Periodically fetches RSS feeds from enabled content sources, deduplicates items, and emits ContentIngested events for each new item."
+  auth: null
+  metrics:
+    - name: ingestion_items_total
+      type: counter
+      labels: [source_type]
+
+trigger:
+  id: trigger-rF1a2B3c
+  type: trigger
+  position: { x: 100, y: 0 }
+  spec:
+    event: "cron */15 * * * *"
+    label: "Every 15 minutes"
+    job_config:
+      queue: ingestion
+      concurrency: 2
+      timeout: 60000
+      retry:
+        max_attempts: 3
+        backoff: exponential
+
+nodes:
+  - id: data_store-dS4e5F6g
+    type: data_store
+    position: { x: 100, y: 130 }
+    spec:
+      operation: read
+      model: ContentSource
+      query:
+        where:
+          type: rss
+          enabled: true
+
+  - id: loop-oL7h8I9j
+    type: loop
+    position: { x: 100, y: 260 }
+    spec:
+      collection: "$.sources"
+      iterator: "source"
+
+  - id: service_call-sC1k2L3m
+    type: service_call
+    position: { x: 100, y: 390 }
+    spec:
+      method: GET
+      url: "$.source.url"
+      capture_headers:
+        - ETag
+        - Last-Modified
+
+  - id: parse-pA4n5O6p
+    type: parse
+    position: { x: 100, y: 520 }
+    spec:
+      format: rss
+
+  - id: collection-cO7q8R9s
+    type: collection
+    position: { x: 100, y: 650 }
+    spec:
+      operation: deduplicate
+      field: "link"
+
+  - id: loop-iL1t2U3v
+    type: loop
+    position: { x: 100, y: 780 }
+    spec:
+      collection: "$.items"
+      iterator: "item"
+
+  - id: data_store-dS4w5X6y
+    type: data_store
+    position: { x: 100, y: 910 }
+    spec:
+      operation: create
+      model: Content
+
+  - id: event-eV7z8A9b
+    type: event
+    position: { x: 100, y: 1040 }
+    spec:
+      direction: emit
+      event_name: ContentIngested
+      dedup_key: "$.link"
+      target_queue: processing
+
+  - id: terminal-tS1c2D3e
+    type: terminal
+    position: { x: 100, y: 1170 }
+    spec:
+      status: 200
+      label: "All feeds processed"
+
+  - id: terminal-tE4f5G6h
+    type: terminal
+    position: { x: 400, y: 390 }
+    spec:
+      status: 500
+      label: "Service call error"
+      error_code: FETCH_ERROR
+
+  - id: terminal-tE7i8J9k
+    type: terminal
+    position: { x: 400, y: 910 }
+    spec:
+      status: 500
+      label: "Data store error"
+      error_code: DATA_STORE_ERROR
+
+connections:
+  - source: trigger-rF1a2B3c
+    target: data_store-dS4e5F6g
+    sourceHandle: ""
+  - source: data_store-dS4e5F6g
+    target: loop-oL7h8I9j
+    sourceHandle: "success"
+  - source: loop-oL7h8I9j
+    target: service_call-sC1k2L3m
+    sourceHandle: "body"
+  - source: service_call-sC1k2L3m
+    target: parse-pA4n5O6p
+    sourceHandle: "success"
+  - source: service_call-sC1k2L3m
+    target: terminal-tE4f5G6h
+    sourceHandle: "error"
+  - source: parse-pA4n5O6p
+    target: collection-cO7q8R9s
+    sourceHandle: "success"
+  - source: collection-cO7q8R9s
+    target: loop-iL1t2U3v
+    sourceHandle: "success"
+  - source: loop-iL1t2U3v
+    target: data_store-dS4w5X6y
+    sourceHandle: "body"
+  - source: data_store-dS4w5X6y
+    target: event-eV7z8A9b
+    sourceHandle: "success"
+  - source: data_store-dS4w5X6y
+    target: terminal-tE7i8J9k
+    sourceHandle: "error"
+  - source: event-eV7z8A9b
+    target: loop-iL1t2U3v
+    sourceHandle: "success"
+    label: "Continue inner loop"
+  - source: loop-iL1t2U3v
+    target: loop-oL7h8I9j
+    sourceHandle: "done"
+    label: "Inner loop done"
+  - source: loop-oL7h8I9j
+    target: terminal-tS1c2D3e
+    sourceHandle: "done"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

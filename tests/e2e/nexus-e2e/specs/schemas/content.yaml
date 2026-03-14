@@ -1,0 +1,101 @@
+name: Content
+description: Central content entity with lifecycle management
+inherits: _base
+fields:
+  - name: title
+    type: string
+    required: true
+    constraints:
+      max_length: 500
+  - name: body
+    type: text
+    required: true
+  - name: summary
+    type: text
+    required: false
+  - name: category
+    type: enum
+    required: true
+    ref: content_category
+  - name: status
+    type: enum
+    required: true
+    ref: content_status
+    default: draft
+  - name: quality_score
+    type: decimal
+    required: false
+  - name: bias_score
+    type: decimal
+    required: false
+  - name: source_type
+    type: string
+    required: true
+  - name: source_id
+    type: string
+    required: false
+  - name: metadata
+    type: json
+    required: false
+  - name: deleted_at
+    type: datetime
+    required: false
+    description: Soft delete timestamp
+
+relationships:
+  - name: versions
+    type: has_many
+    target: ContentVersion
+    foreign_key: content_id
+  - name: rejections
+    type: has_many
+    target: ContentRejection
+    foreign_key: content_id
+  - name: source
+    type: belongs_to
+    target: ContentSource
+    foreign_key: source_id
+  - name: channels
+    type: many_to_many
+    target: Channel
+    through: PublishRecord
+
+indexes:
+  - fields: [title]
+    type: gin
+    description: "Full-text search on title"
+  - fields: [status, created_at]
+    description: "Filter by status sorted by date"
+  - fields: [source_type, source_id]
+    unique: true
+    description: "Prevent duplicate imports from same source"
+  - fields: [deleted_at]
+    description: "Soft delete filtering"
+
+transitions:
+  field: status
+  states:
+    - from: draft
+      to: [review]
+    - from: review
+      to: [approved, rejected]
+    - from: approved
+      to: [published]
+    - from: published
+      to: [archived]
+    - from: rejected
+      to: [draft]
+  on_invalid: reject
+
+seed:
+  - name: sample-content
+    description: "Sample content items for development"
+    strategy: fixture
+    data:
+      - { title: "AI Advances in 2026", body: "Content body here...", category: news, status: draft, source_type: rss }
+      - { title: "Opinion: Future of ML", body: "Opinion piece...", category: opinion, status: review, source_type: web }
+      - { title: "Research Paper Summary", body: "Research summary...", category: research, status: approved, source_type: csv }
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

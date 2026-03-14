@@ -1,0 +1,114 @@
+project_structure:
+  src/:
+    routes/: Express route handlers
+    services/: Business logic (one service file per flow)
+    repositories/: Data access layer (shared across flows)
+    models/: Prisma models
+    middleware/: Auth, validation, error handling
+    utils/: Shared utilities
+    types/: TypeScript type definitions
+    workers/: BullMQ worker definitions
+    agents/: AI agent implementations
+  tests/:
+    unit/: Unit tests
+    integration/: Integration tests
+
+naming_conventions:
+  files: kebab-case
+  classes: PascalCase
+  functions: camelCase
+  variables: camelCase
+  constants: UPPER_SNAKE_CASE
+  database_tables: snake_case
+  api_endpoints: kebab-case
+
+dependencies:
+  runtime:
+    - express: "^4.18"
+    - "@prisma/client": "^5.0"
+    - zod: "^3.22"
+    - jsonwebtoken: "^9.0"
+    - bcrypt: "^5.1"
+    - bullmq: "^5.0"
+    - ioredis: "^5.3"
+    - socket.io: "^4.7"
+    - "@anthropic-ai/sdk": "^0.24"
+    - openai: "^4.0"
+    - rss-parser: "^3.13"
+    - cheerio: "^1.0"
+    - csv-parse: "^5.5"
+    - fast-xml-parser: "^4.3"
+    - marked: "^12.0"
+    - "@sendgrid/mail": "^8.1"
+    - stripe: "^14.0"
+  dev:
+    - vitest: "^1.0"
+    - supertest: "^6.3"
+    - typescript: "^5.3"
+    - prisma: "^5.0"
+    - tsx: "^4.7"
+
+infrastructure:
+  containerization: Docker
+  orchestration: Kubernetes
+  ci_cd: GitHub Actions
+  monitoring: Prometheus + Grafana
+  logging: Pino structured JSON
+
+api_design:
+  versioning: URL prefix (/api/v1)
+  pagination:
+    style: cursor
+    default_limit: 20
+    max_limit: 100
+    response_format:
+      data: "array of items"
+      cursor: "next page cursor"
+      has_more: "boolean"
+  filtering:
+    style: query parameters
+    operators: "eq, ne, gt, gte, lt, lte, in, like"
+  error_format:
+    error:
+      code: "ERROR_CODE"
+      message: "Human-readable message"
+      details: "Optional additional context"
+
+testing:
+  framework: vitest
+  runner: "npx vitest run"
+  coverage_target: 80%
+  patterns:
+    unit: "tests/unit/**/*.test.ts"
+    integration: "tests/integration/**/*.test.ts"
+
+deployment:
+  strategy: rolling update
+  health_check: /api/v1/health
+  readiness_check: /api/v1/ready
+
+cross_cutting_patterns:
+  stealth_http:
+    description: "Rotate User-Agent, randomized delays (1-3s), respect robots.txt"
+    used_by_domains: [ingestion]
+    convention: "Add delay between requests (1-3s), rotate UA header, check robots.txt before fetching"
+  api_key_resolution:
+    description: "Check header -> query param -> env var -> error"
+    used_by_domains: [users, ingestion, processing]
+    convention: "Resolve API key from X-API-Key header, then ?api_key query, then env var"
+  encryption:
+    description: "AES-256 for tokens, bcrypt for passwords, SHA-256 for content hashes"
+    used_by_domains: [users]
+    convention: "Use crypto node with appropriate algorithm per data type"
+  soft_delete:
+    description: "Filter deletedAt: null on all reads"
+    used_by_domains: [content, users]
+    convention: "Add where: { deleted_at: null } to all data_store read operations on soft-delete models"
+  content_hashing:
+    description: "SHA-256 of (source_id + source_type) for deduplication"
+    used_by_domains: [ingestion]
+    convention: "Hash content fingerprint before insert, check for duplicate before write"
+  error_handling:
+    description: "Retry 3x exponential, circuit breaker at 5 failures/minute"
+    used_by_domains: [ingestion, publishing, notifications]
+    convention: "Use connection.behavior: retry on service_call errors, circuit_break on repeated failures"

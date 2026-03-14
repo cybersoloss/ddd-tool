@@ -1,0 +1,34 @@
+name: ContentRejection
+description: Content rejection records with reasons
+inherits: _base
+fields:
+  - name: content_id
+    type: uuid
+    required: true
+  - name: reason
+    type: text
+    required: true
+  - name: rejected_by
+    type: uuid
+    required: true
+  - name: rejected_at
+    type: datetime
+    required: true
+
+relationships:
+  - name: content
+    type: belongs_to
+    target: Content
+    foreign_key: content_id
+  - name: reviewer
+    type: belongs_to
+    target: User
+    foreign_key: rejected_by
+
+indexes:
+  - fields: [content_id]
+    type: btree
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

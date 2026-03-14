@@ -1,0 +1,56 @@
+flow:
+  id: route-notification
+  name: "Route Notification"
+  type: traditional
+  domain: notifications
+  description: "Round-robin orchestrator for routing notifications across channels"
+
+trigger:
+  id: trigger-rN1a2B3c
+  type: trigger
+  position: { x: 250, y: 0 }
+  spec:
+    event: "event:AlertTriggered"
+    label: "Alert triggered for routing"
+
+nodes:
+  - id: orchestrator-oR4d5E6f
+    type: orchestrator
+    position: { x: 250, y: 130 }
+    spec:
+      strategy: round_robin
+      agents:
+        - flow: "notifications/send-realtime-alert"
+          role: "Email Channel"
+        - flow: "notifications/send-batch-digest"
+          role: "Digest Channel"
+
+  - id: terminal-sR7g8H9i
+    type: terminal
+    position: { x: 250, y: 260 }
+    spec:
+      status: 200
+      label: "Notification routed successfully"
+
+  - id: terminal-eR1j2K3l
+    type: terminal
+    position: { x: 550, y: 130 }
+    spec:
+      status: 500
+      label: "Routing error"
+      error_code: ROUTING_ERROR
+
+connections:
+  - source: trigger-rN1a2B3c
+    target: orchestrator-oR4d5E6f
+    sourceHandle: ""
+  - source: orchestrator-oR4d5E6f
+    target: terminal-sR7g8H9i
+    sourceHandle: "success"
+  - source: orchestrator-oR4d5E6f
+    target: terminal-eR1j2K3l
+    sourceHandle: "error"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

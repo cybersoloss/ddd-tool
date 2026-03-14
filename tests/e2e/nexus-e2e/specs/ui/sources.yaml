@@ -1,0 +1,84 @@
+page: sources
+route: /sources
+
+sections:
+  - id: source-filters
+    component: filter-bar
+    position: top
+    label: "Filters"
+    fields:
+      - { key: type, type: select, label: "Type", options: [rss, web, csv, webhook, social, filesystem] }
+      - { key: enabled, type: toggle, label: "Enabled Only" }
+    apply_flow: ingestion/list-sources
+
+  - id: source-grid
+    component: card-grid
+    position: main
+    label: "Sources"
+    data_source: ingestion/list-sources
+    columns: { desktop: 3, tablet: 2, mobile: 1 }
+    item_template:
+      title: "$.name"
+      description: "$.type · Last synced: $.last_synced_at"
+      footer: "$.url"
+    item_actions:
+      - { label: Edit, icon: edit, flow: ingestion/update-source }
+      - { label: Disable, icon: power, flow: ingestion/update-source, args: { enabled: false }, confirm: true, confirm_message: "Disable this source?" }
+      - { label: Delete, icon: trash, flow: ingestion/delete-source, confirm: true, confirm_message: "Delete this source?", variant: danger }
+    interactions:
+      - pattern: reorder
+        update_flow: ingestion/reorder-sources
+      - pattern: inline-edit
+        editable_fields: ["enabled"]
+        update_flow: ingestion/update-source
+    empty_state:
+      message: "No sources configured"
+      icon: rss
+      action: { label: "Add a source" }
+
+  - id: source-actions
+    component: button-group
+    position: top
+    label: "Actions"
+    buttons:
+      - { label: "Add Source", icon: plus, variant: primary }
+
+forms:
+  - id: add-source
+    label: "Add Source"
+    position: sidebar
+    fields:
+      - { name: name, type: text, label: "Name", required: true, placeholder: "Source name" }
+      - { name: url, type: text, label: "URL", placeholder: "https://..." }
+      - name: type
+        type: select
+        label: "Type"
+        required: true
+        options: [rss, web, csv, webhook, social, filesystem]
+      - { name: enabled, type: toggle, label: "Enabled", default: true }
+      - name: allowed_domains
+        type: tag-input
+        label: "Allowed Domains"
+        autocomplete_source: ingestion/list-known-domains
+        autocomplete_field: domain
+      - { name: rate_limit, type: number, label: "Rate Limit (req/min)", default: 10 }
+      - { name: label_color, type: color, label: "Label Color", default: "#2563eb" }
+      - name: credentials
+        type: text
+        label: "Credentials"
+        visible_when: { field: type, value: [social, webhook] }
+        placeholder: "API key or secret"
+        options_depends_on: { field: type, transform: set_options, source_field: type }
+      - { name: start_date, type: date, label: "Fetch From Date" }
+    submit:
+      flow: ingestion/create-source
+      label: "Create Source"
+      loading_label: "Creating..."
+      success: { message: "Source created successfully" }
+      error: { message: "Failed to create source", retry: true }
+
+state:
+  initial_fetch: [ingestion/list-sources]
+
+loading: skeleton
+error: retry-banner

@@ -1,0 +1,123 @@
+name: Publishing
+description: "Multi-channel content distribution"
+role: process
+
+depends_on:
+  - domain: content
+    reason: "Reads content to publish"
+    flows_affected:
+      - publish-content
+      - publish-to-website
+      - publish-to-social
+      - publish-to-newsletter
+
+owns_schemas:
+  - PublishRecord
+  - Channel
+  - Schedule
+
+flows:
+  - id: publish-content
+    name: "Publish Content"
+    description: "Orchestrates content publishing across configured channels"
+    type: traditional
+    tags:
+      - internal
+    criticality: high
+
+  - id: publish-to-website
+    name: "Publish To Website"
+    description: "Publish content to website CMS via API"
+    type: traditional
+    tags:
+      - internal
+
+  - id: publish-to-social
+    name: "Publish To Social"
+    description: "Distribute content to social media platforms"
+    type: traditional
+    tags:
+      - internal
+
+  - id: publish-to-newsletter
+    name: "Publish To Newsletter"
+    description: "Include content in email newsletter distribution"
+    type: traditional
+    tags:
+      - internal
+
+  - id: schedule-publication
+    name: "Schedule Publication"
+    description: "Schedule content for future publication"
+    type: traditional
+    tags:
+      - public-api
+
+  - id: retry-failed-publish
+    name: "Retry Failed Publish"
+    description: "Retry previously failed publication attempts with backoff"
+    type: traditional
+    tags:
+      - internal
+
+  - id: broadcast-metric-update
+    name: "Broadcast Metric Update"
+    description: "Broadcast publishing metrics via WebSocket to dashboards"
+    type: traditional
+    tags:
+      - internal
+
+publishes_events:
+  - event: ContentPublished
+    from_flow: publish-content
+    description: "Content successfully published to channels"
+    payload:
+      content_id: uuid
+      channel_ids: "uuid[]"
+      published_at: datetime
+
+  - event: PublishFailed
+    from_flow: publish-to-social
+    description: "Content publication failed on a channel"
+    payload:
+      content_id: uuid
+      channel_id: uuid
+      error: string
+      attempts: number
+
+consumes_events:
+  - event: ContentApproved
+    handled_by_flow: publish-content
+    description: "Publish content when approved by editorial"
+    payload:
+      content_id: uuid
+      approved_by: uuid
+      approved_at: datetime
+
+  - event: PublishFailed
+    handled_by_flow: retry-failed-publish
+    description: "Retry failed publications"
+    payload:
+      content_id: uuid
+      channel_id: uuid
+      error: string
+      attempts: number
+
+  - event: ContentPublished
+    handled_by_flow: broadcast-metric-update
+    description: "Broadcast metrics when content is published"
+    payload:
+      content_id: uuid
+      channel_ids: "uuid[]"
+      published_at: datetime
+
+layout:
+  flows:
+    publish-content: { x: 100, y: 100 }
+    publish-to-website: { x: 100, y: 300 }
+    publish-to-social: { x: 100, y: 500 }
+    publish-to-newsletter: { x: 100, y: 700 }
+    schedule-publication: { x: 100, y: 900 }
+    retry-failed-publish: { x: 100, y: 1100 }
+    broadcast-metric-update: { x: 100, y: 1300 }
+  portals: {}

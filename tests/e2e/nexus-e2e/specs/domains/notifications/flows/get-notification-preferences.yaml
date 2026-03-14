@@ -1,0 +1,92 @@
+flow:
+  id: get-notification-preferences
+  name: "Get Notification Preferences"
+  type: traditional
+  domain: notifications
+  description: "Retrieves user notification preferences with Redis caching"
+  auth:
+    required: true
+    strategy: jwt
+
+trigger:
+  id: trigger-gP1a2B3c
+  type: trigger
+  position: { x: 250, y: 0 }
+  spec:
+    event: "http GET /api/v1/notifications/preferences"
+    label: "Get notification preferences endpoint"
+
+nodes:
+  - id: cache-cP4d5E6f
+    type: cache
+    position: { x: 250, y: 130 }
+    spec:
+      operation: get
+      key: "notif-prefs:$.user_id"
+      store: redis
+
+  - id: terminal-hP7g8H9i
+    type: terminal
+    position: { x: 550, y: 130 }
+    spec:
+      status: 200
+      label: "Cache hit - return cached preferences"
+
+  - id: data_store-rP1j2K3l
+    type: data_store
+    position: { x: 250, y: 260 }
+    spec:
+      operation: read
+      model: Notification
+      query:
+        where:
+          user_id: "$.auth.user_id"
+          type: preferences
+
+  - id: cache-sP4m5N6o
+    type: cache
+    position: { x: 250, y: 390 }
+    spec:
+      operation: set
+      key: "notif-prefs:$.user_id"
+      store: redis
+      ttl_ms: 300000
+
+  - id: terminal-sP7p8Q9r
+    type: terminal
+    position: { x: 250, y: 520 }
+    spec:
+      status: 200
+      label: "Preferences retrieved"
+
+  - id: terminal-eP1s2T3u
+    type: terminal
+    position: { x: 550, y: 260 }
+    spec:
+      status: 500
+      label: "Data store error"
+      error_code: PREFERENCES_READ_ERROR
+
+connections:
+  - source: trigger-gP1a2B3c
+    target: cache-cP4d5E6f
+    sourceHandle: ""
+  - source: cache-cP4d5E6f
+    target: terminal-hP7g8H9i
+    sourceHandle: "hit"
+  - source: cache-cP4d5E6f
+    target: data_store-rP1j2K3l
+    sourceHandle: "miss"
+  - source: data_store-rP1j2K3l
+    target: cache-sP4m5N6o
+    sourceHandle: "success"
+  - source: data_store-rP1j2K3l
+    target: terminal-eP1s2T3u
+    sourceHandle: "error"
+  - source: cache-sP4m5N6o
+    target: terminal-sP7p8Q9r
+    sourceHandle: "success"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

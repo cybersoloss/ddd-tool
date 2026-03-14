@@ -1,0 +1,195 @@
+name: nexus
+version: "1.0.0"
+description: AI-powered content intelligence platform
+
+tech_stack:
+  language: TypeScript
+  runtime: Node.js 20
+  framework: Express 4
+  frontend: Next.js 14
+  database: PostgreSQL 16
+  orm: Prisma
+  cache: Redis 7
+  queue: BullMQ
+  auth: JWT + bcrypt
+  ui: shadcn/ui
+  state: Zustand
+
+environments:
+  - name: development
+    url: http://localhost:3000
+  - name: staging
+    url: https://staging.nexus.example.com
+  - name: production
+    url: https://api.nexus.example.com
+
+zones:
+  - id: ingestion-zone
+    name: Ingestion
+    domains: [ingestion, monitoring]
+  - id: processing-zone
+    name: Processing
+    domains: [processing]
+  - id: editorial-zone
+    name: Editorial
+    domains: [editorial]
+  - id: distribution-zone
+    name: Distribution
+    domains: [publishing, notifications]
+  - id: data-zone
+    name: Data
+    domains: [content, analytics, users, settings]
+
+integrations:
+  twitter_api:
+    base_url: "https://api.twitter.com/2"
+    auth:
+      method: oauth2
+      credentials_env: TWITTER_BEARER_TOKEN
+    rate_limits:
+      requests_per_window: 300
+      window_seconds: 900
+    retry:
+      max_attempts: 3
+      backoff_ms: 1000
+      strategy: exponential
+    timeout_ms: 15000
+    used_by_domains: [ingestion, publishing]
+
+  sendgrid:
+    base_url: "https://api.sendgrid.com/v3"
+    auth:
+      method: api_key
+      credentials_env: SENDGRID_API_KEY
+    rate_limits:
+      requests_per_second: 100
+    retry:
+      max_attempts: 3
+      backoff_ms: 2000
+    timeout_ms: 15000
+    used_by_domains: [notifications, publishing]
+
+  google_cse:
+    base_url: "https://www.googleapis.com/customsearch/v1"
+    auth:
+      method: api_key
+      credentials_env: GOOGLE_CSE_API_KEY
+    rate_limits:
+      requests_per_window: 100
+      window_seconds: 86400
+    timeout_ms: 10000
+    used_by_domains: [processing]
+
+  stripe:
+    base_url: "https://api.stripe.com/v1"
+    auth:
+      method: api_key
+      credentials_env: STRIPE_SECRET_KEY
+    rate_limits:
+      requests_per_second: 25
+    timeout_ms: 30000
+    used_by_domains: [users]
+
+  anthropic:
+    base_url: "https://api.anthropic.com/v1"
+    auth:
+      method: api_key
+      credentials_env: ANTHROPIC_API_KEY
+    rate_limits:
+      requests_per_window: 60
+      window_seconds: 60
+    retry:
+      max_attempts: 2
+      backoff_ms: 5000
+    timeout_ms: 120000
+    used_by_domains: [processing]
+
+  openai:
+    base_url: "https://api.openai.com/v1"
+    auth:
+      method: api_key
+      credentials_env: OPENAI_API_KEY
+    rate_limits:
+      requests_per_window: 60
+      window_seconds: 60
+    retry:
+      max_attempts: 2
+      backoff_ms: 5000
+    timeout_ms: 120000
+    used_by_domains: [processing]
+
+ws_topology:
+  - channel: "publishing"
+    producer_flow: "publishing/broadcast-metric-update"
+    consumer_pages: ["dashboard", "publishing"]
+  - channel: "dashboard"
+    producer_flow: "analytics/broadcast-dashboard-update"
+    consumer_pages: ["dashboard", "analytics"]
+  - channel: "content"
+    producer_flow: "content/drag-reorder"
+    consumer_pages: ["content-feed"]
+  - channel: "editorial"
+    producer_flow: "editorial/list-editorial-queue"
+    consumer_pages: ["editorial-queue"]
+
+schedules:
+  - frequency: "*/15 * * * *"
+    label: "Every 15 minutes"
+    flows: [ingestion/fetch-rss-feeds]
+  - frequency: "0 */4 * * *"
+    label: "Every 4 hours"
+    flows: [ingestion/scrape-web-content]
+  - frequency: "*/30 * * * *"
+    label: "Every 30 minutes"
+    flows: [ingestion/monitor-social-feeds]
+  - frequency: "0 * * * *"
+    label: "Every hour"
+    flows: [processing/summarize-batch]
+  - frequency: "0 2 * * *"
+    label: "Daily at 2am"
+    flows: [analytics/generate-daily-report]
+  - frequency: "0 6 * * 1"
+    label: "Monday 6am"
+    flows: [analytics/generate-weekly-digest]
+
+data_flows:
+  - from: ingestion-zone
+    to: processing-zone
+    label: "ContentIngested events"
+    volume: high
+  - from: processing-zone
+    to: editorial-zone
+    label: "ContentClassified events"
+    volume: high
+  - from: editorial-zone
+    to: distribution-zone
+    label: "ContentApproved events"
+    volume: medium
+  - from: distribution-zone
+    to: data-zone
+    label: "ContentPublished events"
+    volume: medium
+  - from: data-zone
+    to: processing-zone
+    label: "ContentUpdated events"
+    volume: low
+    style: dashed
+
+characteristics:
+  - "Event-driven"
+  - "Multi-agent AI pipeline"
+  - "6 cron schedules"
+  - "6 external APIs"
+  - "Real-time WebSocket analytics"
+  - "Multi-channel publishing"
+
+pipelines:
+  - id: content-pipeline
+    name: Content Processing Pipeline
+    description: "End-to-end from ingestion to publication"
+    steps:
+      - { domain: ingestion, flow: fetch-rss-feeds, event_out: ContentIngested }
+      - { domain: processing, flow: classify-content, event_out: ContentClassified }
+      - { domain: editorial, flow: review-content, event_out: ContentApproved }
+      - { domain: publishing, flow: publish-content, event_out: ContentPublished }
+    spans_domains: [ingestion, processing, editorial, publishing]

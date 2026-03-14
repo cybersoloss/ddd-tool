@@ -1,0 +1,103 @@
+flow:
+  id: create-content
+  name: Create Content
+  description: Creates new content with validation and emits ContentCreated event
+  type: traditional
+  domain: content
+  version: "1.0.0"
+  trigger:
+    type: http
+    method: POST
+    path: /api/v1/content
+  auth:
+    required: true
+    strategy: jwt
+
+nodes:
+  - id: trigger-e3f4g5h6
+    type: trigger
+    name: HTTP POST Create Content
+    config:
+      method: POST
+      path: /api/v1/content
+
+  - id: input-i7j8k9l0
+    type: input
+    name: Validate Content Input
+    config:
+      fields:
+        - name: title
+          type: string
+          required: true
+        - name: body
+          type: string
+          required: true
+        - name: category
+          type: string
+          required: true
+
+  - id: data_store-m1n2o3p4
+    type: data_store
+    name: Create Content Record
+    config:
+      operation: create
+      model: Content
+      data:
+        title: "$.title"
+        body: "$.body"
+        category: "$.category"
+        status: draft
+
+  - id: event-q5r6s7t8
+    type: event
+    name: Emit ContentCreated
+    config:
+      event_name: ContentCreated
+      payload:
+        content_id: "$.content.id"
+
+  - id: terminal-u9v0w1x2
+    type: terminal
+    name: Content Created
+    config:
+      status: 201
+      response_type: json
+
+  - id: terminal-y3z4a5b6
+    type: terminal
+    name: Validation Error
+    config:
+      status: 422
+      response_type: error
+
+  - id: terminal-c7d8e9f0
+    type: terminal
+    name: Data Store Error
+    config:
+      status: 500
+      response_type: error
+
+connections:
+  - from: trigger-e3f4g5h6
+    to: input-i7j8k9l0
+
+  - from: input-i7j8k9l0
+    to: data_store-m1n2o3p4
+
+  - from: input-i7j8k9l0
+    to: terminal-y3z4a5b6
+    handle: invalid
+
+  - from: data_store-m1n2o3p4
+    to: event-q5r6s7t8
+
+  - from: data_store-m1n2o3p4
+    to: terminal-c7d8e9f0
+    handle: error
+
+  - from: event-q5r6s7t8
+    to: terminal-u9v0w1x2
+
+metadata:
+  created_at: "2026-03-14T00:00:00Z"
+  updated_at: "2026-03-14T00:00:00Z"

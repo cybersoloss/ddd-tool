@@ -1,0 +1,66 @@
+page: users-admin
+route: /admin/users
+
+sections:
+  - id: user-header
+    component: page-header
+    position: top
+    label: "User Management"
+    fields:
+      title: "Users"
+      subtitle: "$.total_users total users"
+
+  - id: user-filters
+    component: filter-bar
+    position: top
+    label: "Filters"
+    fields:
+      - { key: role, type: select, label: "Role", options: [admin, editor, reviewer, viewer] }
+      - { key: plan, type: select, label: "Plan", options: [free, pro, enterprise] }
+    apply_flow: users/list-users
+
+  - id: user-list
+    component: item-list
+    position: main
+    label: "Users"
+    data_source: users/list-users
+    item_template:
+      title: "$.email"
+      subtitle: "$.role · $.plan"
+      badge: "$.plan"
+      timestamp: "$.created_at"
+    item_actions:
+      - { label: "Change Role", icon: shield, flow: users/update-user-role }
+      - { label: Delete, icon: trash, flow: users/delete-user, args: { id: "$.id" }, confirm: true, confirm_message: "Delete this user? This action cannot be undone.", variant: danger }
+    interactions:
+      - pattern: bulk-select
+        actions:
+          - { label: "Bulk Change Role", flow: users/update-user-role }
+      - pattern: inline-edit
+        editable_fields: ["role"]
+        update_flow: users/update-user-role
+    empty_state:
+      message: "No users found"
+      icon: users
+
+forms:
+  - id: invite-user
+    label: "Invite User"
+    position: sidebar
+    fields:
+      - { name: email, type: text, label: "Email", required: true, placeholder: "user@example.com", validation: "email" }
+      - { name: role, type: select, label: "Role", required: true, options: [admin, editor, reviewer, viewer], default: viewer }
+      - { name: plan, type: select, label: "Plan", required: true, options: [free, pro, enterprise], default: free }
+      - { name: access_expires, type: date, label: "Access Expires" }
+    submit:
+      flow: users/register-user
+      label: "Send Invite"
+      loading_label: "Inviting..."
+      success: { message: "User invited", redirect: /admin/users }
+      error: { message: "Failed to invite", retry: true }
+
+state:
+  initial_fetch: [users/list-users]
+
+loading: skeleton
+error: error-page

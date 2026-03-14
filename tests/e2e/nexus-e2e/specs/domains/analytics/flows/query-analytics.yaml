@@ -1,0 +1,133 @@
+flow:
+  id: query-analytics
+  name: "Query Analytics"
+  type: traditional
+  domain: analytics
+  description: "Query analytics data with Redis caching, grouping, and aggregation"
+  auth:
+    required: true
+    strategy: jwt
+
+trigger:
+  id: trigger-qA1a2B3c
+  type: trigger
+  position: { x: 250, y: 0 }
+  spec:
+    event: "http GET /api/v1/analytics"
+    label: "Query analytics endpoint"
+
+nodes:
+  - id: cache-cK4d5E6f
+    type: cache
+    position: { x: 250, y: 130 }
+    spec:
+      operation: get
+      key: "analytics:$.query_hash"
+      store: redis
+
+  - id: terminal-hT7g8H9i
+    type: terminal
+    position: { x: 550, y: 130 }
+    spec:
+      status: 200
+      label: "Cache hit - return cached analytics"
+
+  - id: data_store-rD1j2K3l
+    type: data_store
+    position: { x: 250, y: 260 }
+    spec:
+      operation: read
+      model: AnalyticsEvent
+
+  - id: collection-gB4m5N6o
+    type: collection
+    position: { x: 250, y: 390 }
+    spec:
+      operation: group_by
+      field: "event_type"
+
+  - id: collection-aG7p8Q9r
+    type: collection
+    position: { x: 250, y: 520 }
+    spec:
+      operation: aggregate
+      functions:
+        - function: count
+          field: id
+          alias: total
+        - function: avg
+          field: processing_time
+          alias: avg_time
+
+  - id: data_store-aD1s2T3u
+    type: data_store
+    position: { x: 250, y: 650 }
+    spec:
+      operation: aggregate
+      model: AnalyticsEvent
+      aggregate_fields:
+        - function: count
+          field: id
+          alias: total_count
+      group_by:
+        - event_type
+
+  - id: cache-sT4v5W6x
+    type: cache
+    position: { x: 250, y: 780 }
+    spec:
+      operation: set
+      key: "analytics:$.query_hash"
+      store: redis
+      ttl_ms: 60000
+
+  - id: terminal-sR7y8Z9a
+    type: terminal
+    position: { x: 250, y: 910 }
+    spec:
+      status: 200
+      label: "Analytics data returned"
+
+  - id: terminal-eQ1b2C3d
+    type: terminal
+    position: { x: 550, y: 260 }
+    spec:
+      status: 500
+      label: "Data store error"
+      error_code: DATA_STORE_ERROR
+
+connections:
+  - source: trigger-qA1a2B3c
+    target: cache-cK4d5E6f
+    sourceHandle: ""
+  - source: cache-cK4d5E6f
+    target: terminal-hT7g8H9i
+    sourceHandle: "hit"
+  - source: cache-cK4d5E6f
+    target: data_store-rD1j2K3l
+    sourceHandle: "miss"
+  - source: data_store-rD1j2K3l
+    target: collection-gB4m5N6o
+    sourceHandle: "success"
+  - source: data_store-rD1j2K3l
+    target: terminal-eQ1b2C3d
+    sourceHandle: "error"
+  - source: collection-gB4m5N6o
+    target: collection-aG7p8Q9r
+    sourceHandle: "result"
+  - source: collection-aG7p8Q9r
+    target: data_store-aD1s2T3u
+    sourceHandle: "result"
+  - source: data_store-aD1s2T3u
+    target: cache-sT4v5W6x
+    sourceHandle: "success"
+  - source: data_store-aD1s2T3u
+    target: terminal-eQ1b2C3d
+    sourceHandle: "error"
+  - source: cache-sT4v5W6x
+    target: terminal-sR7y8Z9a
+    sourceHandle: "success"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

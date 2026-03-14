@@ -1,0 +1,130 @@
+flow:
+  id: bulk-approve
+  name: Bulk Approve
+  description: Approves multiple content items in a single transaction and emits events for each
+  type: traditional
+  domain: editorial
+  version: "1.0.0"
+  trigger:
+    type: http
+    method: POST
+    path: /api/v1/editorial/bulk-approve
+  auth:
+    required: true
+    strategy: jwt
+    roles:
+      - admin
+      - editor
+
+nodes:
+  - id: trigger-p3q4r5s6
+    type: trigger
+    name: HTTP POST Bulk Approve
+    config:
+      method: POST
+      path: /api/v1/editorial/bulk-approve
+
+  - id: input-t7u8v9w0
+    type: input
+    name: Validate Content IDs
+    config:
+      fields:
+        - name: content_ids
+          type: array
+          required: true
+
+  - id: transaction-x1y2z3a4
+    type: transaction
+    name: Bulk Approve Transaction
+    config:
+      isolation_level: read_committed
+
+  - id: data_store-b5c6d7e8
+    type: data_store
+    name: Update Many Content Approved
+    config:
+      operation: update_many
+      model: Content
+      query:
+        id:
+          in: "$.content_ids"
+      set:
+        status: approved
+      returning: true
+
+  - id: loop-f9g0h1i2
+    type: loop
+    name: Emit Events for Each
+    config:
+      collection: "$.updated"
+      iterator: "item"
+
+  - id: event-j3k4l5m6
+    type: event
+    name: Emit ContentApproved
+    config:
+      event_name: ContentApproved
+      payload:
+        content_id: "$.item.id"
+
+  - id: terminal-n7o8p9q0
+    type: terminal
+    name: Bulk Approve Success
+    config:
+      status: 200
+      response_type: json
+
+  - id: terminal-r1s2t3u4
+    type: terminal
+    name: Validation Error
+    config:
+      status: 422
+      response_type: error
+
+  - id: terminal-v5w6x7y8
+    type: terminal
+    name: Transaction Rolled Back
+    config:
+      status: 500
+      response_type: error
+
+connections:
+  - from: trigger-p3q4r5s6
+    to: input-t7u8v9w0
+
+  - from: input-t7u8v9w0
+    to: transaction-x1y2z3a4
+
+  - from: input-t7u8v9w0
+    to: terminal-r1s2t3u4
+    handle: invalid
+
+  - from: transaction-x1y2z3a4
+    to: data_store-b5c6d7e8
+
+  - from: data_store-b5c6d7e8
+    to: loop-f9g0h1i2
+
+  - from: loop-f9g0h1i2
+    to: event-j3k4l5m6
+    handle: body
+
+  - from: event-j3k4l5m6
+    to: loop-f9g0h1i2
+    label: next iteration
+
+  - from: loop-f9g0h1i2
+    to: terminal-n7o8p9q0
+    handle: done
+
+  - from: transaction-x1y2z3a4
+    to: terminal-n7o8p9q0
+    handle: committed
+
+  - from: transaction-x1y2z3a4
+    to: terminal-v5w6x7y8
+    handle: rolled_back
+
+metadata:
+  created_at: "2026-03-14T00:00:00Z"
+  updated_at: "2026-03-14T00:00:00Z"

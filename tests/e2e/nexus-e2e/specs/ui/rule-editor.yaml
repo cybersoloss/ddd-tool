@@ -1,0 +1,64 @@
+page: rule-editor
+route: /settings/rules
+
+sections:
+  - id: rule-tree
+    component: tree-view
+    position: main
+    label: "Rules"
+    data_source: settings/manage-rules
+    fields:
+      children: "$.rules[].children"
+      label: "$.rules[].name"
+      icon: "$.rules[].type_icon"
+    collapsible: true
+    default_expanded_depth: 2
+    item_actions:
+      - { label: Edit, icon: edit, flow: settings/manage-rules, args: { action: edit, id: "$.id" } }
+      - { label: Delete, icon: trash, flow: settings/manage-rules, args: { action: delete, id: "$.id" }, confirm: true, confirm_message: "Delete this rule?" }
+      - { label: Toggle, icon: power, flow: settings/manage-rules, args: { action: toggle, id: "$.id" } }
+
+  - id: rule-detail
+    component: detail-card
+    position: sidebar
+    label: "Rule Details"
+    data_source: settings/manage-rules
+    fields:
+      name: { value: "$.selected_rule.name" }
+      type: { value: "$.selected_rule.type" }
+      priority: { value: "$.selected_rule.priority" }
+      enabled: { value: "$.selected_rule.enabled" }
+
+forms:
+  - id: rule-form
+    label: "Edit Rule"
+    position: sidebar
+    fields:
+      - { name: type, type: select, label: "Rule Type", required: true, options: [ingestion, routing, publishing] }
+      - name: conditions
+        type: repeating_group
+        label: "Conditions"
+        repeating_group:
+          columns:
+            - { name: field, type: text, label: "Field", required: true }
+            - { name: operator, type: select, label: "Operator", options: [eq, ne, gt, gte, lt, lte, in, like], required: true }
+            - { name: value, type: text, label: "Value", required: true }
+          min_rows: 1
+          max_rows: 10
+          add_label: "Add condition"
+          remove_label: "Remove"
+      - { name: action, type: select, label: "Action", required: true, options: [allow, block, route, transform, flag] }
+      - { name: priority, type: number, label: "Priority", required: true, default: 0 }
+      - { name: enabled, type: toggle, label: "Enabled", default: true }
+    submit:
+      flow: settings/manage-rules
+      label: "Save Rule"
+      loading_label: "Saving..."
+      success: { message: "Rule saved" }
+      error: { message: "Failed to save rule", retry: true }
+
+state:
+  initial_fetch: [settings/manage-rules]
+
+loading: skeleton
+error: toast

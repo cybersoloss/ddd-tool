@@ -1,0 +1,44 @@
+page: general-settings
+route: /settings/general
+
+sections:
+  - id: settings-form-section
+    component: detail-card
+    position: main
+    label: "System Settings"
+    data_source: settings/get-settings
+    fields:
+      app_name: { value: "$.app_name" }
+      support_email: { value: "$.support_email" }
+
+forms:
+  - id: settings-form
+    label: "General Settings"
+    position: main
+    fields:
+      - { name: app_name, type: text, label: "App Name", required: true, placeholder: "Nexus" }
+      - { name: support_email, type: text, label: "Support Email", required: true, validation: "email" }
+      - { name: rate_limit, type: number, label: "Rate Limit (req/min)", default: 60 }
+      - { name: batch_size, type: number, label: "Batch Size", default: 50 }
+      - { name: feature_ai_review, type: toggle, label: "AI Review Enabled", default: true }
+      - { name: feature_auto_publish, type: toggle, label: "Auto-Publish Enabled", default: false }
+      - { name: timezone, type: select, label: "Timezone", options: ["UTC", "America/New_York", "America/Chicago", "America/Los_Angeles", "Europe/London", "Europe/Berlin", "Asia/Tokyo"] }
+      - { name: language, type: select, label: "Language", options: [en, es, fr, de, ja] }
+      - { name: quality_threshold, type: slider, label: "Quality Threshold", default: 70, validation: "0-100" }
+      - { name: brand_color, type: color, label: "Brand Color", default: "#2563eb" }
+      - name: terms_of_service
+        type: markdown
+        label: "Terms of Service"
+        markdown_config: { mode: toggle, min_height: 200 }
+    submit:
+      flow: settings/update-settings
+      label: "Save Settings"
+      loading_label: "Saving..."
+      success: { message: "Settings saved" }
+      error: { message: "Failed to save settings", retry: true }
+
+state:
+  initial_fetch: [settings/get-settings]
+
+loading: spinner
+error: toast

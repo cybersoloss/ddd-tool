@@ -1,0 +1,129 @@
+flow:
+  id: scrape-web-content
+  name: "Scrape Web Content"
+  type: traditional
+  domain: ingestion
+  description: "Crawls enabled web content sources on a schedule, parses HTML content using CSS selectors, filters duplicates, and emits ContentIngested events."
+  pattern_governed: stealth_http
+
+trigger:
+  id: trigger-wS1a2B3c
+  type: trigger
+  position: { x: 100, y: 0 }
+  spec:
+    event: "cron 0 */4 * * *"
+    label: "Every 4 hours"
+
+nodes:
+  - id: data_store-dR4d5E6f
+    type: data_store
+    position: { x: 100, y: 130 }
+    spec:
+      operation: read
+      model: ContentSource
+      query:
+        where:
+          type: web
+          enabled: true
+
+  - id: loop-lP7g8H9i
+    type: loop
+    position: { x: 100, y: 260 }
+    spec:
+      collection: "$.sources"
+      iterator: "source"
+
+  - id: service_call-sC1j2K3l
+    type: service_call
+    position: { x: 100, y: 390 }
+    spec:
+      method: GET
+      url: "$.source.url"
+      request_config:
+        headers:
+          User-Agent: "$.rotated_ua"
+        timeout_ms: 10000
+
+  - id: parse-pH4m5N6o
+    type: parse
+    position: { x: 100, y: 520 }
+    spec:
+      format: html
+      selectors:
+        title: "h1"
+        body: ".article-body"
+        date: "time"
+
+  - id: collection-cF7p8Q9r
+    type: collection
+    position: { x: 100, y: 650 }
+    spec:
+      operation: filter
+      condition: "$.url not in existing_urls"
+
+  - id: data_store-dC1s2T3u
+    type: data_store
+    position: { x: 100, y: 780 }
+    spec:
+      operation: create
+      model: Content
+
+  - id: event-eI4v5W6x
+    type: event
+    position: { x: 100, y: 910 }
+    spec:
+      direction: emit
+      event_name: ContentIngested
+
+  - id: terminal-tS7y8Z9a
+    type: terminal
+    position: { x: 100, y: 1040 }
+    spec:
+      status: 200
+      label: "All sources scraped"
+
+  - id: terminal-tE1b2C3d
+    type: terminal
+    position: { x: 400, y: 390 }
+    spec:
+      status: 500
+      label: "Scrape failed after retry"
+      error_code: SCRAPE_ERROR
+
+connections:
+  - source: trigger-wS1a2B3c
+    target: data_store-dR4d5E6f
+    sourceHandle: ""
+  - source: data_store-dR4d5E6f
+    target: loop-lP7g8H9i
+    sourceHandle: "success"
+  - source: loop-lP7g8H9i
+    target: service_call-sC1j2K3l
+    sourceHandle: "body"
+  - source: service_call-sC1j2K3l
+    target: parse-pH4m5N6o
+    sourceHandle: "success"
+  - source: service_call-sC1j2K3l
+    target: terminal-tE1b2C3d
+    sourceHandle: "error"
+    behavior: retry
+  - source: parse-pH4m5N6o
+    target: collection-cF7p8Q9r
+    sourceHandle: "success"
+  - source: collection-cF7p8Q9r
+    target: data_store-dC1s2T3u
+    sourceHandle: "success"
+  - source: data_store-dC1s2T3u
+    target: event-eI4v5W6x
+    sourceHandle: "success"
+  - source: event-eI4v5W6x
+    target: loop-lP7g8H9i
+    sourceHandle: "success"
+    label: "Continue loop"
+  - source: loop-lP7g8H9i
+    target: terminal-tS7y8Z9a
+    sourceHandle: "done"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

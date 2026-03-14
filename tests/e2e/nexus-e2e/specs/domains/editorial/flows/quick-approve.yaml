@@ -1,0 +1,87 @@
+flow:
+  id: quick-approve
+  name: Quick Approve
+  description: Keyboard shortcut to quickly approve the current content item
+  type: traditional
+  domain: editorial
+  version: "1.0.0"
+  trigger:
+    type: shortcut
+    shortcut: "Cmd+Shift+A"
+    debounce_ms: 300
+  auth: null
+
+nodes:
+  - id: trigger-z1a2b3c4
+    type: trigger
+    name: Shortcut Trigger
+    config:
+      shortcut: "Cmd+Shift+A"
+      debounce_ms: 300
+
+  - id: data_store-d5e6f7g8
+    type: data_store
+    name: Read Current Item
+    config:
+      operation: read
+      model: Content
+      query:
+        id: "$.current_content_id"
+
+  - id: data_store-h9i0j1k2
+    type: data_store
+    name: Update Status Approved
+    config:
+      operation: update
+      model: Content
+      query:
+        id: "$.content.id"
+      set:
+        status: approved
+
+  - id: event-l3m4n5o6
+    type: event
+    name: Emit ContentApproved
+    config:
+      event_name: ContentApproved
+      payload:
+        content_id: "$.content.id"
+
+  - id: terminal-p7q8r9s0
+    type: terminal
+    name: Quick Approve Success
+    config:
+      status: 200
+      response_type: success
+
+  - id: terminal-t1u2v3w4
+    type: terminal
+    name: Data Store Error
+    config:
+      status: 500
+      response_type: error
+
+connections:
+  - from: trigger-z1a2b3c4
+    to: data_store-d5e6f7g8
+
+  - from: data_store-d5e6f7g8
+    to: data_store-h9i0j1k2
+
+  - from: data_store-d5e6f7g8
+    to: terminal-t1u2v3w4
+    handle: error
+
+  - from: data_store-h9i0j1k2
+    to: event-l3m4n5o6
+
+  - from: data_store-h9i0j1k2
+    to: terminal-t1u2v3w4
+    handle: error
+
+  - from: event-l3m4n5o6
+    to: terminal-p7q8r9s0
+
+metadata:
+  created_at: "2026-03-14T00:00:00Z"
+  updated_at: "2026-03-14T00:00:00Z"

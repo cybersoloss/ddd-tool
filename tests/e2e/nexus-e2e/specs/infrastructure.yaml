@@ -1,0 +1,59 @@
+services:
+  - id: api
+    type: server
+    runtime: "Node.js 20"
+    framework: "Express 4"
+    entry: src/server/index.ts
+    port: 3001
+    health: /api/v1/health
+    depends_on: [postgres, redis]
+    dev_command: "npx tsx watch src/server/index.ts"
+    setup: "npx prisma migrate dev"
+
+  - id: worker
+    type: worker
+    runtime: "Node.js 20"
+    framework: "BullMQ"
+    entry: src/workers/index.ts
+    depends_on: [postgres, redis]
+    dev_command: "npx tsx watch src/workers/index.ts"
+    health: "BullMQ dashboard at :3002/admin/queues"
+
+  - id: frontend
+    type: server
+    runtime: "Next.js 14"
+    entry: src/app/
+    port: 3000
+    depends_on: [api]
+    dev_command: "npx next dev --port 3000"
+
+  - id: postgres
+    type: datastore
+    engine: "PostgreSQL 16"
+    port: 5432
+    dev_command: "brew services start postgresql@16"
+    setup: "npx prisma migrate dev"
+    health: "pg_isready -p 5432"
+
+  - id: redis
+    type: datastore
+    engine: "Redis 7"
+    port: 6379
+    dev_command: "brew services start redis"
+    setup: "redis-cli flushall"
+    health: "redis-cli ping"
+
+  - id: nginx
+    type: proxy
+    port: 80
+    depends_on: [api, frontend]
+    dev_command: null
+    health: "curl -f http://localhost/health"
+
+startup_order: [postgres, redis, api, worker, frontend]
+
+deployment:
+  local:
+    strategy: process-manager
+  production:
+    strategy: kubernetes

@@ -1,0 +1,95 @@
+flow:
+  id: manual-content-entry
+  name: "Manual Content Entry"
+  type: traditional
+  domain: ingestion
+  description: "Allows authenticated users to manually create content entries via HTTP POST, validates required fields, persists to the data store, and emits a ContentIngested event."
+  auth:
+    required: true
+    strategy: jwt
+
+trigger:
+  id: trigger-mC1a2B3c
+  type: trigger
+  position: { x: 100, y: 0 }
+  spec:
+    event: "HTTP POST /api/v1/content"
+    label: "Manual content creation"
+
+nodes:
+  - id: input-iV4d5E6f
+    type: input
+    position: { x: 100, y: 130 }
+    spec:
+      validate:
+        title:
+          required: true
+          type: string
+        body:
+          required: true
+          type: string
+        category:
+          required: true
+          type: string
+
+  - id: data_store-dC7g8H9i
+    type: data_store
+    position: { x: 100, y: 260 }
+    spec:
+      operation: create
+      model: Content
+      safety: strict
+
+  - id: event-eI1j2K3l
+    type: event
+    position: { x: 100, y: 390 }
+    spec:
+      direction: emit
+      event_name: ContentIngested
+
+  - id: terminal-tS4m5N6o
+    type: terminal
+    position: { x: 100, y: 520 }
+    spec:
+      status: 201
+      label: "Content created"
+
+  - id: terminal-tE7p8Q9r
+    type: terminal
+    position: { x: 400, y: 130 }
+    spec:
+      status: 422
+      label: "Validation failed"
+      error_code: VALIDATION_ERROR
+
+  - id: terminal-tE1s2T3u
+    type: terminal
+    position: { x: 400, y: 260 }
+    spec:
+      status: 409
+      label: "Duplicate entry"
+      error_code: DUPLICATE_ENTRY
+
+connections:
+  - source: trigger-mC1a2B3c
+    target: input-iV4d5E6f
+    sourceHandle: ""
+  - source: input-iV4d5E6f
+    target: data_store-dC7g8H9i
+    sourceHandle: "valid"
+  - source: input-iV4d5E6f
+    target: terminal-tE7p8Q9r
+    sourceHandle: "invalid"
+  - source: data_store-dC7g8H9i
+    target: event-eI1j2K3l
+    sourceHandle: "success"
+  - source: data_store-dC7g8H9i
+    target: terminal-tE1s2T3u
+    sourceHandle: "error"
+  - source: event-eI1j2K3l
+    target: terminal-tS4m5N6o
+    sourceHandle: "success"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

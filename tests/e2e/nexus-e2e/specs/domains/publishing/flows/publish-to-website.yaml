@@ -1,0 +1,112 @@
+flow:
+  id: publish-to-website
+  name: Publish to Website
+  description: Transforms content and publishes to the CMS via API call
+  type: traditional
+  domain: publishing
+  version: "1.0.0"
+  contract:
+    inputs:
+      - content_id
+      - format
+    outputs:
+      - publish_url
+      - published_at
+  trigger:
+    type: sub_flow
+  auth: null
+
+nodes:
+  - id: trigger-k7l8m9n0
+    type: trigger
+    name: Sub Flow Trigger
+    config:
+      type: sub_flow
+
+  - id: data_store-o1p2q3r4
+    type: data_store
+    name: Read Content
+    config:
+      operation: read
+      model: Content
+      query:
+        id: "$.content_id"
+
+  - id: transform-s5t6u7v8
+    type: transform
+    name: Transform to CMS Payload
+    config:
+      mode: schema
+      input_schema: Content
+      output_schema: CMSPayload
+      field_mappings:
+        title: "$.title"
+        body: "$.body"
+        category: "$.category"
+
+  - id: service_call-w9x0y1z2
+    type: service_call
+    name: Post to CMS
+    config:
+      method: POST
+      integration: null
+      url: "$.cms_url/api/posts"
+      body: "$.cms_payload"
+
+  - id: data_store-a3b4c5d6
+    type: data_store
+    name: Create Publish Record
+    config:
+      operation: create
+      model: PublishRecord
+      data:
+        content_id: "$.content_id"
+        channel: website
+        publish_url: "$.response.url"
+        published_at: "$.response.published_at"
+
+  - id: terminal-e7f8g9h0
+    type: terminal
+    name: Website Publish Success
+    config:
+      status: 200
+      response_type: success
+
+  - id: terminal-i1j2k3l4
+    type: terminal
+    name: Service Call Error
+    config:
+      status: 500
+      response_type: error
+
+connections:
+  - from: trigger-k7l8m9n0
+    to: data_store-o1p2q3r4
+
+  - from: data_store-o1p2q3r4
+    to: transform-s5t6u7v8
+
+  - from: data_store-o1p2q3r4
+    to: terminal-i1j2k3l4
+    handle: error
+
+  - from: transform-s5t6u7v8
+    to: service_call-w9x0y1z2
+
+  - from: service_call-w9x0y1z2
+    to: data_store-a3b4c5d6
+
+  - from: service_call-w9x0y1z2
+    to: terminal-i1j2k3l4
+    handle: error
+
+  - from: data_store-a3b4c5d6
+    to: terminal-e7f8g9h0
+
+  - from: data_store-a3b4c5d6
+    to: terminal-i1j2k3l4
+    handle: error
+
+metadata:
+  created_at: "2026-03-14T00:00:00Z"
+  updated_at: "2026-03-14T00:00:00Z"

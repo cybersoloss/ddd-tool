@@ -1,0 +1,102 @@
+flow:
+  id: record-event
+  name: "Record Event"
+  type: traditional
+  domain: analytics
+  description: "Records analytics events from multiple event types and increments metric counters"
+
+trigger:
+  id: trigger-rE1a2B3c
+  type: trigger
+  position: { x: 250, y: 0 }
+  spec:
+    event: "event:ContentIngested"
+    label: "Content Ingested (handles multiple event types)"
+
+nodes:
+  - id: input-vE4d5F6g
+    type: input
+    position: { x: 250, y: 130 }
+    spec:
+      validate:
+        event_type:
+          required: true
+          type: string
+        entity_id:
+          required: true
+          type: uuid
+
+  - id: data_store-cR7h8I9j
+    type: data_store
+    position: { x: 250, y: 260 }
+    spec:
+      operation: create
+      model: AnalyticsEvent
+      fields:
+        - name: event_type
+          value: "$.event_type"
+        - name: entity_id
+          value: "$.entity_id"
+        - name: occurred_at
+          value: "$.now"
+
+  - id: data_store-uC1k2L3m
+    type: data_store
+    position: { x: 250, y: 390 }
+    spec:
+      operation: update_where
+      model: AnalyticsEvent
+      predicate:
+        metric_name: "$.event_type"
+      patch:
+        count: "$.count + 1"
+
+  - id: terminal-sU4n5O6p
+    type: terminal
+    position: { x: 250, y: 520 }
+    spec:
+      status: 200
+      label: "Event recorded successfully"
+
+  - id: terminal-eR7q8R9s
+    type: terminal
+    position: { x: 550, y: 130 }
+    spec:
+      status: 422
+      label: "Invalid event data"
+      error_code: VALIDATION_ERROR
+
+  - id: terminal-eS1t2U3v
+    type: terminal
+    position: { x: 550, y: 390 }
+    spec:
+      status: 500
+      label: "Data store error"
+      error_code: DATA_STORE_ERROR
+
+connections:
+  - source: trigger-rE1a2B3c
+    target: input-vE4d5F6g
+    sourceHandle: ""
+  - source: input-vE4d5F6g
+    target: data_store-cR7h8I9j
+    sourceHandle: "valid"
+  - source: input-vE4d5F6g
+    target: terminal-eR7q8R9s
+    sourceHandle: "invalid"
+  - source: data_store-cR7h8I9j
+    target: data_store-uC1k2L3m
+    sourceHandle: "success"
+  - source: data_store-cR7h8I9j
+    target: terminal-eS1t2U3v
+    sourceHandle: "error"
+  - source: data_store-uC1k2L3m
+    target: terminal-sU4n5O6p
+    sourceHandle: "success"
+  - source: data_store-uC1k2L3m
+    target: terminal-eS1t2U3v
+    sourceHandle: "error"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

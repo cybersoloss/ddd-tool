@@ -1,0 +1,41 @@
+name: Notification
+description: User notification records
+inherits: _base
+fields:
+  - name: user_id
+    type: uuid
+    required: true
+  - name: type
+    type: string
+    required: true
+    constraints:
+      max_length: 50
+  - name: title
+    type: string
+    required: true
+    constraints:
+      max_length: 200
+  - name: body
+    type: text
+    required: true
+  - name: read
+    type: boolean
+    required: true
+    default: false
+
+relationships:
+  - name: user
+    type: belongs_to
+    target: User
+    foreign_key: user_id
+
+indexes:
+  - fields: [user_id, read]
+    description: "Unread notifications per user"
+  - fields: [created_at]
+    type: btree
+    description: "Notification timeline"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

@@ -1,0 +1,69 @@
+flow:
+  id: stream-live-metrics
+  name: "Stream Live Metrics"
+  type: traditional
+  domain: analytics
+  description: "WebSocket stream for live metrics with heartbeat and reconnect support"
+
+trigger:
+  id: trigger-sL1a2B3c
+  type: trigger
+  position: { x: 250, y: 0 }
+  spec:
+    event: "ws /api/v1/metrics/live"
+    label: "Live metrics WebSocket"
+    connection_config:
+      auth_required: true
+      auth_strategy: jwt
+      heartbeat_ms: 30000
+      max_connections_per_client: 3
+      reconnect: true
+
+nodes:
+  - id: data_store-mS4d5E6f
+    type: data_store
+    position: { x: 250, y: 130 }
+    spec:
+      store_type: memory
+      store: "metrics-store"
+      operation: subscribe
+
+  - id: process-pM7g8H9i
+    type: process
+    position: { x: 250, y: 260 }
+    spec:
+      category: infrastructure
+      description: "Push metrics to client every 5s"
+
+  - id: terminal-sD1j2K3l
+    type: terminal
+    position: { x: 250, y: 390 }
+    spec:
+      status: 200
+      label: "Metrics stream established"
+
+  - id: terminal-eM4m5N6o
+    type: terminal
+    position: { x: 550, y: 130 }
+    spec:
+      status: 500
+      label: "Metrics store subscription error"
+      error_code: SUBSCRIPTION_ERROR
+
+connections:
+  - source: trigger-sL1a2B3c
+    target: data_store-mS4d5E6f
+    sourceHandle: ""
+  - source: data_store-mS4d5E6f
+    target: process-pM7g8H9i
+    sourceHandle: "success"
+  - source: data_store-mS4d5E6f
+    target: terminal-eM4m5N6o
+    sourceHandle: "error"
+  - source: process-pM7g8H9i
+    target: terminal-sD1j2K3l
+    sourceHandle: "success"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

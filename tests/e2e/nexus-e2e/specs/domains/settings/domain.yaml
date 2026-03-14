@@ -1,0 +1,66 @@
+name: Settings
+description: "System configuration"
+role: entity
+
+auth:
+  required: true
+  strategy: jwt
+
+owns_schemas:
+  - Setting
+  - Rule
+
+flows:
+  - id: get-settings
+    name: "Get Settings"
+    description: "Get cached system settings"
+    type: traditional
+    tags:
+      - public-api
+
+  - id: update-settings
+    name: "Update Settings"
+    description: "Update settings with cache invalidation"
+    type: traditional
+    tags:
+      - public-api
+
+  - id: reset-settings
+    name: "Reset Settings"
+    description: "Reset settings to defaults within a transaction"
+    type: traditional
+    tags:
+      - public-api
+
+  - id: manage-rules
+    name: "Manage Rules"
+    description: "CRUD operations for system rules"
+    type: traditional
+    tags:
+      - public-api
+
+publishes_events:
+  - event: SettingsChanged
+    from_flow: update-settings
+    description: "System settings changed"
+    payload:
+      key: string
+      old_value: json
+      new_value: json
+
+  - event: SettingsReset
+    from_flow: reset-settings
+    description: "Settings reset to defaults"
+    payload:
+      reset_by: uuid
+      reset_at: datetime
+
+consumes_events: []
+
+layout:
+  flows:
+    get-settings: { x: 100, y: 100 }
+    update-settings: { x: 100, y: 300 }
+    reset-settings: { x: 100, y: 500 }
+    manage-rules: { x: 100, y: 700 }
+  portals: {}

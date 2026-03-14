@@ -1,0 +1,112 @@
+flow:
+  id: retry-failed-publish
+  name: Retry Failed Publish
+  description: Retries failed publish records with exponential backoff up to 3 attempts
+  type: traditional
+  domain: publishing
+  version: "1.0.0"
+  trigger:
+    type: event
+    event: PublishFailed
+  auth: null
+
+nodes:
+  - id: trigger-m9n0o1p2
+    type: trigger
+    name: Publish Failed Event
+    config:
+      event: PublishFailed
+
+  - id: data_store-q3r4s5t6
+    type: data_store
+    name: Read Publish Record
+    config:
+      operation: read
+      model: PublishRecord
+      query:
+        content_id: "$.content_id"
+        status: failed
+
+  - id: loop-u7v8w9x0
+    type: loop
+    name: Retry Each Failed Record
+    config:
+      collection: "$.failed_records"
+      iterator: "record"
+      break_condition: "$.record.attempts >= 3"
+      on_error: continue
+      accumulate:
+        field: results
+        strategy: push
+
+  - id: delay-y1z2a3b4
+    type: delay
+    name: Exponential Backoff
+    config:
+      strategy: exponential
+      min_ms: "$.record.attempts * 2000"
+
+  - id: sub_flow-c5d6e7f8
+    type: sub_flow
+    name: Retry Publish Content
+    config:
+      flow_ref: "publishing/publish-content"
+
+  - id: data_store-g9h0i1j2
+    type: data_store
+    name: Update Publish Record
+    config:
+      operation: update
+      model: PublishRecord
+      query:
+        id: "$.record.id"
+      set:
+        attempts: "$.record.attempts + 1"
+        last_attempt_at: "$.now"
+
+  - id: terminal-k3l4m5n6
+    type: terminal
+    name: Retry Complete
+    config:
+      status: 200
+      response_type: success
+
+  - id: terminal-o7p8q9r0
+    type: terminal
+    name: Data Store Error
+    config:
+      status: 500
+      response_type: error
+
+connections:
+  - from: trigger-m9n0o1p2
+    to: data_store-q3r4s5t6
+
+  - from: data_store-q3r4s5t6
+    to: loop-u7v8w9x0
+
+  - from: data_store-q3r4s5t6
+    to: terminal-o7p8q9r0
+    handle: error
+
+  - from: loop-u7v8w9x0
+    to: delay-y1z2a3b4
+    handle: body
+
+  - from: delay-y1z2a3b4
+    to: sub_flow-c5d6e7f8
+
+  - from: sub_flow-c5d6e7f8
+    to: data_store-g9h0i1j2
+
+  - from: data_store-g9h0i1j2
+    to: loop-u7v8w9x0
+    label: next iteration
+
+  - from: loop-u7v8w9x0
+    to: terminal-k3l4m5n6
+    handle: done
+
+metadata:
+  created_at: "2026-03-14T00:00:00Z"
+  updated_at: "2026-03-14T00:00:00Z"

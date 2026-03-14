@@ -1,0 +1,146 @@
+flow:
+  id: update-content
+  name: Update Content
+  description: Updates content, creates a version snapshot, invalidates cache, and emits ContentUpdated event
+  type: traditional
+  domain: content
+  version: "1.0.0"
+  trigger:
+    type: http
+    method: PATCH
+    path: /api/v1/content/:id
+  auth:
+    required: true
+    strategy: jwt
+
+nodes:
+  - id: trigger-m3n4o5p6
+    type: trigger
+    name: HTTP PATCH Update Content
+    config:
+      method: PATCH
+      path: /api/v1/content/:id
+
+  - id: input-q7r8s9t0
+    type: input
+    name: Validate Update Input
+    config:
+      fields:
+        - name: title
+          type: string
+          required: false
+        - name: body
+          type: string
+          required: false
+        - name: category
+          type: string
+          required: false
+
+  - id: data_store-u1v2w3x4
+    type: data_store
+    name: Read Current Content
+    config:
+      operation: read
+      model: Content
+      query:
+        id: "$.id"
+
+  - id: data_store-y5z6a7b8
+    type: data_store
+    name: Update Content
+    config:
+      operation: update
+      model: Content
+      query:
+        id: "$.id"
+      set: "$.updates"
+
+  - id: data_store-c9d0e1f2
+    type: data_store
+    name: Create Content Version
+    config:
+      operation: create
+      model: ContentVersion
+      data:
+        content_id: "$.id"
+        body_snapshot: "$.previous.body"
+        version_number: "$.next_version"
+
+  - id: cache-g3h4i5j6
+    type: cache
+    name: Invalidate Content Cache
+    config:
+      operation: invalidate
+      key: "content:$.id"
+      store: redis
+
+  - id: event-k7l8m9n0
+    type: event
+    name: Emit ContentUpdated
+    config:
+      event_name: ContentUpdated
+      payload:
+        content_id: "$.id"
+
+  - id: terminal-o1p2q3r4
+    type: terminal
+    name: Update Success
+    config:
+      status: 200
+      response_type: json
+
+  - id: terminal-s5t6u7v8
+    type: terminal
+    name: Validation Error
+    config:
+      status: 422
+      response_type: error
+
+  - id: terminal-w9x0y1z2
+    type: terminal
+    name: Data Store Error
+    config:
+      status: 500
+      response_type: error
+
+connections:
+  - from: trigger-m3n4o5p6
+    to: input-q7r8s9t0
+
+  - from: input-q7r8s9t0
+    to: data_store-u1v2w3x4
+
+  - from: input-q7r8s9t0
+    to: terminal-s5t6u7v8
+    handle: invalid
+
+  - from: data_store-u1v2w3x4
+    to: data_store-y5z6a7b8
+
+  - from: data_store-u1v2w3x4
+    to: terminal-w9x0y1z2
+    handle: error
+
+  - from: data_store-y5z6a7b8
+    to: data_store-c9d0e1f2
+
+  - from: data_store-y5z6a7b8
+    to: terminal-w9x0y1z2
+    handle: error
+
+  - from: data_store-c9d0e1f2
+    to: cache-g3h4i5j6
+
+  - from: data_store-c9d0e1f2
+    to: terminal-w9x0y1z2
+    handle: error
+
+  - from: cache-g3h4i5j6
+    to: event-k7l8m9n0
+
+  - from: event-k7l8m9n0
+    to: terminal-o1p2q3r4
+
+metadata:
+  created_at: "2026-03-14T00:00:00Z"
+  updated_at: "2026-03-14T00:00:00Z"
