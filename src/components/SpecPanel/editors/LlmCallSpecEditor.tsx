@@ -150,6 +150,22 @@ export function LlmCallSpecEditor({ spec, onChange }: Props) {
         />
         <p className="text-[10px] text-text-muted mt-0.5">Ordered fallback models. on_error: rate_limited, overloaded, timeout, any</p>
       </div>
+      {/* Prompt Files */}
+      <div>
+        <label className="label">Prompt Files</label>
+        <input
+          className="input"
+          value={(spec.prompt_files ?? []).join(', ')}
+          onChange={(e) =>
+            onChange({
+              ...spec,
+              prompt_files: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
+            })
+          }
+          placeholder="e.g. prompts/system.md, prompts/guardrails.md"
+        />
+        <p className="text-[10px] text-text-muted mt-0.5">Comma-separated relative paths. /ddd-sync hashes these for drift detection.</p>
+      </div>
       <div>
         <label className="label">Description</label>
         <textarea

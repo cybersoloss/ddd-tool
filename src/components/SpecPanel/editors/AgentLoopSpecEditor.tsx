@@ -263,6 +263,50 @@ export function AgentLoopSpecEditor({ spec, onChange }: Props) {
         </div>
       </div>
 
+      {/* Streaming */}
+      <div>
+        <label className="label">Streaming</label>
+        <label className="flex items-center gap-1.5 text-xs text-text-secondary cursor-pointer mb-2">
+          <input
+            type="checkbox"
+            className="accent-accent"
+            checked={spec.streaming?.enabled ?? false}
+            onChange={(e) =>
+              onChange({ ...spec, streaming: { ...spec.streaming, enabled: e.target.checked, format: spec.streaming?.format ?? 'sse' } })
+            }
+          />
+          Enable streaming output
+        </label>
+        {spec.streaming?.enabled && (
+          <div className="space-y-2 pl-4 border-l border-border">
+            <div>
+              <label className="label">Format</label>
+              <select
+                className="input"
+                value={spec.streaming?.format ?? 'sse'}
+                onChange={(e) =>
+                  onChange({ ...spec, streaming: { ...spec.streaming!, enabled: true, format: e.target.value as 'sse' | 'websocket' } })
+                }
+              >
+                <option value="sse">SSE</option>
+                <option value="websocket">WebSocket</option>
+              </select>
+            </div>
+            <div>
+              <label className="label">Chunk Field</label>
+              <input
+                className="input"
+                value={spec.streaming?.chunk_field ?? ''}
+                onChange={(e) =>
+                  onChange({ ...spec, streaming: { ...spec.streaming!, enabled: true, format: spec.streaming?.format ?? 'sse', chunk_field: e.target.value || undefined } })
+                }
+                placeholder="e.g. delta.text"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
       <ExtraFieldsEditor spec={spec} nodeType="agent_loop" onChange={onChange} />
     </div>
   );

@@ -142,6 +142,7 @@ export interface AgentLoopSpec {
   tools?: ToolDefinition[];
   memory?: MemoryStoreDefinition[];
   on_max_iterations?: 'escalate' | 'respond' | 'error';
+  streaming?: { enabled: boolean; format: 'sse' | 'websocket'; chunk_field?: string };
   [key: string]: unknown;
 }
 
@@ -429,6 +430,7 @@ export interface LlmCallSpec {
   context_sources?: Record<string, { from: string; transform?: string }>;
   retry?: { max_attempts?: number; backoff_ms?: number; strategy?: 'fixed' | 'linear' | 'exponential'; jitter?: boolean };
   model_fallback?: ModelFallback[];
+  prompt_files?: string[];
   description?: string;
   [key: string]: unknown;
 }
