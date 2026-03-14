@@ -380,6 +380,11 @@ export function normalizeFlowDocument(raw: Record<string, unknown>, domainId: st
       }
     }
 
+    // Normalize crypto: `output` → `output_field` (external YAML alias)
+    if (n.type === 'crypto' && !spec.output_field && spec.output) {
+      spec.output_field = spec.output;
+    }
+
     // Normalize service_call: endpoint → url
     if (n.type === 'service_call' && !spec.url && spec.endpoint) {
       spec.url = spec.endpoint;
