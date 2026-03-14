@@ -111,6 +111,16 @@ export function EventSpecEditor({ spec, onChange }: Props) {
       </div>
       {direction === 'emit' && (
         <div className="border-t border-border/50 pt-2 space-y-2">
+          <div>
+            <label className="label">Schema Ref</label>
+            <input
+              className="input"
+              value={spec.schema_ref ?? ''}
+              onChange={(e) => onChange({ ...spec, schema_ref: e.target.value || undefined })}
+              placeholder="e.g. ContentItem"
+            />
+            <p className="text-[10px] text-text-muted mt-0.5">Schema the event payload must conform to</p>
+          </div>
           <p className="text-[10px] uppercase tracking-wider text-text-muted font-medium">
             Queue Settings
           </p>

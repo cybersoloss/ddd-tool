@@ -32,6 +32,7 @@ import type {
   SmartRouterSpec,
   HandoffSpec,
   AgentGroupSpec,
+  TextSplitSpec,
 } from '../types/flow';
 
 export function defaultSpec(type: DddNodeType): NodeSpec {
@@ -243,6 +244,14 @@ export function defaultSpec(type: DddNodeType): NodeSpec {
         return_type: '',
         description: '',
       } satisfies IpcCallSpec;
+    case 'text_split':
+      return {
+        input: '',
+        max_length: 280,
+        split_strategy: 'word',
+        output: 'chunks',
+        description: '',
+      } satisfies TextSplitSpec;
     default:
       return { description: '' };
   }
@@ -279,6 +288,7 @@ export function defaultLabel(type: DddNodeType): string {
     case 'transaction': return 'Transaction';
     case 'ipc_call': return 'IPC Call';
     case 'websocket_broadcast': return 'WebSocket Broadcast';
+    case 'text_split': return 'Text Split';
   }
 }
 

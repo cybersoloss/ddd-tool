@@ -12,7 +12,8 @@ export type DddNodeType =
   | 'ipc_call'
   | 'agent_loop' | 'guardrail' | 'human_gate'
   | 'orchestrator' | 'smart_router' | 'handoff' | 'agent_group'
-  | 'websocket_broadcast';
+  | 'websocket_broadcast'
+  | 'text_split';
 
 // --- Per-node spec shapes ---
 
@@ -182,6 +183,7 @@ export interface OrchestratorAgent {
   flow: string;
   specialization?: string;
   priority?: number;
+  model_override?: string;
 }
 
 export interface SupervisionRule {
@@ -242,7 +244,7 @@ export interface HandoffSpec {
   target?: { flow?: string; domain?: string };
   context_transfer?: { include_types?: string[]; max_context_tokens?: number };
   on_complete?: { return_to?: string; merge_strategy?: string };
-  on_failure?: { action?: string; timeout?: number };
+  on_failure?: { action?: string; timeout?: number; flow?: string };
   notify_customer?: boolean;
   [key: string]: unknown;
 }
@@ -373,6 +375,7 @@ export interface EventNodeSpec {
   delay_ms?: number;
   dedup_key?: string;
   correlation_id?: string;
+  schema_ref?: string;
   description?: string;
   [key: string]: unknown;
 }
@@ -411,6 +414,11 @@ export interface SubFlowSpec {
   [key: string]: unknown;
 }
 
+export interface ModelFallback {
+  model: string;
+  on_error: string[];
+}
+
 export interface LlmCallSpec {
   model?: string;
   system_prompt?: string;
@@ -420,6 +428,7 @@ export interface LlmCallSpec {
   structured_output?: Record<string, unknown>;
   context_sources?: Record<string, { from: string; transform?: string }>;
   retry?: { max_attempts?: number; backoff_ms?: number; strategy?: 'fixed' | 'linear' | 'exponential'; jitter?: boolean };
+  model_fallback?: ModelFallback[];
   description?: string;
   [key: string]: unknown;
 }
@@ -527,6 +536,17 @@ export interface TransactionSpec {
   [key: string]: unknown;
 }
 
+export interface TextSplitSpec {
+  input?: string;
+  max_length?: number;
+  split_strategy?: 'word' | 'sentence' | 'paragraph' | 'character';
+  prefix_template?: string;
+  suffix_template?: string;
+  output?: string;
+  description?: string;
+  [key: string]: unknown;
+}
+
 export type NodeSpec =
   | TriggerSpec
   | InputSpec
@@ -556,7 +576,8 @@ export type NodeSpec =
   | SmartRouterSpec
   | HandoffSpec
   | AgentGroupSpec
-  | WebSocketBroadcastSpec;
+  | WebSocketBroadcastSpec
+  | TextSplitSpec;
 
 // --- Flow node (persisted) ---
 

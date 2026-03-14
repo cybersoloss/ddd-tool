@@ -128,6 +128,12 @@ export function OrchestratorSpecEditor({ spec, onChange }: Props) {
                   min={0}
                 />
               </div>
+              <input
+                className="input py-1 text-xs"
+                value={agent.model_override ?? ''}
+                onChange={(e) => updateAgent(i, { model_override: e.target.value || undefined })}
+                placeholder="Model override (e.g., claude-opus-4-6)"
+              />
             </div>
           ))}
         </div>
