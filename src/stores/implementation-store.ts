@@ -13,6 +13,14 @@ import type {
   AnnotationFile,
 } from '../types/implementation';
 
+/** Compare hashes that may differ in length (12-char truncated vs 64-char full SHA-256) */
+function hashesMatch(a: string, b: string): boolean {
+  if (!a || !b) return false;
+  const shorter = a.length <= b.length ? a : b;
+  const longer = a.length > b.length ? a : b;
+  return longer.startsWith(shorter);
+}
+
 interface ImplementationState {
   mappings: Record<string, FlowMapping>;
   pageMappings: Record<string, FlowMapping>;
@@ -207,6 +215,8 @@ export const useImplementationStore = create<ImplementationState>((set, get) => 
         }
 
         // Check for reverse drift (implementation files changed)
+        // Hash comparison uses prefix matching because /ddd-sync stores
+        // truncated 12-char hashes while DDD Tool computes full 64-char SHA-256
         let hasReverseDrift = false;
         if (mapping.fileHashes && Object.keys(mapping.fileHashes).length > 0) {
           for (const [file, storedHash] of Object.entries(mapping.fileHashes)) {
@@ -218,14 +228,14 @@ export const useImplementationStore = create<ImplementationState>((set, get) => 
             } catch {
               continue;
             }
-            if (currentFileHash && currentFileHash !== storedHash) {
+            if (currentFileHash && !hashesMatch(currentFileHash, storedHash)) {
               hasReverseDrift = true;
               break;
             }
           }
         }
 
-        const hasForwardDrift = currentSpecHash !== '' && currentSpecHash !== mapping.specHash;
+        const hasForwardDrift = currentSpecHash !== '' && !hashesMatch(currentSpecHash, mapping.specHash);
 
         // Classify sync state and drift type
         if (hasForwardDrift && hasReverseDrift) {
