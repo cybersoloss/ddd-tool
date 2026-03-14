@@ -1,103 +1,200 @@
 flow:
   id: create-content
-  name: Create Content
-  description: Creates new content with validation and emits ContentCreated event
+  name: "Create Content"
   type: traditional
   domain: content
-  version: "1.0.0"
-  trigger:
-    type: http
-    method: POST
-    path: /api/v1/content
+  description: "Creates a new content item. Computes SHA-256 content hash for deduplication, stores initial ContentVersion, and emits ContentCreated event."
   auth:
     required: true
+    roles: [admin, editor]
     strategy: jwt
 
-nodes:
-  - id: trigger-e3f4g5h6
-    type: trigger
-    name: HTTP POST Create Content
-    config:
-      method: POST
-      path: /api/v1/content
+trigger:
+  id: trigger-crCt2xN8
+  type: trigger
+  label: "POST /api/content"
+  spec:
+    event: "HTTP POST /api/content"
+  connections:
+    - targetNodeId: input-vAl3kP4r
 
-  - id: input-i7j8k9l0
+nodes:
+  - id: input-vAl3kP4r
     type: input
-    name: Validate Content Input
-    config:
+    label: "Validate Input"
+    spec:
       fields:
         - name: title
           type: string
           required: true
+          min_length: 1
+          max_length: 500
         - name: body
           type: string
           required: true
         - name: category
           type: string
           required: true
+        - name: source_type
+          type: string
+          required: false
+        - name: source_id
+          type: string
+          required: false
+        - name: metadata
+          type: object
+          required: false
+    connections:
+      - targetNodeId: crypto-hsh3nR6s
+        sourceHandle: valid
+      - targetNodeId: terminal-inv-aB7cD8eF
+        sourceHandle: invalid
 
-  - id: data_store-m1n2o3p4
+  - id: crypto-hsh3nR6s
+    type: crypto
+    label: "Hash Content Body"
+    spec:
+      operation: hash
+      algorithm: sha256
+      input: "$.body"
+      output: content_hash
+    connections:
+      - targetNodeId: data_store-chkDup5
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
+
+  - id: data_store-chkDup5
     type: data_store
-    name: Create Content Record
-    config:
-      operation: create
+    label: "Check Duplicate"
+    spec:
+      operation: read
       model: Content
-      data:
-        title: "$.title"
-        body: "$.body"
-        category: "$.category"
-        status: draft
+      query:
+        where:
+          metadata:
+            path: "$.content_hash"
+            equals: "$.content_hash"
+      safety: strict
+      returning: true
+    connections:
+      - targetNodeId: decision-dupC7kO3
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: event-q5r6s7t8
+  - id: decision-dupC7kO3
+    type: decision
+    label: "Duplicate?"
+    spec:
+      condition: "$.result !== null"
+    connections:
+      - targetNodeId: terminal-dup-xA1b
+        sourceHandle: "true"
+      - targetNodeId: transaction-crtCt8
+        sourceHandle: "false"
+
+  - id: transaction-crtCt8
+    type: transaction
+    label: "Create Content + Version"
+    spec:
+      steps:
+        - action:
+            type: data_store
+            operation: create
+            model: Content
+            data:
+              title: "$.title"
+              body: "$.body"
+              category: "$.category"
+              status: draft
+              source_type: "$.source_type"
+              source_id: "$.source_id"
+              metadata:
+                content_hash: "$.content_hash"
+            returning: true
+          rollback:
+            type: data_store
+            operation: delete
+            model: Content
+            query:
+              where:
+                id: "$.created_content_id"
+        - action:
+            type: data_store
+            operation: create
+            model: ContentVersion
+            data:
+              content_id: "$.created_content_id"
+              body_snapshot: "$.body"
+              changed_by: "$.auth.user_id"
+              change_summary: "Initial creation"
+            returning: true
+          rollback:
+            type: data_store
+            operation: delete
+            model: ContentVersion
+            query:
+              where:
+                content_id: "$.created_content_id"
+    connections:
+      - targetNodeId: event-emit-yF3g
+        sourceHandle: committed
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: rolled_back
+
+  - id: event-emit-yF3g
     type: event
-    name: Emit ContentCreated
-    config:
+    label: "Emit ContentCreated"
+    spec:
+      direction: emit
       event_name: ContentCreated
       payload:
-        content_id: "$.content.id"
+        content_id: "$.created_content_id"
+        title: "$.title"
+        category: "$.category"
+        status: draft
+        source_type: "$.source_type"
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
 
-  - id: terminal-u9v0w1x2
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    name: Content Created
-    config:
+    label: "Created"
+    spec:
+      outcome: success
       status: 201
-      response_type: json
+      body: "$.result"
 
-  - id: terminal-y3z4a5b6
+  - id: terminal-dup-xA1b
     type: terminal
-    name: Validation Error
-    config:
-      status: 422
-      response_type: error
+    label: "Duplicate Content"
+    spec:
+      outcome: error
+      status: 409
+      body:
+        error: "DUPLICATE_ENTRY"
+        message: "Content with identical body already exists"
+        existing_id: "$.result.id"
 
-  - id: terminal-c7d8e9f0
+  - id: terminal-inv-aB7cD8eF
     type: terminal
-    name: Data Store Error
-    config:
+    label: "Invalid Input"
+    spec:
+      outcome: error
+      status: 400
+      body:
+        error: "VALIDATION_ERROR"
+
+  - id: terminal-err-pSz2wV3b
+    type: terminal
+    label: "Error"
+    spec:
+      outcome: error
       status: 500
-      response_type: error
-
-connections:
-  - from: trigger-e3f4g5h6
-    to: input-i7j8k9l0
-
-  - from: input-i7j8k9l0
-    to: data_store-m1n2o3p4
-
-  - from: input-i7j8k9l0
-    to: terminal-y3z4a5b6
-    handle: invalid
-
-  - from: data_store-m1n2o3p4
-    to: event-q5r6s7t8
-
-  - from: data_store-m1n2o3p4
-    to: terminal-c7d8e9f0
-    handle: error
-
-  - from: event-q5r6s7t8
-    to: terminal-u9v0w1x2
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
-  created_at: "2026-03-14T00:00:00Z"
-  updated_at: "2026-03-14T00:00:00Z"
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

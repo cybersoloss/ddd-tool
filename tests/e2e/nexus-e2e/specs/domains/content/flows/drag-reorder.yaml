@@ -1,71 +1,88 @@
 flow:
   id: drag-reorder
-  name: Drag Reorder
-  description: Handles drag-and-drop reordering of content with debounce and WebSocket broadcast
+  name: "Drag Reorder"
   type: traditional
   domain: content
-  version: "1.0.0"
-  trigger:
-    type: ui
-    event: DragDrop
-    debounce_ms: 200
-  auth: null
+  description: "Handles UI drag-and-drop reorder events. Accepts an ordered list of content IDs and updates their priority in a batch transaction."
+  auth:
+    required: true
+    roles: [admin, editor]
+    strategy: jwt
+
+trigger:
+  id: trigger-drRo2xN8
+  type: trigger
+  label: "ui:DragDrop"
+  spec:
+    event: "ui:DragDrop"
+  connections:
+    - targetNodeId: input-vAl3kP4r
 
 nodes:
-  - id: trigger-w1x2y3z4
-    type: trigger
-    name: UI DragDrop Trigger
-    config:
-      type: ui
-      event: DragDrop
-      debounce_ms: 200
+  - id: input-vAl3kP4r
+    type: input
+    label: "Validate Reorder"
+    spec:
+      fields:
+        - name: ordered_ids
+          type: array
+          required: true
+          description: "Content IDs in new display order"
+          min_items: 2
+    connections:
+      - targetNodeId: batch-upd3nR6s
+        sourceHandle: valid
+      - targetNodeId: terminal-inv-aB7cD8eF
+        sourceHandle: invalid
 
-  - id: data_store-a5b6c7d8
-    type: data_store
-    name: Update Content Positions
-    config:
-      operation: update_many
-      model: Content
-      set:
-        position: "$.new_positions"
+  - id: batch-upd3nR6s
+    type: batch
+    label: "Batch Update Priorities"
+    spec:
+      input: "$.ordered_ids"
+      operation_template:
+        type: data_store
+        operation: update
+        model: Content
+        query:
+          where:
+            id: "$.item"
+        data:
+          metadata:
+            priority: "$.index"
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: done
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: websocket_broadcast-e9f0g1h2
-    type: websocket_broadcast
-    name: Broadcast Reorder
-    config:
-      channel: "content"
-      event_name: "reordered"
-      payload: "$.new_order"
-
-  - id: terminal-i3j4k5l6
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    name: Reorder Success
-    config:
+    label: "Reordered"
+    spec:
+      outcome: success
       status: 200
-      response_type: success
+      body:
+        message: "Content reordered"
 
-  - id: terminal-m7n8o9p0
+  - id: terminal-inv-aB7cD8eF
     type: terminal
-    name: Data Store Error
-    config:
+    label: "Invalid"
+    spec:
+      outcome: error
+      status: 400
+      body:
+        error: "VALIDATION_ERROR"
+
+  - id: terminal-err-pSz2wV3b
+    type: terminal
+    label: "Error"
+    spec:
+      outcome: error
       status: 500
-      response_type: error
-
-connections:
-  - from: trigger-w1x2y3z4
-    to: data_store-a5b6c7d8
-
-  - from: data_store-a5b6c7d8
-    to: websocket_broadcast-e9f0g1h2
-
-  - from: data_store-a5b6c7d8
-    to: terminal-m7n8o9p0
-    handle: error
-
-  - from: websocket_broadcast-e9f0g1h2
-    to: terminal-i3j4k5l6
-    handle: done
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
-  created_at: "2026-03-14T00:00:00Z"
-  updated_at: "2026-03-14T00:00:00Z"
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

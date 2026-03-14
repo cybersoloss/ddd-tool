@@ -1,29 +1,56 @@
 name: Rule
-description: System rules for ingestion, routing, and publishing
 inherits: _base
+description: Content routing and filtering rule — evaluated during ingestion, processing, and publishing
+owned_by: settings
+
 fields:
   - name: type
     type: enum
+    ref: RuleType
     required: true
-    ref: rule_type
+    description: Which pipeline stage this rule applies to
+
+  - name: name
+    type: string
+    required: true
+    max_length: 200
+    description: Human-readable rule name
+
   - name: condition
     type: json
     required: true
+    description: Rule condition expression (evaluated against content fields)
+
   - name: action
     type: json
     required: true
+    description: Action to take when condition matches (route, tag, block, enrich)
+
   - name: priority
     type: number
     required: true
     default: 0
+    description: Evaluation order — lower number evaluated first
+
   - name: enabled
     type: boolean
     required: true
     default: true
+    description: Whether this rule is active
+
+  - name: parent_id
+    type: uuid
+    required: false
+    description: Optional parent rule ID for hierarchical rule grouping
 
 indexes:
   - fields: [type, enabled, priority]
-    description: "Active rules by type sorted by priority"
+    type: btree
+    description: Ordered active rules by type — primary query for rule evaluation
+
+  - fields: [parent_id]
+    type: btree
+    description: Find child rules in a hierarchy
 
 metadata:
   created: "2026-03-14T00:00:00Z"

@@ -1,204 +1,278 @@
 flow:
   id: review-content
-  name: Review Content
-  description: Editorial review workflow with human approval gate supporting approve, reject, escalate, and defer actions
+  name: "Review Content"
   type: traditional
   domain: editorial
-  version: "1.0.0"
-  trigger:
-    type: event
-    event: ContentClassified
-  auth: null
+  description: "Reviewer submits an approval, rejection, escalation, or defer decision. Updates content status and fires the appropriate event."
+  auth:
+    required: true
+    roles: [admin, editor, reviewer]
+    strategy: jwt
+
+trigger:
+  id: trigger-revC2xN8
+  type: trigger
+  label: "POST /api/editorial/review/:id"
+  spec:
+    event: "HTTP POST /api/editorial/review/:id"
+  connections:
+    - targetNodeId: input-vAl3kP4r
 
 nodes:
-  - id: trigger-a1b2c3d4
-    type: trigger
-    name: Content Classified Event
-    config:
-      event: ContentClassified
+  - id: input-vAl3kP4r
+    type: input
+    label: "Validate Review"
+    spec:
+      fields:
+        - name: id
+          type: string
+          required: true
+          format: uuid
+        - name: action
+          type: string
+          required: true
+          enum: [approve, reject, escalate, defer]
+        - name: reason
+          type: string
+          required: false
+          description: "Required for reject action"
+        - name: escalate_to
+          type: string
+          required: false
+          description: "User ID for escalation target"
+    connections:
+      - targetNodeId: data_store-rdCt5kQ7
+        sourceHandle: valid
+      - targetNodeId: terminal-inv-aB7cD8eF
+        sourceHandle: invalid
 
-  - id: data_store-e5f6g7h8
+  - id: data_store-rdCt5kQ7
     type: data_store
-    name: Read Content
-    config:
+    label: "Fetch Content"
+    spec:
       operation: read
       model: Content
       query:
-        id: "$.content_id"
+        where:
+          id: "$.id"
+          status: review
+      safety: strict
+      returning: true
+    connections:
+      - targetNodeId: decision-nf8tV9w
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: human_gate-i9j0k1l2
-    type: human_gate
-    name: Editorial Review Gate
-    config:
-      approval_options:
+  - id: decision-nf8tV9w
+    type: decision
+    label: "Found?"
+    spec:
+      condition: "$.result !== null"
+    connections:
+      - targetNodeId: smart_router-action7
+        sourceHandle: "true"
+      - targetNodeId: terminal-notfound-cD4e
+        sourceHandle: "false"
+
+  - id: smart_router-action7
+    type: smart_router
+    label: "Route by Action"
+    spec:
+      rules:
         - id: approve
-          label: "Approve"
+          condition: "$.action === 'approve'"
+          route: data_store-approve8
+          priority: 1
         - id: reject
-          label: "Reject"
-          requires_input: true
+          condition: "$.action === 'reject'"
+          route: data_store-reject9
+          priority: 2
         - id: escalate
-          label: "Escalate"
+          condition: "$.action === 'escalate'"
+          route: data_store-escalate0
+          priority: 3
         - id: defer
-          label: "Defer"
-      notification_channels:
-        - slack
-        - email
-      timeout:
-        duration: "24h"
-        action: escalate
-      context_for_human:
-        content_id: "$.content_id"
-        title: "$.title"
-        quality_score: "$.quality_score"
+          condition: "$.action === 'defer'"
+          route: data_store-defer1
+          priority: 4
+      fallback_chain: [terminal-inv-aB7cD8eF]
+    connections:
+      - targetNodeId: data_store-approve8
+        sourceHandle: approve
+      - targetNodeId: data_store-reject9
+        sourceHandle: reject
+      - targetNodeId: data_store-escalate0
+        sourceHandle: escalate
+      - targetNodeId: data_store-defer1
+        sourceHandle: defer
 
-  - id: data_store-m3n4o5p6
+  - id: data_store-approve8
     type: data_store
-    name: Update Content Status Approved
-    config:
+    label: "Set Approved"
+    spec:
       operation: update
       model: Content
-      set:
+      query:
+        where:
+          id: "$.id"
+      data:
         status: approved
+        metadata:
+          reviewer_id: "$.auth.user_id"
+          reviewed_at: "$.now()"
+      returning: true
+    connections:
+      - targetNodeId: event-approved-emit
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: event-q7r8s9t0
-    type: event
-    name: Emit ContentApproved
-    config:
-      event_name: ContentApproved
-      payload: "$.content"
-
-  - id: terminal-u1v2w3x4
-    type: terminal
-    name: Approved Success
-    config:
-      status: 200
-      response_type: success
-
-  - id: data_store-y5z6a7b8
+  - id: data_store-reject9
     type: data_store
-    name: Create ContentRejection
-    config:
+    label: "Set Rejected + Log"
+    spec:
       operation: create
       model: ContentRejection
       data:
-        content_id: "$.content_id"
-        reason: "$.rejection_reason"
-        reviewer_id: "$.reviewer_id"
+        content_id: "$.id"
+        reason: "$.reason"
+        rejected_by: "$.auth.user_id"
+        rejected_at: "$.now()"
+      returning: true
+    connections:
+      - targetNodeId: data_store-rejStatus
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: data_store-c9d0e1f2
+  - id: data_store-rejStatus
     type: data_store
-    name: Update Content Status Rejected
-    config:
+    label: "Set Status Rejected"
+    spec:
       operation: update
       model: Content
-      set:
-        status: rejected
+      query:
+        where:
+          id: "$.id"
+      data:
+        status: review
+        metadata:
+          reviewer_id: "$.auth.user_id"
+          rejection_id: "$.result.id"
+      returning: true
+    connections:
+      - targetNodeId: event-rejected-emit
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: event-g3h4i5j6
+  - id: data_store-escalate0
+    type: data_store
+    label: "Escalate Assignment"
+    spec:
+      operation: update
+      model: Content
+      query:
+        where:
+          id: "$.id"
+      data:
+        metadata:
+          reviewer_id: "$.escalate_to"
+          escalated_by: "$.auth.user_id"
+          escalated_at: "$.now()"
+      returning: true
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
+
+  - id: data_store-defer1
+    type: data_store
+    label: "Defer Review"
+    spec:
+      operation: update
+      model: Content
+      query:
+        where:
+          id: "$.id"
+      data:
+        metadata:
+          deferred_by: "$.auth.user_id"
+          deferred_at: "$.now()"
+      returning: true
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
+
+  - id: event-approved-emit
     type: event
-    name: Emit ContentRejected
-    config:
+    label: "Emit ContentApproved"
+    spec:
+      direction: emit
+      event_name: ContentApproved
+      payload:
+        content_id: "$.id"
+        reviewer_id: "$.auth.user_id"
+        approved_at: "$.now()"
+        quality_score: "$.result.quality_score"
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+
+  - id: event-rejected-emit
+    type: event
+    label: "Emit ContentRejected"
+    spec:
+      direction: emit
       event_name: ContentRejected
-      payload: "$.content"
+      payload:
+        content_id: "$.id"
+        reviewer_id: "$.auth.user_id"
+        reason: "$.reason"
+        rejected_at: "$.now()"
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
 
-  - id: terminal-k7l8m9n0
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    name: Rejected Success
-    config:
+    label: "Reviewed"
+    spec:
+      outcome: success
       status: 200
-      response_type: success
+      body:
+        action: "$.action"
+        content_id: "$.id"
 
-  - id: event-o1p2q3r4
-    type: event
-    name: Emit ContentEscalated
-    config:
-      event_name: ContentEscalated
-      payload: "$.content"
-
-  - id: terminal-s5t6u7v8
+  - id: terminal-notfound-cD4e
     type: terminal
-    name: Escalated Success
-    config:
-      status: 200
-      response_type: success
+    label: "Not Found or Wrong Status"
+    spec:
+      outcome: error
+      status: 404
+      body:
+        error: "CONTENT_NOT_FOUND"
 
-  - id: terminal-w9x0y1z2
+  - id: terminal-inv-aB7cD8eF
     type: terminal
-    name: Deferred Success
-    config:
-      status: 200
-      response_type: success
+    label: "Invalid"
+    spec:
+      outcome: error
+      status: 400
+      body:
+        error: "VALIDATION_ERROR"
 
-  - id: terminal-a3b4c5d6
+  - id: terminal-err-pSz2wV3b
     type: terminal
-    name: Data Store Error
-    config:
+    label: "Error"
+    spec:
+      outcome: error
       status: 500
-      response_type: error
-
-connections:
-  - from: trigger-a1b2c3d4
-    to: data_store-e5f6g7h8
-
-  - from: data_store-e5f6g7h8
-    to: human_gate-i9j0k1l2
-    condition: "$.quality_score > 0.9"
-    label: fast-track
-
-  - from: data_store-e5f6g7h8
-    to: human_gate-i9j0k1l2
-    label: standard-review
-
-  - from: human_gate-i9j0k1l2
-    to: data_store-m3n4o5p6
-    handle: approve
-
-  - from: data_store-m3n4o5p6
-    to: event-q7r8s9t0
-
-  - from: event-q7r8s9t0
-    to: terminal-u1v2w3x4
-
-  - from: human_gate-i9j0k1l2
-    to: data_store-y5z6a7b8
-    handle: reject
-
-  - from: data_store-y5z6a7b8
-    to: data_store-c9d0e1f2
-
-  - from: data_store-c9d0e1f2
-    to: event-g3h4i5j6
-
-  - from: event-g3h4i5j6
-    to: terminal-k7l8m9n0
-
-  - from: human_gate-i9j0k1l2
-    to: event-o1p2q3r4
-    handle: escalate
-
-  - from: event-o1p2q3r4
-    to: terminal-s5t6u7v8
-
-  - from: human_gate-i9j0k1l2
-    to: terminal-w9x0y1z2
-    handle: defer
-
-  - from: data_store-e5f6g7h8
-    to: terminal-a3b4c5d6
-    handle: error
-
-  - from: data_store-m3n4o5p6
-    to: terminal-a3b4c5d6
-    handle: error
-
-  - from: data_store-y5z6a7b8
-    to: terminal-a3b4c5d6
-    handle: error
-
-  - from: data_store-c9d0e1f2
-    to: terminal-a3b4c5d6
-    handle: error
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
-  created_at: "2026-03-14T00:00:00Z"
-  updated_at: "2026-03-14T00:00:00Z"
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

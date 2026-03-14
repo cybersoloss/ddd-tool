@@ -3,126 +3,135 @@ flow:
   name: "Monitor Social Feeds"
   type: traditional
   domain: ingestion
-  description: "Monitors social media content sources on a schedule, fetches posts via Twitter API with OAuth1a and circuit breaker protection, merges results, and emits ContentIngested and SourceUpdated events."
+  description: "Polls the Twitter v2 filtered stream and search API for keyword-matched content using OAuth 1.0a + stealth HTTP. Runs every 15 minutes."
+  auth:
+    required: false
 
 trigger:
-  id: trigger-mS1a2B3c
+  id: trigger-socFd2cN8
   type: trigger
-  position: { x: 100, y: 0 }
+  label: "cron */15 * * * *"
   spec:
-    event: "cron */30 * * * *"
-    label: "Every 30 minutes"
+    event: "cron */15 * * * *"
+    job_config:
+      queue: social-monitor
+      concurrency: 3
+      timeout: 60000
+  connections:
+    - targetNodeId: data_store-rdSocSrc3
 
 nodes:
-  - id: data_store-dR4d5E6f
+  - id: data_store-rdSocSrc3
     type: data_store
-    position: { x: 100, y: 130 }
+    label: "Load Social Sources"
     spec:
       operation: read
       model: ContentSource
       query:
         where:
           type: social
+          enabled: true
+      returning: true
+    connections:
+      - targetNodeId: collection-chk4
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: loop-lS7g8H9i
-    type: loop
-    position: { x: 100, y: 260 }
+  - id: collection-chk4
+    type: collection
+    label: "Has Social Sources?"
     spec:
-      collection: "$.sources"
-      iterator: "source"
+      operation: filter
+      input: "$.result"
+      output: social_sources
+      predicate: "$.item.enabled === true"
+    connections:
+      - targetNodeId: loop-poll5nR6s
+        sourceHandle: result
+      - targetNodeId: terminal-ok-empty
+        sourceHandle: empty
 
-  - id: service_call-sT1j2K3l
+  - id: loop-poll5nR6s
+    type: loop
+    label: "Poll Each Source"
+    spec:
+      collection: "$.social_sources"
+      iterator: source
+      body_start: service_call-twitter6
+    connections:
+      - targetNodeId: service_call-twitter6
+        sourceHandle: body
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: done
+
+  - id: service_call-twitter6
     type: service_call
-    position: { x: 100, y: 390 }
+    label: "Search Twitter"
     spec:
       method: GET
+      integration: twitter
       url: "https://api.twitter.com/2/tweets/search/recent"
-      integration: twitter_api
+      request_config:
+        params:
+          query: "$.source.config.keywords.join(' OR ')"
+          max_results: 100
+          tweet_fields: "created_at,author_id,public_metrics"
+        timeout: 10000
       oauth1a_config:
-        consumer_key_env: TWITTER_API_KEY
-        consumer_secret_env: TWITTER_API_SECRET
-        access_token_env: TWITTER_ACCESS_TOKEN
-        access_token_secret_env: TWITTER_ACCESS_TOKEN_SECRET
+        api_key_field: TWITTER_API_KEY
+        api_key_secret_field: TWITTER_API_SECRET
+        access_token_field: TWITTER_ACCESS_TOKEN
+        access_token_secret_field: TWITTER_ACCESS_TOKEN_SECRET
+      error_mapping:
+        429: RATE_LIMITED
+      fallback:
+        value: { data: [] }
+        log: true
+    connections:
+      - targetNodeId: batch-route7
+        sourceHandle: success
+      - targetNodeId: loop-poll5nR6s
+        sourceHandle: error
 
-  - id: collection-cM4m5N6o
-    type: collection
-    position: { x: 100, y: 520 }
+  - id: batch-route7
+    type: batch
+    label: "Route Each Tweet"
     spec:
-      operation: merge
+      input: "$.response.data"
+      sub_flow_ref: ingestion/route-by-source-type
+    connections:
+      - targetNodeId: loop-poll5nR6s
+        sourceHandle: done
+      - targetNodeId: loop-poll5nR6s
+        sourceHandle: error
 
-  - id: data_store-dC7p8Q9r
-    type: data_store
-    position: { x: 100, y: 650 }
-    spec:
-      operation: create
-      model: Content
-
-  - id: event-eI1s2T3u
-    type: event
-    position: { x: 100, y: 780 }
-    spec:
-      direction: emit
-      event_name: ContentIngested
-
-  - id: event-eU4v5W6x
-    type: event
-    position: { x: 100, y: 1040 }
-    spec:
-      direction: emit
-      event_name: SourceUpdated
-
-  - id: terminal-tS7y8Z9a
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 100, y: 1170 }
+    label: "Monitoring Complete"
     spec:
+      outcome: success
       status: 200
-      label: "Social feeds monitored"
+      body:
+        message: "Social feeds monitored"
 
-  - id: terminal-tE1b2C3d
+  - id: terminal-ok-empty
     type: terminal
-    position: { x: 400, y: 390 }
+    label: "No Social Sources"
     spec:
-      status: 503
-      label: "Circuit breaker open"
-      error_code: CIRCUIT_BREAKER_OPEN
+      outcome: success
+      status: 200
+      body:
+        message: "No active social sources"
 
-connections:
-  - source: trigger-mS1a2B3c
-    target: data_store-dR4d5E6f
-    sourceHandle: ""
-  - source: data_store-dR4d5E6f
-    target: loop-lS7g8H9i
-    sourceHandle: "success"
-  - source: loop-lS7g8H9i
-    target: service_call-sT1j2K3l
-    sourceHandle: "body"
-  - source: service_call-sT1j2K3l
-    target: collection-cM4m5N6o
-    sourceHandle: "success"
-    behavior: circuit_break
-    circuit_break_config:
-      failure_threshold: 5
-      recovery_timeout_ms: 60000
-      half_open_max_calls: 2
-  - source: service_call-sT1j2K3l
-    target: terminal-tE1b2C3d
-    sourceHandle: "error"
-  - source: collection-cM4m5N6o
-    target: data_store-dC7p8Q9r
-    sourceHandle: "success"
-  - source: data_store-dC7p8Q9r
-    target: event-eI1s2T3u
-    sourceHandle: "success"
-  - source: event-eI1s2T3u
-    target: loop-lS7g8H9i
-    sourceHandle: "success"
-    label: "Continue loop"
-  - source: loop-lS7g8H9i
-    target: event-eU4v5W6x
-    sourceHandle: "done"
-  - source: event-eU4v5W6x
-    target: terminal-tS7y8Z9a
-    sourceHandle: "success"
+  - id: terminal-err-pSz2wV3b
+    type: terminal
+    label: "Error"
+    spec:
+      outcome: error
+      status: 500
+      body:
+        error: "INGESTION_FAILED"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

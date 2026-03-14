@@ -1,33 +1,49 @@
 name: ContentRejection
-description: Content rejection records with reasons
 inherits: _base
+description: Record of a content rejection event — captures reason and reviewer for audit trail
+owned_by: editorial
+
 fields:
   - name: content_id
     type: uuid
     required: true
+    description: Foreign key to the rejected content item
+
   - name: reason
     type: text
     required: true
+    description: Reviewer-provided rejection justification
+
   - name: rejected_by
     type: uuid
     required: true
+    description: Foreign key to the user who rejected the content
+
   - name: rejected_at
-    type: datetime
+    type: date
     required: true
+    description: Timestamp when the rejection was recorded
 
 relationships:
-  - name: content
-    type: belongs_to
-    target: Content
+  - type: belongs_to
+    model: Content
     foreign_key: content_id
-  - name: reviewer
-    type: belongs_to
-    target: User
+    description: The content item that was rejected
+
+  - type: belongs_to
+    model: User
     foreign_key: rejected_by
+    as: reviewer
+    description: The reviewer who made the rejection decision
 
 indexes:
   - fields: [content_id]
     type: btree
+    description: Find all rejections for a content item
+
+  - fields: [rejected_by, rejected_at]
+    type: btree
+    description: Reviewer audit trail
 
 metadata:
   created: "2026-03-14T00:00:00Z"

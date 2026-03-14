@@ -3,89 +3,87 @@ flow:
   name: "Get Notification Preferences"
   type: traditional
   domain: notifications
-  description: "Retrieves user notification preferences with Redis caching"
+  description: "Returns a user's current notification settings and recent notification history (last 20 items)."
   auth:
     required: true
     strategy: jwt
 
 trigger:
-  id: trigger-gP1a2B3c
+  id: trigger-gNPr2xN8
   type: trigger
-  position: { x: 250, y: 0 }
+  label: "GET /api/notifications/preferences"
   spec:
-    event: "http GET /api/v1/notifications/preferences"
-    label: "Get notification preferences endpoint"
+    event: "HTTP GET /api/notifications/preferences"
+  connections:
+    - targetNodeId: parallel-fetch4kQ7p
 
 nodes:
-  - id: cache-cP4d5E6f
-    type: cache
-    position: { x: 250, y: 130 }
+  - id: parallel-fetch4kQ7p
+    type: parallel
+    label: "Fetch Prefs + History"
     spec:
-      operation: get
-      key: "notif-prefs:$.user_id"
-      store: redis
+      failure_policy: best_effort
+      branches:
+        - id: prefs
+          label: "Load Preferences"
+        - id: history
+          label: "Load History"
+    connections:
+      - targetNodeId: data_store-rdPrefs5
+        sourceHandle: branch-0
+      - targetNodeId: data_store-rdHist6
+        sourceHandle: branch-1
+      - targetNodeId: transform-merge7
+        sourceHandle: done
 
-  - id: terminal-hP7g8H9i
-    type: terminal
-    position: { x: 550, y: 130 }
-    spec:
-      status: 200
-      label: "Cache hit - return cached preferences"
-
-  - id: data_store-rP1j2K3l
+  - id: data_store-rdPrefs5
     type: data_store
-    position: { x: 250, y: 260 }
+    label: "Fetch Settings"
+    spec:
+      operation: read
+      model: Setting
+      query:
+        where:
+          key:
+            in: [email_enabled, slack_enabled, slack_webhook_url, notify_event_types, digest_frequency]
+      returning: true
+    connections:
+      - targetNodeId: parallel-fetch4kQ7p
+
+  - id: data_store-rdHist6
+    type: data_store
+    label: "Fetch Notifications"
     spec:
       operation: read
       model: Notification
       query:
         where:
           user_id: "$.auth.user_id"
-          type: preferences
+        limit: 20
+        order_by:
+          created_at: desc
+      returning: true
+    connections:
+      - targetNodeId: parallel-fetch4kQ7p
 
-  - id: cache-sP4m5N6o
-    type: cache
-    position: { x: 250, y: 390 }
+  - id: transform-merge7
+    type: transform
+    label: "Merge Response"
     spec:
-      operation: set
-      key: "notif-prefs:$.user_id"
-      store: redis
-      ttl_ms: 300000
+      mode: expression
+      field_mappings:
+        preferences: "$.branch_results.prefs"
+        notifications: "$.branch_results.history"
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
 
-  - id: terminal-sP7p8Q9r
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 250, y: 520 }
+    label: "Return Prefs"
     spec:
+      outcome: success
       status: 200
-      label: "Preferences retrieved"
-
-  - id: terminal-eP1s2T3u
-    type: terminal
-    position: { x: 550, y: 260 }
-    spec:
-      status: 500
-      label: "Data store error"
-      error_code: PREFERENCES_READ_ERROR
-
-connections:
-  - source: trigger-gP1a2B3c
-    target: cache-cP4d5E6f
-    sourceHandle: ""
-  - source: cache-cP4d5E6f
-    target: terminal-hP7g8H9i
-    sourceHandle: "hit"
-  - source: cache-cP4d5E6f
-    target: data_store-rP1j2K3l
-    sourceHandle: "miss"
-  - source: data_store-rP1j2K3l
-    target: cache-sP4m5N6o
-    sourceHandle: "success"
-  - source: data_store-rP1j2K3l
-    target: terminal-eP1s2T3u
-    sourceHandle: "error"
-  - source: cache-sP4m5N6o
-    target: terminal-sP7p8Q9r
-    sourceHandle: "success"
+      body: "$.result"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

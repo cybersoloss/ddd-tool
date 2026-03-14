@@ -3,159 +3,138 @@ flow:
   name: "Health Check"
   type: traditional
   domain: monitoring
-  description: "Periodic health check of all system components with parallel probes and status aggregation"
+  description: "Aggregates health status from all services in parallel — DB, Redis, API, worker, external integrations. Returns overall status and per-service breakdown."
+  auth:
+    required: false
 
 trigger:
-  id: trigger-hC1a2B3c
+  id: trigger-hChk2xN8
   type: trigger
-  position: { x: 250, y: 0 }
+  label: "GET /health"
   spec:
-    event: "timer 60000"
-    label: "Every 60 seconds"
+    event: "HTTP GET /health"
+    rate_limit:
+      window_ms: 60000
+      max_requests: 120
+  connections:
+    - targetNodeId: parallel-svc4kQ7p
 
 nodes:
-  - id: parallel-hP4d5E6f
+  - id: parallel-svc4kQ7p
     type: parallel
-    position: { x: 250, y: 130 }
+    label: "Check All Services"
     spec:
       failure_policy: best_effort
       branches:
-        - id: branch-0
-          output_key: api
-        - id: branch-1
-          output_key: db
-        - id: branch-2
-          output_key: redis
-        - id: branch-3
-          output_key: worker
+        - id: db
+          label: "Check Database"
+        - id: redis
+          label: "Check Redis"
+        - id: worker
+          label: "Check Worker"
+        - id: anthropic
+          label: "Check Anthropic API"
+        - id: sendgrid
+          label: "Check SendGrid API"
+    connections:
+      - targetNodeId: service_call-dbHl5rT9
+        sourceHandle: branch-0
+      - targetNodeId: service_call-rdHl6sU0
+        sourceHandle: branch-1
+      - targetNodeId: service_call-wkHl7tV1
+        sourceHandle: branch-2
+      - targetNodeId: service_call-aiHl8uW2
+        sourceHandle: branch-3
+      - targetNodeId: service_call-sgHl9vX3
+        sourceHandle: branch-4
+      - targetNodeId: transform-agg4yY5z
+        sourceHandle: done
 
-  - id: service_call-hA7g8H9i
+  - id: service_call-dbHl5rT9
     type: service_call
-    position: { x: 0, y: 260 }
+    label: "Ping Database"
+    method: GET
     spec:
       method: GET
-      url: "http://localhost:3001/api/v1/health"
-      description: "Check API server health"
+      url: "http://localhost:3001/internal/health/db"
+      fallback:
+        value: { status: "down", error: "unreachable" }
+        log: true
+    connections:
+      - targetNodeId: parallel-svc4kQ7p
 
-  - id: service_call-hD1j2K3l
+  - id: service_call-rdHl6sU0
     type: service_call
-    position: { x: 200, y: 260 }
+    label: "Ping Redis"
     spec:
-      service: PostgreSQL
-      method: pg_isready
-      description: "Check database connectivity"
+      method: GET
+      url: "http://localhost:3001/internal/health/redis"
+      fallback:
+        value: { status: "down", error: "unreachable" }
+        log: true
+    connections:
+      - targetNodeId: parallel-svc4kQ7p
 
-  - id: service_call-hR4m5N6o
+  - id: service_call-wkHl7tV1
     type: service_call
-    position: { x: 400, y: 260 }
+    label: "Ping Worker"
     spec:
-      service: Redis
-      method: ping
-      description: "Check Redis connectivity"
+      method: GET
+      url: "http://localhost:3002/health"
+      fallback:
+        value: { status: "down", error: "unreachable" }
+        log: true
+    connections:
+      - targetNodeId: parallel-svc4kQ7p
 
-  - id: service_call-hW7p8Q9r
+  - id: service_call-aiHl8uW2
     type: service_call
-    position: { x: 600, y: 260 }
+    label: "Ping Anthropic"
     spec:
-      service: Worker
-      method: health
-      description: "Check worker process health"
+      method: GET
+      integration: anthropic
+      url: "https://api.anthropic.com/v1/messages"
+      fallback:
+        value: { status: "degraded", error: "rate_limited" }
+        log: true
+    connections:
+      - targetNodeId: parallel-svc4kQ7p
 
-  - id: collection-mR1s2T3u
-    type: collection
-    position: { x: 250, y: 390 }
+  - id: service_call-sgHl9vX3
+    type: service_call
+    label: "Ping SendGrid"
     spec:
-      operation: merge
+      method: GET
+      integration: sendgrid
+      url: "https://api.sendgrid.com/v3/user/account"
+      fallback:
+        value: { status: "degraded", error: "unreachable" }
+        log: true
+    connections:
+      - targetNodeId: parallel-svc4kQ7p
 
-  - id: decision-aH4v5W6x
-    type: decision
-    position: { x: 250, y: 520 }
+  - id: transform-agg4yY5z
+    type: transform
+    label: "Aggregate Health"
     spec:
-      condition: "$.api.healthy && $.db.healthy && $.redis.healthy && $.worker.healthy"
-      description: "Check if all components are healthy"
+      mode: expression
+      field_mappings:
+        database: "$.branch_results.db"
+        redis: "$.branch_results.redis"
+        worker: "$.branch_results.worker"
+        anthropic: "$.branch_results.anthropic"
+        sendgrid: "$.branch_results.sendgrid"
+        overall: "$.branch_results.*.status.every(s => s === 'up') ? 'healthy' : $.branch_results.*.status.some(s => s === 'down') ? 'unhealthy' : 'degraded'"
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
 
-  - id: event-hS7y8Z9a
-    type: event
-    position: { x: 100, y: 650 }
-    spec:
-      direction: emit
-      event_name: HealthStatus
-      payload:
-        status: healthy
-        components: "$.health_results"
-        checked_at: "$.now"
-
-  - id: terminal-sH1b2C3d
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 100, y: 780 }
+    label: "Health Response"
     spec:
+      outcome: success
       status: 200
-      label: "All components healthy"
-
-  - id: event-hD4e5F6g
-    type: event
-    position: { x: 400, y: 650 }
-    spec:
-      direction: emit
-      event_name: HealthStatus
-      payload:
-        status: degraded
-        components: "$.health_results"
-        checked_at: "$.now"
-
-  - id: terminal-sD7h8I9j
-    type: terminal
-    position: { x: 400, y: 780 }
-    spec:
-      status: 200
-      label: "System degraded - some components unhealthy"
-
-connections:
-  - source: trigger-hC1a2B3c
-    target: parallel-hP4d5E6f
-    sourceHandle: ""
-  - source: parallel-hP4d5E6f
-    target: service_call-hA7g8H9i
-    sourceHandle: "branch-0"
-  - source: parallel-hP4d5E6f
-    target: service_call-hD1j2K3l
-    sourceHandle: "branch-1"
-  - source: parallel-hP4d5E6f
-    target: service_call-hR4m5N6o
-    sourceHandle: "branch-2"
-  - source: parallel-hP4d5E6f
-    target: service_call-hW7p8Q9r
-    sourceHandle: "branch-3"
-  - source: service_call-hA7g8H9i
-    target: parallel-hP4d5E6f
-    sourceHandle: "complete"
-  - source: service_call-hD1j2K3l
-    target: parallel-hP4d5E6f
-    sourceHandle: "complete"
-  - source: service_call-hR4m5N6o
-    target: parallel-hP4d5E6f
-    sourceHandle: "complete"
-  - source: service_call-hW7p8Q9r
-    target: parallel-hP4d5E6f
-    sourceHandle: "complete"
-  - source: parallel-hP4d5E6f
-    target: collection-mR1s2T3u
-    sourceHandle: "merged"
-  - source: collection-mR1s2T3u
-    target: decision-aH4v5W6x
-    sourceHandle: "result"
-  - source: decision-aH4v5W6x
-    target: event-hS7y8Z9a
-    sourceHandle: "true"
-  - source: decision-aH4v5W6x
-    target: event-hD4e5F6g
-    sourceHandle: "false"
-  - source: event-hS7y8Z9a
-    target: terminal-sH1b2C3d
-    sourceHandle: "success"
-  - source: event-hD4e5F6g
-    target: terminal-sD7h8I9j
-    sourceHandle: "success"
+      body: "$.result"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

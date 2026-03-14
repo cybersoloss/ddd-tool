@@ -1,45 +1,91 @@
 name: ContentSource
-description: Content ingestion source configuration
 inherits: _base
+description: External content source configuration — defines how Nexus acquires content from each origin
+owned_by: ingestion
+
 fields:
   - name: type
     type: enum
+    ref: SourceType
     required: true
-    ref: source_type
+    description: Source protocol or format type
+
   - name: name
     type: string
     required: true
-    constraints:
-      max_length: 200
+    max_length: 200
+    description: Human-readable source name
+
   - name: url
     type: string
     required: false
+    description: Source URL (for RSS, web, webhook sources)
+
   - name: config
     type: json
     required: true
-    default: {}
-  - name: last_synced_at
-    type: datetime
+    description: Source-specific configuration (credentials, selectors, schedule, rate limits)
+
+  - name: priority
+    type: number
     required: false
+    default: 0
+    description: Fetch priority order (lower number = higher priority)
+
+  - name: last_synced_at
+    type: date
+    required: false
+    description: Timestamp of the most recent successful sync
+
   - name: enabled
     type: boolean
     required: true
     default: true
+    description: Whether this source is actively being polled
 
 indexes:
   - fields: [type]
     type: btree
+    description: Filter sources by type
+
   - fields: [enabled]
     type: btree
+    description: Quick filter for active sources
+
+  - fields: [priority, enabled]
+    type: btree
+    description: Ordered active sources for scheduled fetch
 
 seed:
-  - name: sample-sources
-    description: "Sample ingestion sources for development"
-    strategy: fixture
-    data:
-      - { type: rss, name: "TechCrunch RSS", url: "https://techcrunch.com/feed/", config: { check_interval_minutes: 15 }, enabled: true }
-      - { type: rss, name: "Hacker News RSS", url: "https://hnrss.org/frontpage", config: { check_interval_minutes: 30 }, enabled: true }
-      - { type: webhook, name: "Custom Webhook", config: { secret: "WEBHOOK_SECRET" }, enabled: true }
+  strategy: fixture
+  data:
+    - id: "00000000-0000-0000-0000-000000000020"
+      type: rss
+      name: TechCrunch RSS
+      url: "https://techcrunch.com/feed/"
+      config:
+        fetch_interval_minutes: 15
+        max_items_per_fetch: 50
+      enabled: true
+      priority: 1
+    - id: "00000000-0000-0000-0000-000000000021"
+      type: rss
+      name: Wired RSS
+      url: "https://www.wired.com/feed/rss"
+      config:
+        fetch_interval_minutes: 30
+        max_items_per_fetch: 30
+      enabled: true
+      priority: 2
+    - id: "00000000-0000-0000-0000-000000000022"
+      type: webhook
+      name: Partner API Webhook
+      url: null
+      config:
+        hmac_secret_env: WEBHOOK_HMAC_SECRET
+        payload_format: json
+      enabled: true
+      priority: 0
 
 metadata:
   created: "2026-03-14T00:00:00Z"

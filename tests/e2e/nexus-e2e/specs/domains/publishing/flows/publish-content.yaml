@@ -1,129 +1,187 @@
 flow:
   id: publish-content
-  name: Publish Content
-  description: Routes approved content to appropriate publishing channels via smart router
+  name: "Publish Content"
   type: traditional
   domain: publishing
-  version: "1.0.0"
-  criticality: critical
-  trigger:
-    type: event
-    event: ContentApproved
-  auth: null
+  description: "Main publish orchestrator. Loads approved content, creates PublishRecord, then fans out to channel-specific publishers in parallel."
+  auth:
+    required: true
+    roles: [admin, editor]
+    strategy: jwt
+
+trigger:
+  id: trigger-pubC2xN8
+  type: trigger
+  label: "POST /api/publishing/publish"
+  spec:
+    event: "HTTP POST /api/publishing/publish"
+  connections:
+    - targetNodeId: input-vAl3kP4r
 
 nodes:
-  - id: trigger-a1b2c3d4
-    type: trigger
-    name: Content Approved Event
-    config:
-      event: ContentApproved
+  - id: input-vAl3kP4r
+    type: input
+    label: "Validate Input"
+    spec:
+      fields:
+        - name: content_id
+          type: string
+          required: true
+          format: uuid
+        - name: channel_ids
+          type: array
+          required: true
+          min_items: 1
+    connections:
+      - targetNodeId: data_store-rdCt5kQ7
+        sourceHandle: valid
+      - targetNodeId: terminal-inv-aB7cD8eF
+        sourceHandle: invalid
 
-  - id: data_store-e5f6g7h8
+  - id: data_store-rdCt5kQ7
     type: data_store
-    name: Read Content
-    config:
+    label: "Fetch Approved Content"
+    spec:
       operation: read
       model: Content
       query:
-        id: "$.content_id"
+        where:
+          id: "$.content_id"
+          status: approved
+      safety: strict
+      returning: true
+    connections:
+      - targetNodeId: decision-nf8tV9w
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: data_store-i9j0k1l2
+  - id: decision-nf8tV9w
+    type: decision
+    label: "Found & Approved?"
+    spec:
+      condition: "$.result !== null"
+    connections:
+      - targetNodeId: data_store-crtPubRec6
+        sourceHandle: "true"
+      - targetNodeId: terminal-notfound-cD4e
+        sourceHandle: "false"
+
+  - id: data_store-crtPubRec6
     type: data_store
-    name: Read Enabled Channels
-    config:
-      operation: read
-      model: Channel
-      query:
-        enabled: true
+    label: "Create Publish Records"
+    spec:
+      operation: create_many
+      model: PublishRecord
+      data:
+        items: "$.channel_ids.map(id => ({ content_id: $.content_id, channel_id: id, status: 'pending' }))"
+      returning: true
+    connections:
+      - targetNodeId: parallel-channels7
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: smart_router-m3n4o5p6
-    type: smart_router
-    name: Route to Channels
-    config:
-      rules:
+  - id: parallel-channels7
+    type: parallel
+    label: "Publish to Channels"
+    spec:
+      failure_policy: best_effort
+      branches:
         - id: website
-          condition: "$.channels.includes('website')"
-          route: website-pub
-        - id: social
-          condition: "$.channels.includes('twitter') || $.channels.includes('linkedin')"
-          route: social-pub
+          label: "Website"
+          condition: "$.channel_ids.includes('website')"
         - id: newsletter
-          condition: "$.channels.includes('newsletter')"
-          route: newsletter-pub
-      fallback_chain:
-        - website
+          label: "Newsletter"
+          condition: "$.channel_ids.includes('newsletter')"
+        - id: social
+          label: "Social"
+          condition: "$.channel_ids.includes('twitter')"
+    connections:
+      - targetNodeId: sub_flow-web8
+        sourceHandle: branch-0
+      - targetNodeId: sub_flow-news9
+        sourceHandle: branch-1
+      - targetNodeId: sub_flow-soc0
+        sourceHandle: branch-2
+      - targetNodeId: event-emit-yF3g
+        sourceHandle: done
 
-  - id: sub_flow-q7r8s9t0
+  - id: sub_flow-web8
     type: sub_flow
-    name: Publish to Website
-    config:
-      flow_ref: "publishing/publish-to-website"
+    label: "Publish to Website"
+    spec:
+      flow_ref: publishing/publish-to-website
+    connections:
+      - targetNodeId: parallel-channels7
 
-  - id: sub_flow-u1v2w3x4
+  - id: sub_flow-news9
     type: sub_flow
-    name: Publish to Social
-    config:
-      flow_ref: "publishing/publish-to-social"
+    label: "Publish to Newsletter"
+    spec:
+      flow_ref: publishing/publish-to-newsletter
+    connections:
+      - targetNodeId: parallel-channels7
 
-  - id: sub_flow-y5z6a7b8
+  - id: sub_flow-soc0
     type: sub_flow
-    name: Publish to Newsletter
-    config:
-      flow_ref: "publishing/publish-to-newsletter"
+    label: "Publish to Social"
+    spec:
+      flow_ref: publishing/publish-to-social
+    connections:
+      - targetNodeId: parallel-channels7
 
-  - id: event-c9d0e1f2
+  - id: event-emit-yF3g
     type: event
-    name: Emit ContentPublished
-    config:
+    label: "Emit ContentPublished"
+    spec:
+      direction: emit
       event_name: ContentPublished
       payload:
         content_id: "$.content_id"
-        channels: "$.routed_channels"
+        channel_ids: "$.channel_ids"
+        publish_record_id: "$.result.id"
+        published_at: "$.now()"
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
 
-  - id: terminal-g3h4i5j6
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    name: Publish Success
-    config:
+    label: "Published"
+    spec:
+      outcome: success
       status: 200
-      response_type: success
+      body:
+        content_id: "$.content_id"
+        channels: "$.channel_ids"
 
-connections:
-  - from: trigger-a1b2c3d4
-    to: data_store-e5f6g7h8
+  - id: terminal-notfound-cD4e
+    type: terminal
+    label: "Not Found or Not Approved"
+    spec:
+      outcome: error
+      status: 404
+      body:
+        error: "CONTENT_NOT_FOUND"
 
-  - from: data_store-e5f6g7h8
-    to: data_store-i9j0k1l2
+  - id: terminal-inv-aB7cD8eF
+    type: terminal
+    label: "Invalid"
+    spec:
+      outcome: error
+      status: 400
+      body:
+        error: "VALIDATION_ERROR"
 
-  - from: data_store-i9j0k1l2
-    to: smart_router-m3n4o5p6
-
-  - from: smart_router-m3n4o5p6
-    to: sub_flow-q7r8s9t0
-    handle: website-pub
-
-  - from: smart_router-m3n4o5p6
-    to: sub_flow-u1v2w3x4
-    handle: social-pub
-
-  - from: smart_router-m3n4o5p6
-    to: sub_flow-y5z6a7b8
-    handle: newsletter-pub
-
-  - from: sub_flow-q7r8s9t0
-    to: event-c9d0e1f2
-    handle: done
-
-  - from: sub_flow-u1v2w3x4
-    to: event-c9d0e1f2
-    handle: done
-
-  - from: sub_flow-y5z6a7b8
-    to: event-c9d0e1f2
-    handle: done
-
-  - from: event-c9d0e1f2
-    to: terminal-g3h4i5j6
+  - id: terminal-err-pSz2wV3b
+    type: terminal
+    label: "Error"
+    spec:
+      outcome: error
+      status: 500
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
-  created_at: "2026-03-14T00:00:00Z"
-  updated_at: "2026-03-14T00:00:00Z"
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

@@ -1,44 +1,114 @@
 page: general-settings
-route: /settings/general
+title: General Settings
+layout: centered
 
 sections:
-  - id: settings-form-section
+  - id: settings-header
+    component: page-header
+    title: General Settings
+    subtitle: Platform-wide configuration
+
+  - id: settings-form-card
     component: detail-card
-    position: main
-    label: "System Settings"
     data_source: settings/get-settings
     fields:
-      app_name: { value: "$.app_name" }
-      support_email: { value: "$.support_email" }
+      - key: app_name
+        value: "$.app_name"
+        label: Application Name
+      - key: quality_threshold
+        value: "$.quality_threshold"
+        label: Quality Threshold
+      - key: brand_color
+        value: "$.brand_color"
+        label: Brand Color
+    empty_state:
+      message: "Settings not loaded"
+      icon: settings
 
 forms:
   - id: settings-form
-    label: "General Settings"
-    position: main
+    auto_save:
+      debounce_ms: 1500
+      flow: settings/update-settings
     fields:
-      - { name: app_name, type: text, label: "App Name", required: true, placeholder: "Nexus" }
-      - { name: support_email, type: text, label: "Support Email", required: true, validation: "email" }
-      - { name: rate_limit, type: number, label: "Rate Limit (req/min)", default: 60 }
-      - { name: batch_size, type: number, label: "Batch Size", default: 50 }
-      - { name: feature_ai_review, type: toggle, label: "AI Review Enabled", default: true }
-      - { name: feature_auto_publish, type: toggle, label: "Auto-Publish Enabled", default: false }
-      - { name: timezone, type: select, label: "Timezone", options: ["UTC", "America/New_York", "America/Chicago", "America/Los_Angeles", "Europe/London", "Europe/Berlin", "Asia/Tokyo"] }
-      - { name: language, type: select, label: "Language", options: [en, es, fr, de, ja] }
-      - { name: quality_threshold, type: slider, label: "Quality Threshold", default: 70, validation: "0-100" }
-      - { name: brand_color, type: color, label: "Brand Color", default: "#2563eb" }
+      - name: app_name
+        type: text
+        label: Application Name
+        placeholder: Nexus
+        required: true
+        validation:
+          min_length: 1
+          max_length: 100
+      - name: support_email
+        type: text
+        label: Support Email
+        placeholder: support@yourcompany.com
+        required: false
+        validation:
+          format: email
+      - name: rate_limit_per_minute
+        type: number
+        label: API Rate Limit (req/min)
+        placeholder: 100
+        required: false
+        validation:
+          min: 1
+          max: 10000
+      - name: max_batch_size
+        type: number
+        label: Max Batch Size
+        placeholder: 100
+        required: false
+        validation:
+          min: 1
+          max: 1000
+      - name: enable_ai_processing
+        type: toggle
+        label: Enable AI Processing
+        default: true
+      - name: enable_auto_publish
+        type: toggle
+        label: Enable Auto-Publish (high-quality content)
+        default: false
+      - name: timezone
+        type: select
+        label: Default Timezone
+        options: ["UTC", "America/New_York", "America/Los_Angeles", "Europe/London", "Asia/Tokyo"]
+        default: UTC
+      - name: language
+        type: select
+        label: Interface Language
+        options: [en, es, fr, de, ja]
+        default: en
+      - name: quality_threshold
+        type: slider
+        label: Auto-Approve Quality Threshold
+        required: false
+        min: 0
+        max: 100
+        default: 75
+      - name: brand_color
+        type: color
+        label: Brand Color
+        default: "#6366f1"
       - name: terms_of_service
         type: markdown
-        label: "Terms of Service"
-        markdown_config: { mode: toggle, min_height: 200 }
-    submit:
-      flow: settings/update-settings
-      label: "Save Settings"
-      loading_label: "Saving..."
-      success: { message: "Settings saved" }
-      error: { message: "Failed to save settings", retry: true }
+        label: Terms of Service
+        required: false
+        markdown_config:
+          mode: toggle
+          toolbar: false
+          min_height: 200
 
 state:
-  initial_fetch: [settings/get-settings]
+  store: settings-store
+  initial_fetch:
+    - settings/get-settings
 
 loading: spinner
 error: toast
+refresh: manual
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

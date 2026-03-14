@@ -1,97 +1,118 @@
-name: Content
-description: "Central content entity and cross-domain event hub"
+name: "Content"
+description: "Core content CRUD — create, read, update, delete, and version content items. Manages content lifecycle from draft through publish. Soft delete, content hashing for deduplication, and version history."
 role: entity
-
 auth:
   required: true
   strategy: jwt
 
-owns_schemas:
-  - Content
-  - ContentVersion
-  - ContentRejection
+owns_schemas: ["Content", "ContentVersion"]
 
 flows:
   - id: create-content
     name: "Create Content"
-    description: "Create a new content entity"
+    description: "Creates a new content item. Computes content hash for deduplication. Initializes with status=draft and creates initial ContentVersion."
     type: traditional
-    tags:
-      - public-api
+    tags: [public-api]
+    criticality: high
 
   - id: get-content
     name: "Get Content"
-    description: "Retrieve content by ID with version history"
+    description: "Retrieves a single content item with its latest version, AI analysis, and publishing history."
     type: traditional
-    tags:
-      - public-api
-
-  - id: update-content
-    name: "Update Content"
-    description: "Update content fields with version tracking"
-    type: traditional
-    tags:
-      - public-api
-
-  - id: delete-content
-    name: "Delete Content"
-    description: "Soft delete content with cascade notifications"
-    type: traditional
-    tags:
-      - public-api
+    tags: [public-api]
+    criticality: high
 
   - id: list-content
     name: "List Content"
-    description: "List content with filters, sorting, and pagination"
+    description: "Returns paginated content list with filters for status, category, date range, and deleted items."
     type: traditional
-    tags:
-      - public-api
+    tags: [public-api]
+    criticality: high
+
+  - id: update-content
+    name: "Update Content"
+    description: "Updates a content item. Creates a new ContentVersion snapshot. Computes new hash and triggers re-analysis if body changed."
+    type: traditional
+    tags: [public-api]
+    criticality: high
+
+  - id: delete-content
+    name: "Delete Content"
+    description: "Soft-deletes a content item (sets deleted_at). Content can be recovered. Does not delete published records."
+    type: traditional
+    tags: [public-api]
+    criticality: normal
 
   - id: drag-reorder
     name: "Drag Reorder"
-    description: "Reorder content items via drag-and-drop position updates"
+    description: "Handles UI drag-and-drop reorder events. Updates priority ordering of content items in a list view."
     type: traditional
-    tags:
-      - public-api
+    tags: [public-api]
+    criticality: low
+
+  - id: list-categories
+    name: "List Categories"
+    description: "Returns available content categories (from shared types) for UI autocomplete and filter dropdowns."
+    type: traditional
+    tags: [public-api, internal]
+    criticality: low
+    auth:
+      required: false
+
+groups:
+  - id: crud
+    name: "Content CRUD"
+    flows: [create-content, get-content, list-content, update-content, delete-content]
+  - id: ui
+    name: "UI Support"
+    flows: [drag-reorder, list-categories]
 
 publishes_events:
   - event: ContentCreated
+    schema: Content
     from_flow: create-content
-    description: "New content entity created"
+    description: "Fired after content creation — may trigger ingestion routing for newly sourced content"
     payload:
-      content_id: uuid
+      content_id: string
       title: string
       category: string
+      status: string
+      source_type: string
 
   - event: ContentUpdated
+    schema: Content
     from_flow: update-content
-    description: "Content entity updated"
+    description: "Fired after content update — triggers re-analysis if body changed"
     payload:
-      content_id: uuid
-      changed_fields: "string[]"
-      updated_by: uuid
+      content_id: string
+      changed_fields: array
+      new_hash: string
 
   - event: ContentDeleted
+    schema: Content
     from_flow: delete-content
-    description: "Content entity deleted"
+    description: "Fired after soft-delete — consuming domains can clean up references"
     payload:
-      content_id: uuid
-      deleted_by: uuid
+      content_id: string
+      deleted_at: string
 
-  - event: ContentRestored
-    description: "Content entity restored from deletion"
-    payload:
-      content_id: uuid
-      restored_by: uuid
-
-consumes_events: []
+consumes_events:
+  - event: ContentRejected
+    from_domain: editorial
+    description: "Resets content status back to draft when rejected by editorial"
+    handled_by: update-content
 
 layout:
   flows:
     create-content: { x: 100, y: 100 }
     get-content: { x: 100, y: 300 }
-    update-content: { x: 100, y: 500 }
-    delete-content: { x: 100, y: 700 }
-    list-content: { x: 100, y: 900 }
-    drag-reorder: { x: 100, y: 1100 }
+    list-content: { x: 100, y: 500 }
+    update-content: { x: 400, y: 100 }
+    delete-content: { x: 400, y: 300 }
+    drag-reorder: { x: 400, y: 500 }
+    list-categories: { x: 700, y: 100 }
   portals: {}
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

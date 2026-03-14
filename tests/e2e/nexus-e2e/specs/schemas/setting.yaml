@@ -1,25 +1,42 @@
 name: Setting
-description: System configuration key-value store
 inherits: _base
+description: Key-value system configuration store — persists platform-wide settings
+owned_by: settings
+
 fields:
   - name: key
     type: string
     required: true
-    constraints:
-      unique: true
-      max_length: 100
+    unique: true
+    max_length: 100
+    description: Setting identifier (e.g. "quality_threshold", "max_batch_size", "brand_color")
+
   - name: value
     type: json
     required: true
+    description: Setting value (any JSON type — string, number, boolean, object)
+
+  - name: description
+    type: string
+    required: false
+    description: Human-readable explanation of what this setting controls
+
+  - name: updated_by
+    type: uuid
+    required: false
+    description: Foreign key to the user who last modified this setting
 
 indexes:
   - fields: [key]
     unique: true
+    type: btree
+    description: Fast lookup by key name
 
 seed:
-  - name: default-settings
-    description: "Default system configuration values"
-    strategy: script
+  strategy: script
+  source: prisma/seeds/settings-seed.ts
+  count_estimate: 20
+  description: Default system settings (quality_threshold=75, max_batch_size=100, brand_color=#6366f1, etc.)
 
 metadata:
   created: "2026-03-14T00:00:00Z"

@@ -3,117 +3,103 @@ flow:
   name: "Fact Check Agent"
   type: agent
   domain: processing
-  description: "Autonomous fact-checking agent with web search and verdict submission"
+  description: "Autonomous agent that verifies key claims against Google CSE and curated knowledge base. Returns fact_score and flagged_claims."
+  auth:
+    required: false
 
 trigger:
-  id: trigger-fC1a2B3c
+  id: trigger-fctAg2eN8
   type: trigger
-  position: { x: 100, y: 0 }
+  label: "event:ContentIngested"
   spec:
-    event: "event:ContentClassified"
-    label: "Content Classified"
+    event: "event:ContentIngested"
+  connections:
+    - targetNodeId: data_store-rdCt3
 
 nodes:
-  - id: data_store-dR4d5E6f
+  - id: data_store-rdCt3
     type: data_store
-    position: { x: 100, y: 130 }
+    label: "Load Content"
     spec:
       operation: read
       model: Content
       query:
         where:
-          id: "$.content_id"
+          id: "$.payload.content_id"
+      safety: strict
+      returning: true
+    connections:
+      - targetNodeId: agent_loop-factCheck4
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: agent_loop-aL7g8H9i
+  - id: agent_loop-factCheck4
     type: agent_loop
-    position: { x: 100, y: 260 }
+    label: "Fact Checker Agent"
     spec:
-      model: "anthropic/claude-sonnet"
-      max_iterations: 10
+      model: claude-opus-4-6
+      max_iterations: 5
       tools:
-        - name: web_search
-          description: "Search the web for facts to verify claims"
-          parameters:
-            query:
-              type: string
-        - name: submit_verdict
-          description: "Submit final fact-check verdict"
-          parameters:
-            verdict:
-              type: string
-            sources:
-              type: array
-            confidence:
-              type: number
+        - name: search_google_cse
+          description: "Search Google Custom Search Engine to verify a claim"
+          is_terminal: false
+        - name: check_knowledge_base
+          description: "Query internal knowledge base for known facts"
+          is_terminal: false
+        - name: submit_fact_check_results
+          description: "Submit the completed fact check with score and flagged claims"
           is_terminal: true
-      memory:
-        - type: conversation_history
-          max_turns: 20
-        - type: key_value
-          store: "fact-check-results"
+      context_sources:
+        - "$.result.title"
+        - "$.result.body"
+      streaming:
+        enabled: false
+    connections:
+      - targetNodeId: data_store-upd5nR6s
+        sourceHandle: done
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: data_store-dU1j2K3l
+  - id: data_store-upd5nR6s
     type: data_store
-    position: { x: 100, y: 390 }
+    label: "Store Fact Check Results"
     spec:
       operation: update
       model: Content
       query:
         where:
-          id: "$.content_id"
-      fields:
-        - name: fact_check_verdict
-          value: "$.verdict"
-        - name: fact_check_sources
-          value: "$.sources"
-        - name: fact_check_confidence
-          value: "$.confidence"
+          id: "$.payload.content_id"
+      data:
+        metadata:
+          fact_score: "$.agent_result.fact_score"
+          flagged_claims: "$.agent_result.flagged_claims"
+          fact_checked_at: "$.now()"
+      returning: true
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: terminal-tS4m5N6o
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 100, y: 520 }
+    label: "Fact Checked"
     spec:
+      outcome: success
       status: 200
-      label: "Fact check complete"
+      body:
+        fact_score: "$.agent_result.fact_score"
+        flagged_claims: "$.agent_result.flagged_claims"
 
-  - id: terminal-tE7p8Q9r
+  - id: terminal-err-pSz2wV3b
     type: terminal
-    position: { x: 400, y: 260 }
+    label: "Error"
     spec:
+      outcome: error
       status: 500
-      label: "Agent loop error"
-      error_code: AGENT_LOOP_ERROR
-
-  - id: terminal-tE1s2T3u
-    type: terminal
-    position: { x: 400, y: 130 }
-    spec:
-      status: 500
-      label: "Data store error"
-      error_code: DATA_STORE_ERROR
-
-connections:
-  - source: trigger-fC1a2B3c
-    target: data_store-dR4d5E6f
-    sourceHandle: ""
-  - source: data_store-dR4d5E6f
-    target: agent_loop-aL7g8H9i
-    sourceHandle: "success"
-  - source: data_store-dR4d5E6f
-    target: terminal-tE1s2T3u
-    sourceHandle: "error"
-  - source: agent_loop-aL7g8H9i
-    target: data_store-dU1j2K3l
-    sourceHandle: "done"
-  - source: agent_loop-aL7g8H9i
-    target: terminal-tE7p8Q9r
-    sourceHandle: "error"
-  - source: data_store-dU1j2K3l
-    target: terminal-tS4m5N6o
-    sourceHandle: "success"
-  - source: data_store-dU1j2K3l
-    target: terminal-tE1s2T3u
-    sourceHandle: "error"
+      body:
+        error: "PROCESSING_FAILED"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

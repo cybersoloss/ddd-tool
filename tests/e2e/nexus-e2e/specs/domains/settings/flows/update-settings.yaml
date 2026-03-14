@@ -3,128 +3,117 @@ flow:
   name: "Update Settings"
   type: traditional
   domain: settings
-  description: "Admin-only endpoint to update a setting with cache invalidation and event emission"
+  description: "Updates one or more platform settings. Validates input, upserts each key, invalidates cache, then emits SettingsUpdated event."
   auth:
     required: true
+    roles: [admin]
     strategy: jwt
-    roles:
-      - admin
 
 trigger:
-  id: trigger-uS1a2B3c
+  id: trigger-uStxW2mN
   type: trigger
-  position: { x: 250, y: 0 }
+  label: "PATCH /api/settings"
   spec:
-    event: "http PATCH /api/v1/settings"
-    label: "Update settings endpoint"
+    event: "HTTP PATCH /api/settings"
+  connections:
+    - targetNodeId: input-vAl3kP4r
 
 nodes:
-  - id: input-vS4d5E6f
+  - id: input-vAl3kP4r
     type: input
-    position: { x: 250, y: 130 }
+    label: "Validate Input"
     spec:
-      validate:
-        key:
-          required: true
-          type: string
-        value:
-          required: true
-          type: any
-
-  - id: data_store-rC7g8H9i
-    type: data_store
-    position: { x: 250, y: 260 }
-    spec:
-      operation: read
-      model: Setting
-      query:
-        where:
-          key: "$.key"
-
-  - id: data_store-uS1j2K3l
-    type: data_store
-    position: { x: 250, y: 390 }
-    spec:
-      operation: update
-      model: Setting
-      query:
-        where:
-          key: "$.key"
       fields:
-        - name: value
-          value: "$.value"
-        - name: updated_at
-          value: "$.now"
+        - name: settings
+          type: object
+          required: true
+          description: "Key-value map of settings to update"
+    connections:
+      - targetNodeId: loop-kQy5nR6s
+        sourceHandle: valid
+      - targetNodeId: terminal-inv-aB7cD8eF
+        sourceHandle: invalid
 
-  - id: cache-iS4m5N6o
+  - id: loop-kQy5nR6s
+    type: loop
+    label: "Upsert Each Setting"
+    spec:
+      collection: "$.settings"
+      iterator: setting_entry
+      accumulate: updated_keys
+      body_start: data_store-uPs8tV9w
+    connections:
+      - targetNodeId: data_store-uPs8tV9w
+        sourceHandle: body
+      - targetNodeId: cache-inv-xA1bC2dE
+        sourceHandle: done
+
+  - id: data_store-uPs8tV9w
+    type: data_store
+    label: "Upsert Setting"
+    spec:
+      operation: upsert
+      model: Setting
+      upsert_key: key
+      data:
+        key: "$.setting_entry.key"
+        value: "$.setting_entry.value"
+        updated_by: "$.auth.user_id"
+    connections:
+      - targetNodeId: loop-kQy5nR6s
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
+
+  - id: cache-inv-xA1bC2dE
     type: cache
-    position: { x: 250, y: 520 }
+    label: "Invalidate Cache"
     spec:
       operation: invalidate
       key: "settings:all"
+      store: redis
+    connections:
+      - targetNodeId: event-emit-yF3gH4iJ
 
-  - id: event-sC7p8Q9r
+  - id: event-emit-yF3gH4iJ
     type: event
-    position: { x: 250, y: 650 }
+    label: "Emit SettingsUpdated"
     spec:
       direction: emit
-      event_name: SettingsChanged
+      event_name: SettingsUpdated
       payload:
-        key: "$.key"
-        old_value: "$.current_setting.value"
-        new_value: "$.value"
+        changed_keys: "$.updated_keys"
+        updated_by: "$.auth.user_id"
+    connections:
+      - targetNodeId: terminal-ok-kL5mN6oP
 
-  - id: terminal-sS1s2T3u
+  - id: terminal-ok-kL5mN6oP
     type: terminal
-    position: { x: 250, y: 780 }
+    label: "Success"
     spec:
+      outcome: success
       status: 200
-      label: "Setting updated successfully"
+      body:
+        message: "Settings updated"
+        updated_keys: "$.updated_keys"
 
-  - id: terminal-eV4v5W6x
+  - id: terminal-inv-aB7cD8eF
     type: terminal
-    position: { x: 550, y: 130 }
+    label: "Invalid Input"
     spec:
-      status: 422
-      label: "Invalid settings input"
-      error_code: VALIDATION_ERROR
+      outcome: error
+      status: 400
+      body:
+        error: "VALIDATION_ERROR"
 
-  - id: terminal-eD7y8Z9a
+  - id: terminal-err-pSz2wV3b
     type: terminal
-    position: { x: 550, y: 390 }
+    label: "DB Error"
     spec:
+      outcome: error
       status: 500
-      label: "Data store error"
-      error_code: SETTINGS_UPDATE_ERROR
-
-connections:
-  - source: trigger-uS1a2B3c
-    target: input-vS4d5E6f
-    sourceHandle: ""
-  - source: input-vS4d5E6f
-    target: data_store-rC7g8H9i
-    sourceHandle: "valid"
-  - source: input-vS4d5E6f
-    target: terminal-eV4v5W6x
-    sourceHandle: "invalid"
-  - source: data_store-rC7g8H9i
-    target: data_store-uS1j2K3l
-    sourceHandle: "success"
-  - source: data_store-rC7g8H9i
-    target: terminal-eD7y8Z9a
-    sourceHandle: "error"
-  - source: data_store-uS1j2K3l
-    target: cache-iS4m5N6o
-    sourceHandle: "success"
-  - source: data_store-uS1j2K3l
-    target: terminal-eD7y8Z9a
-    sourceHandle: "error"
-  - source: cache-iS4m5N6o
-    target: event-sC7p8Q9r
-    sourceHandle: "success"
-  - source: event-sC7p8Q9r
-    target: terminal-sS1s2T3u
-    sourceHandle: "success"
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

@@ -3,69 +3,153 @@ flow:
   name: "Delete User"
   type: traditional
   domain: users
-  description: "Soft-deletes a user by setting deleted_at and invalidating their session cache"
+  description: "Soft-deletes a user account (sets deleted_at). Revokes all API keys. Emits UserDeleted. Admin only."
   auth:
     required: true
+    roles: [admin]
     strategy: jwt
 
 trigger:
-  id: trigger-dU1a2B3c
+  id: trigger-delU2xN8
   type: trigger
-  position: { x: 250, y: 0 }
+  label: "DELETE /api/users/:id"
   spec:
-    event: "http DELETE /api/v1/users/:id"
-    label: "Delete user endpoint"
+    event: "HTTP DELETE /api/users/:id"
+  connections:
+    - targetNodeId: input-vAl3kP4r
 
 nodes:
-  - id: data_store-sD4d5E6f
-    type: data_store
-    position: { x: 250, y: 130 }
+  - id: input-vAl3kP4r
+    type: input
+    label: "Validate ID"
     spec:
-      operation: update
+      fields:
+        - name: id
+          type: string
+          required: true
+          format: uuid
+    connections:
+      - targetNodeId: data_store-rdUser5
+        sourceHandle: valid
+      - targetNodeId: terminal-inv-aB7cD8eF
+        sourceHandle: invalid
+
+  - id: data_store-rdUser5
+    type: data_store
+    label: "Check User Exists"
+    spec:
+      operation: read
       model: User
       query:
         where:
-          id: "$.params.id"
-      fields:
-        - name: deleted_at
-          value: "$.now"
+          id: "$.id"
+          deleted_at: null
+      safety: strict
+      returning: true
+    connections:
+      - targetNodeId: decision-nf8tV9w
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: cache-iU7g8H9i
-    type: cache
-    position: { x: 250, y: 260 }
+  - id: decision-nf8tV9w
+    type: decision
+    label: "Found?"
     spec:
-      operation: invalidate
-      key: "session:$.params.id"
+      condition: "$.result !== null"
+    connections:
+      - targetNodeId: transaction-del8tV9w
+        sourceHandle: "true"
+      - targetNodeId: terminal-notfound-cD4e
+        sourceHandle: "false"
 
-  - id: terminal-sD1j2K3l
+  - id: transaction-del8tV9w
+    type: transaction
+    label: "Soft Delete + Revoke Keys"
+    spec:
+      steps:
+        - action:
+            type: data_store
+            operation: update
+            model: User
+            query:
+              where:
+                id: "$.id"
+            data:
+              deleted_at: "$.now()"
+            returning: true
+          rollback:
+            type: data_store
+            operation: update
+            model: User
+            query:
+              where:
+                id: "$.id"
+            data:
+              deleted_at: null
+        - action:
+            type: data_store
+            operation: delete_many
+            model: ApiKey
+            query:
+              where:
+                user_id: "$.id"
+          rollback:
+            type: process
+            description: "API key restoration on rollback is a no-op (keys can be recreated)"
+    connections:
+      - targetNodeId: event-emit-yF3g
+        sourceHandle: committed
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: rolled_back
+
+  - id: event-emit-yF3g
+    type: event
+    label: "Emit UserDeleted"
+    spec:
+      direction: emit
+      event_name: UserDeleted
+      payload:
+        user_id: "$.id"
+        deleted_at: "$.now()"
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 250, y: 390 }
+    label: "Deleted"
     spec:
-      status: 204
-      response_type: empty
-      label: "User deleted"
+      outcome: success
+      status: 200
+      body:
+        message: "User deleted"
 
-  - id: terminal-eD4m5N6o
+  - id: terminal-notfound-cD4e
     type: terminal
-    position: { x: 550, y: 130 }
+    label: "Not Found"
     spec:
+      outcome: error
+      status: 404
+      body:
+        error: "USER_NOT_FOUND"
+
+  - id: terminal-inv-aB7cD8eF
+    type: terminal
+    label: "Invalid"
+    spec:
+      outcome: error
+      status: 400
+      body:
+        error: "VALIDATION_ERROR"
+
+  - id: terminal-err-pSz2wV3b
+    type: terminal
+    label: "Error"
+    spec:
+      outcome: error
       status: 500
-      label: "Data store error"
-      error_code: DATA_STORE_ERROR
-
-connections:
-  - source: trigger-dU1a2B3c
-    target: data_store-sD4d5E6f
-    sourceHandle: ""
-  - source: data_store-sD4d5E6f
-    target: cache-iU7g8H9i
-    sourceHandle: "success"
-  - source: data_store-sD4d5E6f
-    target: terminal-eD4m5N6o
-    sourceHandle: "error"
-  - source: cache-iU7g8H9i
-    target: terminal-sD1j2K3l
-    sourceHandle: "success"
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

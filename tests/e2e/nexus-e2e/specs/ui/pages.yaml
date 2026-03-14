@@ -1,114 +1,192 @@
 app_type: web
-framework: "Next.js 14"
+framework: Next.js 14
 router: app
 state_management: zustand
-component_library: "shadcn/ui"
+component_library: shadcn/ui
 
 theme:
-  color_scheme: light
-  primary_color: "#2563eb"
-  font_family: "Inter"
-  border_radius: 8
+  color_scheme: dark
+  primary_color: "#6366f1"
+  secondary_color: "#8b5cf6"
+  background_color: "#0f172a"
+  surface_color: "#1e293b"
+  text_color: "#f1f5f9"
+  font_family: "Inter, system-ui, sans-serif"
+  border_radius: "0.5rem"
+  success_color: "#22c55e"
+  warning_color: "#f59e0b"
+  error_color: "#ef4444"
 
 pages:
   - id: dashboard
     route: /
     name: Dashboard
-    description: "Real-time metrics, pipeline health, and alerts overview"
+    description: Real-time pipeline health overview with ingestion stats and alerts
     layout: sidebar
     auth_required: true
+
   - id: content-feed
     route: /content
     name: Content Feed
-    description: "Browse, filter, and manage all content items"
+    description: Filterable list of all content with bulk actions
     layout: full
     auth_required: true
+
   - id: content-detail
-    route: /content/:id
+    route: /content/[id]
     name: Content Detail
-    description: "View and edit content with analysis and version history"
+    description: Full content view with AI analysis, version history, and edit tools
     layout: split
     auth_required: true
+
   - id: editorial-queue
     route: /editorial
     name: Editorial Queue
-    description: "Review queue with AI scores and assistant"
+    description: Review queue with AI scores, assignment tools, and AI assistant
     layout: full
     auth_required: true
+
   - id: review-panel
-    route: /editorial/review/:id
+    route: /editorial/review/[id]
     name: Review Panel
-    description: "Content review with approve/reject/escalate actions"
+    description: Side-by-side content and AI analysis for approval decisions
     layout: split
     auth_required: true
+
   - id: sources
     route: /sources
-    name: Sources
-    description: "Manage content ingestion sources"
+    name: Content Sources
+    description: Manage ingestion sources with drag-drop priority ordering
     layout: full
     auth_required: true
+
   - id: publishing
     route: /publishing
-    name: Publishing
-    description: "Publishing queue with channel status"
+    name: Publishing Queue
+    description: Multi-channel publishing queue with retry controls
     layout: full
     auth_required: true
+
   - id: analytics
     route: /analytics
     name: Analytics
-    description: "Charts, metrics, anomaly alerts, and geo distribution"
+    description: Time-series charts, category breakdown, anomaly alerts, and geo map
     layout: sidebar
     auth_required: true
+
   - id: users-admin
     route: /admin/users
     name: Users
-    description: "User management and role assignment"
+    description: User management with role assignment and bulk operations
     layout: full
     auth_required: true
+    roles: [admin]
+
   - id: general-settings
     route: /settings/general
     name: General Settings
-    description: "System configuration and feature flags"
+    description: Platform-wide settings including quality thresholds and branding
     layout: centered
     auth_required: true
+    roles: [admin]
+
   - id: notification-settings
     route: /settings/notifications
     name: Notification Settings
-    description: "Channel preferences and digest frequency"
+    description: Configure notification channels and delivery preferences
     layout: centered
     auth_required: true
+
   - id: api-key-management
     route: /settings/api-keys
     name: API Keys
-    description: "Create and manage API access keys"
+    description: Create and manage API keys with scope-based permissions
     layout: full
     auth_required: true
+
   - id: rule-editor
     route: /settings/rules
     name: Rule Editor
-    description: "Configure ingestion, routing, and publishing rules"
+    description: Hierarchical rule builder for content routing and filtering
     layout: split
     auth_required: true
+    roles: [admin, editor]
 
 navigation:
   type: sidebar
-  items:
-    - { page: dashboard, icon: layout-dashboard, label: Dashboard }
-    - { page: content-feed, icon: file-text, label: Content }
-    - { page: editorial-queue, icon: clipboard-check, label: Editorial, badge: pending_reviews }
-    - { page: publishing, icon: send, label: Publishing }
-    - { page: sources, icon: rss, label: Sources }
-    - { page: analytics, icon: bar-chart-2, label: Analytics }
-    - { page: users-admin, icon: users, label: Users }
-    - { page: general-settings, icon: settings, label: Settings }
+  sections:
+    - id: main
+      label: Overview
+      items:
+        - page: dashboard
+          label: Dashboard
+          icon: layout-dashboard
+        - page: content-feed
+          label: Content
+          icon: file-text
+        - page: editorial-queue
+          label: Editorial Queue
+          icon: clipboard-list
+        - page: publishing
+          label: Publishing
+          icon: send
+        - page: analytics
+          label: Analytics
+          icon: bar-chart-2
+        - page: sources
+          label: Sources
+          icon: rss
+
+    - id: admin
+      label: Administration
+      roles: [admin]
+      items:
+        - page: users-admin
+          label: Users
+          icon: users
+
+    - id: settings
+      label: Settings
+      items:
+        - page: general-settings
+          label: General
+          icon: settings
+          roles: [admin]
+        - page: notification-settings
+          label: Notifications
+          icon: bell
+        - page: api-key-management
+          label: API Keys
+          icon: key
+        - page: rule-editor
+          label: Rules
+          icon: filter
+          roles: [admin, editor]
 
 shared_components:
-  - id: content-card
-    description: "Displays a content item with title, status badge, category, quality score, and source info"
-    used_by: [content-feed, editorial-queue, dashboard]
-  - id: user-avatar
-    description: "User avatar with name tooltip and online indicator"
-    used_by: [editorial-queue, review-panel, users-admin]
   - id: notification-badge
-    description: "Badge showing unread notification count with dropdown preview"
-    used_by: [dashboard, editorial-queue]
+    description: Unread notification count badge shown in the top navigation bar
+    used_by: [dashboard, content-feed, editorial-queue, analytics]
+
+  - id: user-avatar
+    description: User avatar with role badge and dropdown menu
+    used_by: [dashboard, editorial-queue, users-admin, review-panel]
+
+  - id: content-card
+    description: Compact content item card showing title, status, category, and quality score
+    used_by: [content-feed, editorial-queue, dashboard]
+
+global_keyboard_shortcuts:
+  - keys: "Cmd+K"
+    label: "Open command palette"
+    action:
+      type: toggle
+  - keys: "Cmd+Shift+A"
+    label: "Quick approve selected content"
+    action:
+      type: call_flow
+      flow: editorial/quick-approve
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

@@ -1,44 +1,36 @@
 flow:
-  id: list-content
-  name: "List Content"
+  id: list-queue
+  name: "List Queue"
   type: traditional
-  domain: content
-  description: "Returns paginated content list with filters for status, category, date range, and soft-deleted items. Supports cursor pagination."
+  domain: publishing
+  description: "Returns paginated list of pending, scheduled, and recently published items with channel status for the publishing dashboard."
   auth:
     required: true
+    roles: [admin, editor]
     strategy: jwt
 
 trigger:
-  id: trigger-lstC2xN8
+  id: trigger-lstQ2xN8
   type: trigger
-  label: "GET /api/content"
+  label: "GET /api/publishing/queue"
   spec:
-    event: "HTTP GET /api/content"
+    event: "HTTP GET /api/publishing/queue"
   connections:
     - targetNodeId: input-vAl3kP4r
 
 nodes:
   - id: input-vAl3kP4r
     type: input
-    label: "Validate Query Params"
+    label: "Validate Params"
     spec:
       fields:
         - name: status
           type: array
           required: false
-        - name: category
+          default: [pending, scheduled]
+        - name: channel_id
           type: string
           required: false
-        - name: date_from
-          type: string
-          required: false
-        - name: date_to
-          type: string
-          required: false
-        - name: show_deleted
-          type: boolean
-          required: false
-          default: false
         - name: cursor
           type: string
           required: false
@@ -47,33 +39,30 @@ nodes:
           required: false
           default: 25
     connections:
-      - targetNodeId: data_store-rdCt5kQ7
+      - targetNodeId: data_store-rdPub5
         sourceHandle: valid
       - targetNodeId: terminal-inv-aB7cD8eF
         sourceHandle: invalid
 
-  - id: data_store-rdCt5kQ7
+  - id: data_store-rdPub5
     type: data_store
-    label: "Query Content"
+    label: "Query Publish Records"
     spec:
       operation: read
-      model: Content
+      model: PublishRecord
       query:
         where:
-          status: "$.status"
-          category: "$.category"
-          created_at:
-            gte: "$.date_from"
-            lte: "$.date_to"
-          deleted_at: "$.show_deleted ? undefined : null"
+          status:
+            in: "$.status"
+          channel_id: "$.channel_id"
         cursor: "$.cursor"
         limit: "$.limit"
         order_by:
           created_at: desc
       include:
-        source: true
+        content: true
+        channel: true
       returning: true
-      safety: strict
     connections:
       - targetNodeId: terminal-ok-zQ7rS8tU
         sourceHandle: success
@@ -82,7 +71,7 @@ nodes:
 
   - id: terminal-ok-zQ7rS8tU
     type: terminal
-    label: "Return List"
+    label: "Queue List"
     spec:
       outcome: success
       status: 200
@@ -90,7 +79,7 @@ nodes:
 
   - id: terminal-inv-aB7cD8eF
     type: terminal
-    label: "Invalid Input"
+    label: "Invalid"
     spec:
       outcome: error
       status: 400
@@ -99,7 +88,7 @@ nodes:
 
   - id: terminal-err-pSz2wV3b
     type: terminal
-    label: "DB Error"
+    label: "Error"
     spec:
       outcome: error
       status: 500

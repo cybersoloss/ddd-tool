@@ -3,86 +3,87 @@ flow:
   name: "Get Settings"
   type: traditional
   domain: settings
-  description: "Retrieves system settings with Redis caching"
+  description: "Returns all platform settings as a typed key-value map. Checks Redis cache first; on miss, reads from DB and caches result."
   auth:
     required: true
     strategy: jwt
 
 trigger:
-  id: trigger-gS1a2B3c
+  id: trigger-gStxR2kN
   type: trigger
-  position: { x: 250, y: 0 }
+  label: "GET /api/settings"
   spec:
-    event: "http GET /api/v1/settings"
-    label: "Get settings endpoint"
+    event: "HTTP GET /api/settings"
+  connections:
+    - targetNodeId: cache-hMp3nT4q
+      sourceHandle: default
 
 nodes:
-  - id: cache-cS4d5E6f
+  - id: cache-hMp3nT4q
     type: cache
-    position: { x: 250, y: 130 }
+    label: "Check Settings Cache"
     spec:
-      operation: get
+      operation: check
       key: "settings:all"
       store: redis
-      ttl_ms: 600000
+      ttl_ms: 300000
+    connections:
+      - targetNodeId: terminal-cached-oRy9
+        sourceHandle: hit
+      - targetNodeId: data_store-jKw5vL6r
+        sourceHandle: miss
 
-  - id: terminal-hS7g8H9i
-    type: terminal
-    position: { x: 550, y: 130 }
-    spec:
-      status: 200
-      label: "Cache hit - return cached settings"
-
-  - id: data_store-rS1j2K3l
+  - id: data_store-jKw5vL6r
     type: data_store
-    position: { x: 250, y: 260 }
+    label: "Read All Settings"
     spec:
       operation: read
       model: Setting
+      query:
+        where: {}
+      returning: true
+    connections:
+      - targetNodeId: cache-setNPx7mQ8s
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: cache-sS4m5N6o
+  - id: cache-setNPx7mQ8s
     type: cache
-    position: { x: 250, y: 390 }
+    label: "Cache Settings"
     spec:
       operation: set
       key: "settings:all"
       store: redis
-      ttl_ms: 600000
+      ttl_ms: 300000
+      value: "$.result"
+    connections:
+      - targetNodeId: terminal-ok-oRy9tU1v
 
-  - id: terminal-sS7p8Q9r
+  - id: terminal-cached-oRy9
     type: terminal
-    position: { x: 250, y: 520 }
+    label: "Return Cached"
     spec:
+      outcome: success
       status: 200
-      label: "Settings retrieved"
+      body: "$.cached_value"
 
-  - id: terminal-eS1s2T3u
+  - id: terminal-ok-oRy9tU1v
     type: terminal
-    position: { x: 550, y: 260 }
+    label: "Return Settings"
     spec:
-      status: 500
-      label: "Data store error"
-      error_code: SETTINGS_READ_ERROR
+      outcome: success
+      status: 200
+      body: "$.result"
 
-connections:
-  - source: trigger-gS1a2B3c
-    target: cache-cS4d5E6f
-    sourceHandle: ""
-  - source: cache-cS4d5E6f
-    target: terminal-hS7g8H9i
-    sourceHandle: "hit"
-  - source: cache-cS4d5E6f
-    target: data_store-rS1j2K3l
-    sourceHandle: "miss"
-  - source: data_store-rS1j2K3l
-    target: cache-sS4m5N6o
-    sourceHandle: "success"
-  - source: data_store-rS1j2K3l
-    target: terminal-eS1s2T3u
-    sourceHandle: "error"
-  - source: cache-sS4m5N6o
-    target: terminal-sS7p8Q9r
-    sourceHandle: "success"
+  - id: terminal-err-pSz2wV3b
+    type: terminal
+    label: "Error"
+    spec:
+      outcome: error
+      status: 500
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

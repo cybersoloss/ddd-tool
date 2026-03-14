@@ -1,137 +1,155 @@
-name: Analytics
-description: "Real-time and historical reporting"
+name: "Analytics"
+description: "Records and serves all platform analytics — content performance, user activity, ingestion volumes, publishing metrics, and anomaly detection. Supports live SSE streams and WebSocket fan-out for real-time dashboards."
 role: entity
+auth:
+  required: true
+  strategy: jwt
 
-owns_schemas:
-  - AnalyticsEvent
-  - WeeklyDigest
-
-stores:
-  - name: metrics-store
-    shape:
-      liveMetrics: "Record<string, number>"
-      lastUpdate: datetime
-    access_pattern: read_write
+owns_schemas: ["AnalyticsEvent", "WeeklyDigest"]
 
 flows:
   - id: record-event
     name: "Record Event"
-    description: "Record an analytics event from any domain"
+    description: "Appends an analytics event to the event store. Accepts any entity type/action pair. Called by other domains via event bus."
     type: traditional
-    tags:
-      - internal
+    tags: [internal]
+    criticality: high
+    throughput: "~10k events/day"
 
   - id: query-analytics
     name: "Query Analytics"
-    description: "Query historical analytics with filters and aggregations"
+    description: "Flexible analytics query endpoint supporting aggregations, filters, date ranges, and group-by on the events table."
     type: traditional
-    tags:
-      - public-api
-
-  - id: stream-live-metrics
-    name: "Stream Live Metrics"
-    description: "Stream live metrics via WebSocket connection"
-    type: traditional
-    tags:
-      - public-api
-
-  - id: stream-sse-metrics
-    name: "Stream SSE Metrics"
-    description: "Stream metrics via Server-Sent Events"
-    type: traditional
-    tags:
-      - public-api
+    tags: [public-api]
+    criticality: normal
 
   - id: detect-anomaly
     name: "Detect Anomaly"
-    description: "Statistical anomaly detection on metric streams"
+    description: "Scheduled job that compares current metrics against rolling baselines and emits AnomalyDetected events."
     type: traditional
-    tags:
-      - internal
+    tags: [cron, internal]
     criticality: high
 
   - id: generate-daily-report
     name: "Generate Daily Report"
-    description: "Generate daily analytics summary report"
+    description: "Cron job that aggregates daily activity and emails a summary report to admins via SendGrid."
     type: traditional
-    tags:
-      - cron
+    tags: [cron, internal]
+    criticality: normal
 
   - id: generate-weekly-digest
     name: "Generate Weekly Digest"
-    description: "Generate weekly analytics digest with trends"
+    description: "Cron job that generates a weekly digest of top content, channel performance, and AI analysis trends."
     type: traditional
-    tags:
-      - cron
+    tags: [cron, internal]
+    criticality: normal
+
+  - id: stream-live-metrics
+    name: "Stream Live Metrics"
+    description: "WebSocket endpoint that streams live ingestion rate, processing queue depth, and publish throughput to connected dashboard clients."
+    type: traditional
+    tags: [public-api]
+    criticality: normal
+
+  - id: stream-sse-metrics
+    name: "Stream SSE Metrics"
+    description: "Server-Sent Events endpoint that pushes periodic metric snapshots. Used by clients that cannot maintain WebSocket connections."
+    type: traditional
+    tags: [public-api]
+    criticality: normal
 
   - id: broadcast-dashboard-update
     name: "Broadcast Dashboard Update"
-    description: "Push real-time dashboard updates via WebSocket"
+    description: "Receives ContentPublished / AnomalyDetected events and broadcasts updated dashboard stats to all connected clients."
     type: traditional
-    tags:
-      - internal
+    tags: [internal]
+    criticality: normal
+
+groups:
+  - id: recording
+    name: "Event Recording"
+    flows: [record-event, query-analytics]
+  - id: reports
+    name: "Reports & Digests"
+    flows: [generate-daily-report, generate-weekly-digest, detect-anomaly]
+  - id: realtime
+    name: "Realtime Streams"
+    flows: [stream-live-metrics, stream-sse-metrics, broadcast-dashboard-update]
+
+event_groups:
+  - name: publish-activity
+    description: "All events related to content publishing — used to trigger dashboard updates atomically"
+    events: [ContentPublished, PublishFailed]
+    correlation_key: "$.content_id"
 
 publishes_events:
-  - event: AlertTriggered
+  - event: AnomalyDetected
+    schema: AnalyticsEvent
     from_flow: detect-anomaly
-    description: "Anomaly detected in metrics"
+    description: "Fired when a metric anomaly is detected — triggers notifications and monitoring alert"
     payload:
-      alert_type: string
+      anomaly_type: string
       metric: string
-      threshold: number
       current_value: number
+      baseline_value: number
+      severity: string
+      detected_at: string
+
+  - event: DailyReportGenerated
+    schema: AnalyticsEvent
+    from_flow: generate-daily-report
+    description: "Fired after daily report is sent — consumed by notifications for delivery confirmation"
+    payload:
+      report_date: string
+      recipient_count: number
+
+  - event: WeeklyDigestReady
+    schema: WeeklyDigest
+    from_flow: generate-weekly-digest
+    description: "Fired when the weekly digest is ready — consumed by notifications for distribution"
+    payload:
+      digest_id: string
+      period_start: string
+      period_end: string
 
 consumes_events:
-  - event: ContentIngested
-    handled_by_flow: record-event
-    description: "Record ingestion analytics"
-    payload:
-      content_id: uuid
-      source_type: string
-      raw_url: string
-      ingested_at: datetime
-
   - event: ContentPublished
-    handled_by_flow: record-event
-    description: "Record publishing analytics"
-    payload:
-      content_id: uuid
-      channel_ids: "uuid[]"
-      published_at: datetime
+    from_domain: publishing
+    description: "Records a publish event and updates dashboard metrics"
+    handled_by: record-event
 
   - event: ContentApproved
-    handled_by_flow: record-event
-    description: "Record approval analytics"
-    payload:
-      content_id: uuid
-      approved_by: uuid
-      approved_at: datetime
+    from_domain: editorial
+    description: "Records approval activity for reviewer stats"
+    handled_by: record-event
 
-  - event: RoleChanged
-    handled_by_flow: record-event
-    description: "Record role change analytics"
-    payload:
-      user_id: uuid
-      old_role: string
-      new_role: string
-      changed_by: uuid
+  - event: ContentRejected
+    from_domain: editorial
+    description: "Records rejection activity for quality trend tracking"
+    handled_by: record-event
 
-  - event: ContentPublished
-    handled_by_flow: broadcast-dashboard-update
-    description: "Update dashboard when content is published"
-    payload:
-      content_id: uuid
-      channel_ids: "uuid[]"
-      published_at: datetime
+  - event: ContentIngested
+    from_domain: ingestion
+    description: "Records ingestion volume for throughput metrics"
+    handled_by: record-event
+
+sla_config:
+  max_latency_ms: 5000
+  max_error_rate: 0.02
+  alert_channel: monitoring
 
 layout:
   flows:
     record-event: { x: 100, y: 100 }
     query-analytics: { x: 100, y: 300 }
-    stream-live-metrics: { x: 100, y: 500 }
-    stream-sse-metrics: { x: 100, y: 700 }
-    detect-anomaly: { x: 100, y: 900 }
-    generate-daily-report: { x: 100, y: 1100 }
-    generate-weekly-digest: { x: 100, y: 1300 }
-    broadcast-dashboard-update: { x: 100, y: 1500 }
+    detect-anomaly: { x: 400, y: 100 }
+    generate-daily-report: { x: 400, y: 300 }
+    generate-weekly-digest: { x: 400, y: 500 }
+    stream-live-metrics: { x: 700, y: 100 }
+    stream-sse-metrics: { x: 700, y: 300 }
+    broadcast-dashboard-update: { x: 700, y: 500 }
   portals: {}
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

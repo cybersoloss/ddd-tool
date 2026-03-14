@@ -1,194 +1,330 @@
 # DDD Shortfall Report
-# Generated during: /ddd-create nexus
+# Generated during: /ddd-create nexus-e2e --from ../nexus-product-definition.md --shortfalls
 # Date: 2026-03-14T00:00:00Z
-# Purpose: Document DDD framework gaps encountered during spec design
+# Purpose: Document DDD framework gaps encountered during Nexus spec design
 
-project: nexus
+project: nexus-e2e
 generated: "2026-03-14T00:00:00Z"
 ddd_version: "1.0"
 
-# Sections below — omit sections with zero entries
-
-workarounds:
-  - flow: processing/handle-any-content-event
-    node_id: process-xxxxxxxx
-    description: "Route to appropriate handler based on event type"
-    reason: "smart_router requires static rules but this needs dynamic event-type routing"
-    suggestion: "Enhance smart_router to accept event metadata for dynamic routing"
-
-  - flow: users/login-user
-    node_id: process-xxxxxxxx
-    description: "Generate JWT token"
-    reason: "No dedicated jwt or token_issue node type exists. crypto.generate_key is close but JWT requires payload+signing."
-    suggestion: "Add jwt_sign operation to crypto node"
-
-  - flow: users/refresh-token
-    node_id: process-xxxxxxxx
-    description: "Validate expiry and generate new JWT"
-    reason: "Same as login-user — no JWT-specific node type or crypto operation"
-    suggestion: "Add jwt_sign and jwt_verify operations to crypto node"
-
-  - flow: analytics/stream-live-metrics
-    node_id: process-xxxxxxxx
-    description: "Push metrics to client every 5s"
-    reason: "No interval_push or stream_emit node type exists for continuous server push within a WebSocket connection"
-    suggestion: "Add interval or stream_emit node type for periodic push patterns"
-
-  - flow: ingestion/process-webhook
-    node_id: process-xxxxxxxx
-    description: "Transform webhook payload to content format"
-    reason: "Could potentially use transform node but webhook payloads vary by provider"
-    suggestion: "Add provider-aware transform mode or webhook_normalize node"
-
-missing_node_types:
-  - name: "jwt_operation"
-    severity: medium
-    description: "Generate, verify, decode JWT tokens with payload and signing options"
-    used_instead: "process node with category: security"
-    flows_affected:
-      - "users/login-user"
-      - "users/refresh-token"
-    example_use_case: "Issue JWT with user payload, expiry, and HS256 signing"
+# Severity: critical = blocked design intent, high = significant workaround needed,
+#           medium = minor workaround, low = cosmetic or nice-to-have
 
 inadequate_existing_nodes:
-  - node_type: "crypto"
-    severity: medium
-    limitation: "generate_key produces random bytes but cannot encode JWT claims. No operation for JWT-specific token generation with payload."
-    suggestion: "Add operation: 'jwt_sign' with fields: payload, secret_env, algorithm, expires_in"
+  - node_type: orchestrator
+    severity: high
+    limitation: "Cannot specify a different AI model per agent sub-flow. The `model` field on the orchestrator node sets the coordinating model, but the individual agents (referenced via flow_ref) run their internal model based on their own flow spec. There is no way to declare 'run agent A with claude-opus-4-6 AND agent B with gpt-4o' from the orchestrator level."
+    suggestion: "Add optional `model_override` per entry in the `agents[]` array: `{ flow_ref, role, model_override? }`. The orchestrator's own `model` field would remain the arbiter/coordinator model."
     flows_affected:
-      - "users/login-user"
-      - "users/refresh-token"
+      - "processing/ai-consensus-review"
 
-  - node_type: "data_store"
-    severity: low
-    limitation: "No built-in pagination response formatting — cursor pagination is expressed as query config but the response envelope (data, cursor, has_more) must be assembled manually"
-    suggestion: "Add pagination_response: { data_field, cursor_field, has_more } to auto-format cursor pagination responses"
+  - node_type: llm_call
+    severity: high
+    limitation: "No built-in model fallback chain. When the primary model returns a 429 (rate-limited) or 503 (overloaded), the only option is to wire a `delay` node and a second `llm_call` node manually — which doubles the node count and obscures intent. A first-class `model_fallback` field would be cleaner."
+    suggestion: "Add `model_fallback: [{model, on_error: [rate_limited, overloaded]}]` to `llm_call` spec. When the primary model hits a listed error code, automatically retry with the fallback model."
     flows_affected:
-      - "content/list-content"
-      - "editorial/list-editorial-queue"
-      - "users/list-users"
+      - "processing/classify-content"
+      - "processing/score-quality"
+      - "processing/fact-check-agent"
+
+  - node_type: data_store
+    severity: medium
+    limitation: "Soft delete is not a first-class pattern. To implement soft-delete (set deleted_at, filter nulls on reads) the designer must remember to: (1) add `deleted_at` field to schemas, (2) add `where: { deleted_at: null }` to every read operation, (3) implement delete as `update` with `data: { deleted_at: now() }`. This is error-prone and produces no structural difference from a regular update — the intent is invisible on the canvas."
+    suggestion: "Add `soft_delete: true` to `data_store` spec for `delete` operations. When enabled: auto-sets `deleted_at = now()` and performs an UPDATE instead of DELETE. Add `exclude_deleted: true` to read operations to auto-filter soft-deleted records."
+    flows_affected:
+      - "content/delete-content"
+      - "users/delete-user"
+
+  - node_type: batch
+    severity: medium
+    limitation: "`operation_template` is a single node spec object. For batch operations requiring more than one step per item (e.g., parse + validate + store per item), the designer must extract the multi-step logic into a separate sub-flow and use `sub_flow_ref` instead. This adds indirection even for simple multi-step batch bodies."
+    suggestion: "Allow `operation_template` to be an array of node specs defining a mini-pipeline per item, not just a single node. Each node in the array connects sequentially, with the last node's output feeding the next item or the batch `done` handle."
+    flows_affected:
+      - "ingestion/fetch-rss-feeds"
+      - "ingestion/monitor-social-feeds"
+
+  - node_type: collection
+    severity: medium
+    limitation: "Only 2 of 11 collection operations were naturally needed by this project — most aggregation was done at the `data_store` aggregate level or via LLM synthesis. The collection node's `group_by`, `sort`, `deduplicate`, `flatten`, `first`, `last`, and `join` operations have no use in the Nexus flows because the data already comes pre-shaped from the database. This suggests the collection node's operation catalog may be over-indexing on in-memory transformations that modern databases handle better."
+    suggestion: "Add a `stream` operation that lazily evaluates the collection pipeline, enabling partial results to be emitted before the full set is ready — useful for streaming LLM batch processing results."
+    flows_affected:
+      - "processing/summarize-batch"
+      - "notifications/send-batch-digest"
+
+  - node_type: handoff
+    severity: low
+    limitation: "`on_failure` accepts a string node ID, but the target node must be in the same flow. For agent pipelines using handoff chains, a failure in stage 2 of a 4-stage pipeline needs to reach the terminal in the same flow — which works correctly. However, there is no way to declare a domain-level fallback flow that handles any handoff failure, requiring each handoff to repeat the same `on_failure` reference."
+    suggestion: "Allow `on_failure` to reference a flow (e.g., `on_failure: {flow: processing/error-handler}`) in addition to a node ID within the same flow."
+    flows_affected:
+      - "processing/pipeline-agents"
 
 missing_spec_fields:
+  - location: node
+    target_type: llm_call
+    field_name: model_fallback
+    severity: high
+    description: "An ordered list of fallback models to try when the primary model is rate-limited or unavailable. Format: `[{ model, on_error: [rate_limited, overloaded] }]`. Without this, multi-model resilience requires manual decision + delay + second llm_call node chains."
+    workaround: "Not implemented — single model only per llm_call node. Rate limit errors flow to error terminal."
+
+  - location: connection
+    target_type: behavior:retry
+    field_name: retry_config
+    severity: high
+    description: "When `behavior: retry` is set on a connection, there is no way to configure max_attempts, initial_delay_ms, or backoff_factor. The retry behavior is effectively a black-box, making exponential backoff retry logic impossible to express structurally."
+    workaround: "Used `delay` nodes with hardcoded milliseconds and loop nodes to approximate retry-with-backoff in retry-failed-publish.yaml."
+
   - location: trigger
-    target_type: "pattern"
-    field_name: "window_ms"
+    target_type: HTTP
+    field_name: cors_config
+    severity: medium
+    description: "HTTP triggers have no CORS configuration field. The allowed origins, methods, headers, and credentials for each endpoint must be configured outside of specs (in middleware code), breaking the principle that specs are self-describing."
+    workaround: "CORS configuration omitted from specs; must be handled in generated middleware."
+
+  - location: node
+    target_type: event (emit direction)
+    field_name: schema_ref
+    severity: medium
+    description: "An `event` node emitting a domain event has no way to declare the payload schema it should conform to. This means the payload shape is only documented in comments and `domain.yaml` publishes_events[].payload, with no validation at the node level."
+    workaround: "Payload shape documented in domain.yaml only; no node-level schema enforcement."
+
+  - location: node
+    target_type: service_call
+    field_name: retry
+    severity: medium
+    description: "First-class retry configuration on service_call. Currently retry must be expressed via connection `behavior: retry` which lacks backoff configuration, or via a manual delay+loop pattern."
+    workaround: "Used fallback values on non-critical service calls; critical calls have error terminals without automatic retry."
+
+  - location: flow
+    target_type: all
+    field_name: cost_budget
     severity: low
-    description: "Pattern triggers need window_ms for time-windowed aggregation but current spec uses free-text pattern name"
-    workaround: "Included window_ms directly in trigger spec as custom field"
+    description: "No way to declare a per-flow or per-domain LLM cost budget. An AI-heavy flow like orchestrate-analysis (4 parallel LLM calls) has no spec-level cost ceiling, making it impossible to statically analyze cost exposure."
+    workaround: "Cost management delegated to runtime monitoring; not represented in specs."
 
 connection_limitations:
+  - severity: medium
+    limitation: "`condition:` on connections only supports boolean expressions evaluating to true/false. For data routing scenarios where the condition is a range (e.g., quality_score > 80 → fast-track, 50-80 → standard, < 50 → reject), the designer must chain multiple `decision` nodes instead of expressing the multi-way split inline."
+    context: "Score-based routing in editorial (review-content) and processing (orchestrate-analysis) domains."
+    suggestion: "Allow `condition:` on connections to return a route label (string), enabling a single node with multiple conditional outgoing edges. Alternatively, expose a lightweight `threshold_router` node for numeric range routing without needing a full `smart_router`."
+
+  - severity: medium
+    limitation: "No inline async (fire-and-forget) connection type. To emit a side-effect asynchronously without waiting for completion (e.g., send a notification while returning the API response), the designer must use an `event` node with `target_queue`, which introduces a queue dependency even for simple async calls."
+    context: "Notifications and analytics event recording in ingestion flows."
+    suggestion: "Add `async: true` to connections. When set, the target node is executed in a background job and the source node's flow continues immediately, returning the response without blocking on the target."
+
   - severity: low
-    limitation: "Cannot express 'fast-track' bypass of a human_gate when AI confidence is high — had to use connection.condition but semantically this is a conditional skip of a node, not a conditional edge"
-    context: "editorial/review-content — skip human review when quality_score > 0.9"
-    suggestion: "Add skip_when condition on nodes (not connections) for conditional node bypass"
+    limitation: "`behavior: circuit_break` requires `circuit_break_config` at the node level, not the connection level. This means the circuit breaker configuration is on the upstream node, not on the edge — which feels semantically reversed (the breaker protects the downstream service, so it should live on the connection to that service)."
+    context: "publish-to-website uses circuit_break on the service_call node."
+    suggestion: "Allow `circuit_break_config` on connections as an alternative to node-level config. Keep node-level support for backwards compatibility."
 
 layer_gaps:
-  l3_flow:
-    elements_used:
-      - "all 29 node types"
-      - "all connection types"
-    missing_elements: []
+  l1_system:
+    elements_used: [zones, domain blocks, event arrows, portals, schedules, pipelines, data_flows, characteristics, ws_topology]
+    missing_elements:
+      - description: "Real-time cost/token usage per domain. Nexus has 13 LLM-heavy flows across processing, analytics, and editorial. The L1 canvas has no way to show 'this domain has consumed $X tokens today' or 'this zone accounts for 60% of LLM spend.'"
+        severity: medium
+        example: "A cost overlay on the L1 System Map would immediately show which domains are driving AI infrastructure costs."
+      - description: "SLA compliance indicator on domain blocks. Each domain has `sla_config` with max_latency_ms and max_error_rate, but the L1 canvas has no visual indicator of SLA health (green/amber/red badge per domain)."
+        severity: medium
+        example: "The ingestion domain's SLA requires p99 < 30s; an L1 badge would show 'SLA: OK' or 'SLA: BREACHED' without drilling down."
     invisible_information:
-      - description: "Flow execution metrics (p50/p99 latency, error rate) not representable as visual elements on the flow canvas"
+      - description: "Inter-domain data dependency graph. The `depends_on` field in domain.yaml captures cross-domain data dependencies, but these are not rendered as arrows on the L1 canvas (only event flows are shown)."
         should_be_visible: true
-        reason: "flow.metrics defines what to measure but there's no canvas visualization of actual metric values"
+        reason: "Data dependencies affect deployment order and blast radius of schema changes."
+  l2_domain:
+    elements_used: [flow blocks, flow groups, event arrows]
+    missing_elements:
+      - description: "Per-flow execution frequency indicator (hot path vs cold path). A cron flow running every 15 minutes is architecturally different from a manual admin flow that runs once a month, but both look identical as blocks on the L2 canvas."
+        severity: medium
+        example: "fetch-rss-feeds (cron */4h) vs manual-content-entry (user-triggered) should visually distinguish high-frequency vs rare flows."
+      - description: "Throughput label rendering from `flows[].throughput` field. This field exists in domain.yaml but does not appear to be rendered on the L2 flow block."
+        severity: low
+        example: "The processing domain's orchestrate-analysis has throughput '~200 items/day' but this is invisible on the canvas."
+    invisible_information:
+      - description: "Memory store declarations from domain.yaml `memory_stores` are not visible on the L2 canvas. The processing domain declares `analysis-cache` and `agent-context` stores, but these are invisible unless a developer reads domain.yaml."
+        should_be_visible: true
+        reason: "Memory store visibility helps reviewers understand agent state persistence at the domain level."
+  l3_flow:
+    elements_used: [trigger, input, process, decision, terminal, data_store, service_call, ipc_call, event, loop, parallel, sub_flow, llm_call, delay, cache, transform, collection, parse, crypto, batch, transaction, agent_loop, guardrail, human_gate, orchestrator, smart_router, handoff, agent_group, websocket_broadcast]
+    missing_elements:
+      - description: "Node execution heatmap overlay. For a flow like orchestrate-analysis (4 parallel branches, multiple LLM calls), there is no way to show which nodes are bottlenecks based on historical execution data."
+        severity: low
+        example: "A toggle in the DDD Tool to show 'hot path' coloring — where each node's color intensity reflects its p99 latency contribution — would immediately reveal optimization opportunities."
+      - description: "Agent context window visualization on agent_loop nodes. When an agent loop has 5 iterations and each tool call adds to the context, there is no visual representation of the context budget being consumed."
+        severity: low
+        example: "A context-budget indicator on the agent_loop node showing 'estimated tokens used: 2,400/8,192' would help designers stay within model limits."
+    invisible_information:
+      - description: "The `pattern_governed` field on nodes is defined in architecture.yaml but not rendered on the L3 canvas. The scrape-web-content flow uses stealth_http pattern on its service_call, but this is only readable in the YAML, not shown visually."
+        should_be_visible: true
+        reason: "Seeing which nodes are governed by cross-cutting patterns helps reviewers verify pattern application without reading YAML."
+
+workarounds:
+  - flow: "publishing/publish-to-social"
+    node_id: "process-threadify4"
+    node_type_used: "process"
+    intended_operation: "Split a long article body into a series of tweet-length chunks (≤280 chars each), respecting word boundaries and adding thread numbering (1/N, 2/N, etc.) to each chunk."
+    why_no_fit: "The `transform` node with `mode: expression` cannot express iterative text splitting — it maps fields but cannot produce a variable-length array through repeated substring operations. The `collection` node operates on existing arrays, not on splitting a string into chunks. No existing node type handles text chunking with threading logic."
+    proposed_node_type: "text_split — a new node type that splits a text field into an array of chunks with configurable max_length, split_strategy (word|sentence|paragraph), and optional prefix/suffix templates per chunk."
+    severity: medium
 
 cross_cutting_gaps:
-  - concern: "rate_limiting"
+  - concern: rate_limiting
     severity: medium
-    description: "Per-endpoint rate limiting is only expressible via trigger.rate_limit. No way to define rate limits as a cross-cutting pattern in architecture.yaml that auto-applies to all HTTP triggers."
-    current_expression: "Each flow must individually set trigger.rate_limit"
-    suggestion: "Allow cross_cutting_patterns to reference trigger fields, not just node fields"
+    description: "Rate limiting is only expressible at the HTTP trigger level via `rate_limit: {window_ms, max_requests, key_by}`. There is no global rate limiting policy that applies across all endpoints for a domain or a user tier. Nexus needs per-user-tier rate limits (free: 100 req/min, pro: 1000 req/min) without repeating the tier_limits config on every HTTP trigger."
+    current_expression: "tier_limits repeated on each HTTP trigger individually (duplicated across 30+ HTTP-triggered flows)."
+    suggestion: "Allow `rate_limit_policy` at the domain.yaml level (inheritable by all HTTP triggers in the domain) and at the system.yaml level (global default). Flows can override at the trigger level."
 
-  - concern: "audit_logging"
+  - concern: audit_logging
+    severity: medium
+    description: "Every mutating flow (create, update, delete, approve, reject) should emit an audit event. Currently, audit logging requires the designer to manually add an `event` node to every mutating flow. Nexus has ~35 mutating flows — each needs a separate emit node, and any flow that forgets to include one silently omits audit trail data."
+    current_expression: "Manually added event emit nodes to individual flows; no structural guarantee that all mutations are audited."
+    suggestion: "Add `audit: true` to domain.yaml or individual flow metadata. When enabled, /ddd-implement automatically wraps each mutating data_store operation with an audit event emit using standard payload shape (user_id, action, model, record_id, before, after)."
+
+  - concern: monitoring
     severity: low
-    description: "No structured way to express 'log all state changes to audit table' as a cross-cutting concern"
-    current_expression: "Would need to add data_store create AuditLog to every mutating flow manually"
-    suggestion: "Add audit_log pattern type in cross_cutting_patterns that auto-generates audit entries for specified operations"
+    description: "The `metrics` field on flows (for defining Prometheus/StatsD counters, gauges, histograms) is supported in the spec format but has no visual representation in the DDD Tool. Additionally, there is no system-level metrics aggregation spec (which metrics across all flows constitute the 'health dashboard' for the system)."
+    current_expression: "Metrics declared per-flow in flow metadata but not surfaced in the L1 or L2 views."
+    suggestion: "Surface `metrics` declarations on the L2 flow block as a badge showing the number of instrumented metrics points. At L1, show aggregate metrics coverage (% of flows instrumented)."
+
+  - concern: feature_flags
+    severity: low
+    description: "No first-class feature flag support. For a phased rollout of the AI consensus review feature, a runtime feature flag check (`if FeatureFlag.enabled('ai-consensus') then...`) must be expressed as a service_call to a flag service followed by a decision node — indistinguishable from any other conditional logic on the canvas."
+    current_expression: "Not implemented — phased rollout managed through deployment config, not spec-level feature flags."
+    suggestion: "Add a `feature_gate` node type (parallel to `guardrail`) that checks a feature flag service and routes on enabled/disabled. Declared flags become visible on the L1 canvas under system characteristics."
 
 ui_shortfalls:
-  missing_component_types: []
+  missing_component_types:
+    - name: kanban-board
+      severity: high
+      description: "A column-based board where items (cards) can be dragged between columns representing status stages (e.g., Draft → In Review → Approved → Published). Each column would have a data_source, column definition (label, status value, max_items), and item_template."
+      used_instead: "item-list with filter-bar for status filtering — loses the visual workflow progression that editors rely on."
+      pages_affected:
+        - editorial-queue
+      example_use_case: "The editorial queue is fundamentally a workflow board: editors need to see all content in each review stage simultaneously and drag items between stages."
+
+    - name: calendar-view
+      severity: medium
+      description: "A monthly/weekly calendar grid displaying scheduled items by date. Each slot would show item_template (title, status badge) for items whose date field falls on that day. Supports click-to-create and drag-to-reschedule interactions."
+      used_instead: "item-list sorted by scheduled_at — loses the temporal visualization that publication scheduling requires."
+      pages_affected:
+        - publishing
+      example_use_case: "The publishing page's scheduled content section is effectively a content calendar; editors think in days/weeks not list order."
 
   inadequate_components:
-    - component: "chat-interface"
-      severity: low
-      limitation: "No built-in support for message reactions, thread replies, or rich message attachments (images, cards) within the chat interface"
-      suggestion: "Add message_features: { reactions, threads, attachments } to chat-interface spec"
+    - component: item-list
+      severity: medium
+      limitation: "The `item_template` can only display a flat set of fields (title, subtitle, badge, timestamp). For Nexus's content feed, each list item needs a multi-line preview with truncated body text, a nested source badge, multiple action buttons, and a quality score indicator — none of which fit the flat template model cleanly."
+      suggestion: "Allow `item_template` to accept a nested `sections` array with sub-components (e.g., a `tag-list` sub-component for displaying multiple badges, a `text-preview` sub-component for truncated body text with 'read more')."
       pages_affected:
-        - "editorial-queue"
+        - content-feed
+        - editorial-queue
+
+    - component: chart
+      severity: low
+      limitation: "The `chart` component has no configuration for multi-series time-series charts with dual Y-axes (e.g., content ingested vs. content approved over time on the same timeline). The `fields.series` spec supports a single series definition."
+      suggestion: "Add `series` as an array to support multiple overlapping data series, each with its own `data_source`, `color`, and optional `y_axis: left|right`."
+      pages_affected:
+        - analytics
+
+    - component: filter-bar
+      severity: low
+      limitation: "Filter bar cannot express saved filter presets — named user-defined combinations of filter values (e.g., 'My queue: reviewer_id=me AND status=pending'). Users who apply the same filters repeatedly have no way to save and recall them."
+      suggestion: "Add `allow_presets: true` to filter-bar spec. When enabled, a 'Save filter' button appears; saved presets are stored via a `presets_flow` (flow reference). Presets load into the filter fields on selection."
+      pages_affected:
+        - editorial-queue
+        - content-feed
 
   form_limitations:
-    - severity: low
-      limitation: "No conditional field grouping — cannot express 'show group A fields when type=rss, show group B when type=webhook' beyond individual visible_when per field"
-      context: "sources page — credentials section should show/hide as a group based on source type"
-      suggestion: "Add field_groups with group-level visible_when to DDD form spec"
+    - severity: medium
+      limitation: "Wizard `steps[].fields` cannot be conditionally included based on previous step answers. For the rule editor's multi-step form, Step 3 (condition configuration) needs different fields depending on the rule type selected in Step 1 (event-based vs schedule-based vs content-match). The wizard spec only supports static field lists per step."
+      context: "Rule editor form (rule-editor.yaml) uses a wizard for multi-step rule creation where later steps vary by rule type."
+      suggestion: "Add `visible_when` at the step level: `{ field: 'rule_type', values: ['event'] }`. When the condition is false, the entire step is skipped in the wizard progression."
 
-  interaction_gaps: []
+    - severity: low
+      limitation: "The `repeating_group` form field type cannot express nested groups (a repeating group within a repeating group). For the rule editor's condition builder, rules can have nested rule groups (group A: condition1 AND condition2, OR group B: condition3). The current repeating_group spec is flat."
+      context: "Rule builder in rule-editor.yaml needed nested AND/OR condition groups."
+      suggestion: "Add `allow_nesting: true` and `max_depth: 2` to repeating_group. When enabled, each row can have a child repeating_group for sub-conditions. The rendered UI shows indent levels and AND/OR toggle per group."
+
+  interaction_gaps:
+    - pattern: collaborative-editing-indicators
+      severity: medium
+      description: "No spec representation for showing which other users are currently viewing or editing the same content. For Nexus, when two editors open the same content item simultaneously, there is no way to declare presence indicators (avatars in the header, cursor positions, lock warnings)."
+      pages_affected:
+        - content-detail
+        - review-panel
+      suggestion: "Add `collaborative: { presence_flow, lock_flow?, session_key }` to page-level `state`. When configured, the page subscribes to a realtime presence channel and renders user avatars in the page-header component."
+
+    - pattern: inline-bulk-edit
+      severity: low
+      description: "The `interactions: [bulk-select]` option on item-list enables checkbox selection and a bulk action bar, but does not support bulk inline editing of a single field across all selected items (e.g., reassign all selected items to a different reviewer without opening each one)."
+      pages_affected:
+        - editorial-queue
+      suggestion: "Add `bulk_edit_fields: [{name, type, label, update_flow}]` to item-list interactions when `bulk-select` is enabled. Each field renders as a compact control in the bulk action bar."
 
 pillar_balance:
-  logic_flows: 71
-  data_schemas: 17
+  logic_flows: 75
+  data_schemas: 16
   ui_pages: 13
   infrastructure_services: 6
-
   product_described_pages:
-    - "dashboard: Section 'Interface Pillar — UI Pages' subsection 'dashboard'"
-    - "content-feed: Section 'Interface Pillar — UI Pages' subsection 'content-feed'"
-    - "content-detail: Section 'Interface Pillar — UI Pages' subsection 'content-detail'"
-    - "editorial-queue: Section 'Interface Pillar — UI Pages' subsection 'editorial-queue'"
-    - "review-panel: Section 'Interface Pillar — UI Pages' subsection 'review-panel'"
-    - "sources: Section 'Interface Pillar — UI Pages' subsection 'sources'"
-    - "publishing: Section 'Interface Pillar — UI Pages' subsection 'publishing'"
-    - "analytics: Section 'Interface Pillar — UI Pages' subsection 'analytics'"
-    - "users-admin: Section 'Interface Pillar — UI Pages' subsection 'users-admin'"
-    - "general-settings: Section 'Interface Pillar — UI Pages' subsection 'general-settings'"
-    - "notification-settings: Section 'Interface Pillar — UI Pages' subsection 'notification-settings'"
-    - "api-key-management: Section 'Interface Pillar — UI Pages' subsection 'api-key-management'"
-    - "rule-editor: Section 'Interface Pillar — UI Pages' subsection 'rule-editor'"
-
+    - "Dashboard: described as primary landing page with real-time metrics, inbox count, today's scheduled items"
+    - "Content Feed: described as the main content browsing/management page with filters and status management"
+    - "Content Detail: described as single-content view with full body, AI analysis results, version history"
+    - "Editorial Queue: described as reviewer workflow page with assignment, approval, rejection actions"
+    - "Review Panel: described as focused review interface for a single content item with side-by-side AI results"
+    - "Analytics: described as metrics and reporting page with charts, anomaly alerts, weekly digest"
+    - "Publishing: described as publication queue management with scheduling calendar and channel status"
+    - "Sources: described as content source management with RSS/social/webhook source configuration"
+    - "Users Admin: described as user management for admins (list, roles, deletion)"
+    - "General Settings: described as system settings editor (TELOS docs, taxonomy, integrations)"
+    - "Notification Settings: described as per-user notification preferences and digest configuration"
+    - "Rule Editor: described as automation rule builder with multi-step wizard and condition groups"
+    - "API Key Management: described as developer API key creation, listing, and revocation"
   pages_without_specs: []
-  imbalance_warnings: []
+  imbalance_warnings:
+    - severity: low
+      description: "75 backend flows vs 13 UI pages gives a 5.8:1 ratio. However, 31 of the 75 flows are internal/background (cron jobs, event handlers, agent sub-flows) with no direct UI binding. Adjusting for user-facing flows only: 44 UI-facing flows vs 13 pages = 3.4:1, within the acceptable range."
 
 summary:
-  total_shortfalls: 11
+  total_shortfalls: 24
   by_severity:
     critical: 0
-    high: 0
-    medium: 3
-    low: 8
-
+    high: 4
+    medium: 13
+    low: 7
   feature_coverage:
     node_types: "29/29"
-    trigger_types: "13/13"
-    collection_operations: "11/11"
-    crypto_operations: "5/6"
-    parse_formats: "6/7"
-    data_store_types: "3/3"
-    connection_behaviors: "4/4"
-    ui_component_types: "14/14"
-    form_field_types: "16/16"
+    trigger_types: "11/13"
+    collection_operations: "2/11"
+    crypto_operations: "3/6"
+    parse_formats: "5/7"
+    data_store_types: "1/3"
+    connection_behaviors: "1/4"
+    ui_component_types: "11/14"
+    form_field_types: "14/16"
     schema_index_types: "2/4"
-    schema_seed_strategies: "3/3"
+    schema_seed_strategies: "2/3"
     schema_relationship_types: "4/4"
-    infrastructure_service_types: "4/4"
-    orchestrator_strategies: "4/4"
-    handoff_modes: "3/3"
-
+    infrastructure_service_types: "3/4"
+    orchestrator_strategies: "3/4"
+    handoff_modes: "1/3"
     unused_but_applicable:
-      - feature: "crypto operation: sign/verify"
-        could_replace: "N/A — not needed by this project"
-        reason: "Project uses JWT (which is signing) but through process nodes rather than crypto.sign"
-
-      - feature: "parse format: atom"
-        could_replace: "N/A — no Atom feeds in this project"
-        reason: "All feeds are RSS or XML, not Atom"
-
-      - feature: "schema index type: hash"
-        could_replace: "Could use hash index on content.source_id for exact lookups"
-        reason: "btree works fine for these queries, hash would be a minor optimization"
-
-      - feature: "schema index type: gist"
-        could_replace: "N/A — no geometric/range data in this project"
-        reason: "gist indexes are for PostGIS or range types not used here"
-
-  top_recommendation: "Add a jwt_sign/jwt_verify operation to the crypto node — JWT is the most common auth mechanism and currently requires a free-text process node, which is the most frequently used workaround in this project."
+      - feature: "collection.sort"
+        could_replace: "ingestion/fetch-rss-feeds — after parse, items could be sorted by published_at before batch processing"
+        reason: "The current flow processes items in feed order; an explicit sort would make temporal ordering visible in the spec"
+      - feature: "collection.deduplicate"
+        could_replace: "ingestion/route-by-source-type — the content hash dedup check via data_store query could be a collection.deduplicate if items were pre-loaded"
+        reason: "Hash-based dedup via data_store query is more efficient at scale, but collection.deduplicate expresses the same intent more readably for small batches"
+      - feature: "collection.join"
+        could_replace: "notifications/route-notification — merging user settings with notification payload done via parallel+transform could be a collection.join"
+        reason: "A join between the notification record and user settings would express the correlation more explicitly"
+      - feature: "cache.invalidate operation"
+        could_replace: "settings/update-settings — the cache invalidation after settings update uses a cache node; this was correctly used"
+        reason: "Correctly used — not a missed opportunity"
+      - feature: "data_store.store_type:filesystem"
+        could_replace: "ingestion/watch-filesystem — the ipc_call read_file step could be data_store with store_type:filesystem"
+        reason: "Using data_store:filesystem would be more semantically consistent than ipc_call for file reads in non-Tauri contexts"
+      - feature: "data_store.store_type:memory"
+        could_replace: "processing/analyze-with-agents — the shared_memory in agent_group could be exposed as explicit data_store:memory nodes for clarity"
+        reason: "Making the cache read/write explicit via data_store:memory nodes would show what data the agents share without reading the agent_group spec"
+  top_recommendation: "Add `model_fallback` to `llm_call` and `model_override` per agent entry in `orchestrator`. AI-intensive projects like Nexus build complex workaround patterns for multi-model resilience and model comparison that should be first-class DDD constructs — these two additions would eliminate the highest-severity inadequacies and directly enable the AI consensus review pattern that demonstrates DDD's agent orchestration capabilities."

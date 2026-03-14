@@ -1,152 +1,178 @@
 flow:
   id: publish-to-social
-  name: Publish to Social
-  description: Publishes content to Twitter and LinkedIn in parallel with retry behavior
+  name: "Publish to Social"
   type: traditional
   domain: publishing
-  version: "1.0.0"
-  trigger:
-    type: event
-    event: ContentApproved
-  auth: null
+  description: "Posts content to Twitter/X using OAuth 1.0a with stealth HTTP. Handles long-form content by threading tweets. Updates publish record."
+  auth:
+    required: false
+
+trigger:
+  id: trigger-pubSo2eN8
+  type: trigger
+  label: "event:ContentApproved (twitter channel)"
+  spec:
+    event: "event:ContentApproved"
+  connections:
+    - targetNodeId: data_store-rdCt5kQ7
 
 nodes:
-  - id: trigger-m5n6o7p8
-    type: trigger
-    name: Content Approved Event
-    config:
-      event: ContentApproved
-
-  - id: data_store-q9r0s1t2
+  - id: data_store-rdCt5kQ7
     type: data_store
-    name: Read Content
-    config:
+    label: "Load Content"
+    spec:
       operation: read
       model: Content
       query:
-        id: "$.content_id"
+        where:
+          id: "$.payload.content_id"
+      safety: strict
+      returning: true
+    connections:
+      - targetNodeId: decision-threadNeeded3
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: parallel-u3v4w5x6
-    type: parallel
-    name: Publish to Social Platforms
-    config:
-      failure_policy: all_required
-      merge_strategy: keyed_by_output_key
+  - id: decision-threadNeeded3
+    type: decision
+    label: "Long Form? (>280 chars)"
+    spec:
+      condition: "$.result.body.length > 280"
+    connections:
+      - targetNodeId: process-threadify4
+        sourceHandle: "true"
+      - targetNodeId: service_call-tweet5
+        sourceHandle: "false"
 
-  - id: service_call-y7z8a9b0
+  - id: process-threadify4
+    type: process
+    label: "Split into Thread"
+    spec:
+      category: transform
+      description: "Splits content body into 280-char tweet chunks, prepending (1/N) labels"
+      inputs: [body]
+      outputs: [tweet_chunks]
+    connections:
+      - targetNodeId: service_call-thread5
+
+  - id: service_call-tweet5
     type: service_call
-    name: Post to Twitter
-    config:
+    label: "Post Tweet"
+    spec:
       method: POST
-      integration: twitter_api
+      integration: twitter
       url: "https://api.twitter.com/2/tweets"
-      body:
-        text: "$.social_content.twitter"
-      output_key: twitter
+      request_config:
+        body:
+          text: "$.result.title + ' ' + $.result.body.substring(0, 240) + '... ' + $.result.metadata.source_url"
+      oauth1a_config:
+        api_key_field: TWITTER_API_KEY
+        api_key_secret_field: TWITTER_API_SECRET
+        access_token_field: TWITTER_ACCESS_TOKEN
+        access_token_secret_field: TWITTER_ACCESS_TOKEN_SECRET
+      error_mapping:
+        429: RATE_LIMITED
+        403: FORBIDDEN
+    connections:
+      - targetNodeId: data_store-updPub7
+        sourceHandle: success
+      - targetNodeId: data_store-failPub8
+        sourceHandle: error
 
-  - id: service_call-c1d2e3f4
+  - id: service_call-thread5
     type: service_call
-    name: Post to LinkedIn
-    config:
+    label: "Post Thread"
+    spec:
       method: POST
-      integration: linkedin_api
-      url: "https://api.linkedin.com/v2/posts"
-      body:
-        text: "$.social_content.linkedin"
-      output_key: linkedin
+      integration: twitter
+      url: "https://api.twitter.com/2/tweets"
+      request_config:
+        body:
+          text: "$.tweet_chunks[0]"
+      oauth1a_config:
+        api_key_field: TWITTER_API_KEY
+        api_key_secret_field: TWITTER_API_SECRET
+        access_token_field: TWITTER_ACCESS_TOKEN
+        access_token_secret_field: TWITTER_ACCESS_TOKEN_SECRET
+      error_mapping:
+        429: RATE_LIMITED
+    connections:
+      - targetNodeId: data_store-updPub7
+        sourceHandle: success
+      - targetNodeId: data_store-failPub8
+        sourceHandle: error
 
-  - id: data_store-g5h6i7j8
+  - id: data_store-updPub7
     type: data_store
-    name: Create Publish Record
-    config:
-      operation: create
+    label: "Mark Published"
+    spec:
+      operation: update
       model: PublishRecord
+      query:
+        where:
+          content_id: "$.payload.content_id"
+          channel_id: twitter
       data:
-        content_id: "$.content_id"
-        channel: social
-        platforms: "$.parallel_results"
+        status: success
+        published_at: "$.now()"
+        publish_url: "$.service_result.data.id"
+      returning: true
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: terminal-k9l0m1n2
+  - id: data_store-failPub8
+    type: data_store
+    label: "Mark Failed"
+    spec:
+      operation: update
+      model: PublishRecord
+      query:
+        where:
+          content_id: "$.payload.content_id"
+          channel_id: twitter
+      data:
+        status: failed
+        error: "$.error.message"
+        attempts: "$.result.attempts + 1"
+      returning: true
+    connections:
+      - targetNodeId: terminal-fail-xA1b
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
+
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    name: Social Publish Success
-    config:
+    label: "Posted to Twitter"
+    spec:
+      outcome: success
       status: 200
-      response_type: success
+      body:
+        channel: twitter
 
-  - id: event-o3p4q5r6
-    type: event
-    name: Emit PublishFailed
-    config:
-      event_name: PublishFailed
-      payload:
-        content_id: "$.content_id"
-        channel: social
-
-  - id: terminal-s7t8u9v0
+  - id: terminal-fail-xA1b
     type: terminal
-    name: Social Publish Error
-    config:
-      status: 500
-      response_type: error
+    label: "Twitter Post Failed"
+    spec:
+      outcome: error
+      status: 502
+      body:
+        error: "PUBLISH_FAILED"
+        channel: twitter
 
-  - id: terminal-w1x2y3z4
+  - id: terminal-err-pSz2wV3b
     type: terminal
-    name: Data Store Error
-    config:
+    label: "Error"
+    spec:
+      outcome: error
       status: 500
-      response_type: error
-
-connections:
-  - from: trigger-m5n6o7p8
-    to: data_store-q9r0s1t2
-
-  - from: data_store-q9r0s1t2
-    to: parallel-u3v4w5x6
-
-  - from: data_store-q9r0s1t2
-    to: terminal-w1x2y3z4
-    handle: error
-
-  - from: parallel-u3v4w5x6
-    to: service_call-y7z8a9b0
-    handle: branch-0
-
-  - from: parallel-u3v4w5x6
-    to: service_call-c1d2e3f4
-    handle: branch-1
-
-  - from: service_call-y7z8a9b0
-    to: parallel-u3v4w5x6
-    handle: done
-    behavior: retry
-
-  - from: service_call-c1d2e3f4
-    to: parallel-u3v4w5x6
-    handle: done
-    behavior: retry
-
-  - from: parallel-u3v4w5x6
-    to: data_store-g5h6i7j8
-    handle: done
-
-  - from: data_store-g5h6i7j8
-    to: terminal-k9l0m1n2
-
-  - from: data_store-g5h6i7j8
-    to: terminal-w1x2y3z4
-    handle: error
-
-  - from: service_call-y7z8a9b0
-    to: event-o3p4q5r6
-    handle: error
-
-  - from: service_call-c1d2e3f4
-    to: event-o3p4q5r6
-    handle: error
-
-  - from: event-o3p4q5r6
-    to: terminal-s7t8u9v0
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
-  created_at: "2026-03-14T00:00:00Z"
-  updated_at: "2026-03-14T00:00:00Z"
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

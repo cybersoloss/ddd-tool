@@ -1,72 +1,141 @@
 page: review-panel
-route: /editorial/review/:id
+title: Review Panel
+layout: split
 
 sections:
-  - id: content-preview
+  - id: review-header
+    component: page-header
+    title: "Review: $.title"
+    breadcrumbs:
+      - label: Editorial Queue
+        path: /editorial
+      - label: "$.title"
+
+  - id: content-detail
     component: detail-card
-    position: main
-    label: "Content"
     data_source: content/get-content
     fields:
-      title: { value: "$.title" }
-      body: { value: "$.body" }
-      category: { value: "$.category" }
-      quality_score: { value: "$.quality_score" }
-      bias_score: { value: "$.bias_score" }
-      source: { value: "$.source_type" }
+      - key: title
+        value: "$.title"
+        label: Title
+      - key: body
+        value: "$.body"
+        label: Content Body
+      - key: category
+        value: "$.category"
+        label: Category
+      - key: quality_score
+        value: "$.quality_score"
+        label: Quality Score
+      - key: bias_score
+        value: "$.bias_score"
+        label: Bias Score
+      - key: source_type
+        value: "$.source_type"
+        label: Source
+      - key: created_at
+        value: "$.created_at"
+        label: Ingested At
+    tabs:
+      - id: content
+        label: Content
+        sections: []
+      - id: ai-findings
+        label: AI Findings
+        sections: [ai-findings-list]
+    empty_state:
+      message: "Content not found"
+      icon: file-x
+
+  - id: ai-findings-list
+    component: item-list
+    data_source: editorial/get-review-stats
+    item_template:
+      title: "$.finding_type"
+      subtitle: "$.description"
+      badge: "$.severity"
+      timestamp: "$.detected_at"
+    empty_state:
+      message: "No AI findings for this content"
+      icon: check-circle
 
   - id: review-actions
     component: button-group
-    position: sidebar
-    label: "Review Actions"
     buttons:
-      - { label: Approve, icon: check, flow: editorial/review-content, args: { action: approve }, variant: primary }
-      - { label: Reject, icon: x, flow: editorial/review-content, args: { action: reject }, variant: danger }
-      - { label: Escalate, icon: arrow-up, flow: editorial/escalate-to-senior, variant: secondary }
-      - { label: Defer, icon: clock, flow: editorial/review-content, args: { action: defer }, variant: secondary }
-
-  - id: ai-findings
-    component: item-list
-    position: sidebar
-    label: "AI Analysis"
-    data_source: content/get-content
-    item_template:
-      title: "$.findings[].type"
-      subtitle: "$.findings[].detail"
-      badge: "$.findings[].severity"
-    empty_state:
-      message: "No AI analysis available"
-      icon: brain
+      - label: Approve
+        flow: editorial/review-content
+        args:
+          action: approve
+        variant: primary
+        icon: check
+        confirm: true
+        confirm_message: "Approve this content for publication?"
+      - label: Reject
+        flow: editorial/review-content
+        args:
+          action: reject
+        variant: danger
+        icon: x
+      - label: Escalate
+        flow: editorial/escalate-to-senior
+        variant: secondary
+        icon: arrow-up
+        confirm: true
+        confirm_message: "Escalate to senior editor?"
+      - label: Defer
+        flow: editorial/review-content
+        args:
+          action: defer
+        variant: secondary
+        icon: clock
 
 forms:
-  - id: rejection-form
-    label: "Rejection Details"
-    position: sidebar
+  - id: review-form
     fields:
-      - name: reason
+      - name: rejection_reason
         type: textarea
-        label: "Rejection Reason"
-        placeholder: "Explain why this content is being rejected..."
-        required_when: { field: action, value: reject }
+        label: Rejection Reason
+        placeholder: Explain why this content is being rejected...
+        required: false
+        required_when:
+          field: action
+          value: reject
+        validation:
+          min_length: 10
+          max_length: 1000
       - name: escalate_to
         type: search-select
-        label: "Escalate To"
+        label: Escalate To Reviewer
         search_source: users/list-users
-        display_field: email
-        value_field: id
+        required: false
+        visible_when:
+          field: action
+          value: escalate
       - name: notify_author
         type: toggle
-        label: "Notify Author"
+        label: Notify author
         default: true
     submit:
       flow: editorial/review-content
-      label: "Submit Review"
-      loading_label: "Submitting..."
-      success: { message: "Review submitted", redirect: /editorial }
-      error: { message: "Failed to submit review", retry: true }
+      label: Submit Review
+      loading_label: Submitting...
+      success:
+        message: "Review submitted successfully"
+        redirect: /editorial
+      error:
+        message: "Failed to submit review"
+        retry: true
 
 state:
-  initial_fetch: [content/get-content, editorial/get-review-stats]
+  store: review-store
+  initial_fetch:
+    - content/get-content
+    - editorial/get-review-stats
 
 loading: spinner
 error: toast
+refresh: manual
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

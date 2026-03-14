@@ -1,83 +1,133 @@
 page: editorial-queue
-route: /editorial
+title: Editorial Queue
+layout: full
 
 sections:
   - id: queue-header
     component: page-header
-    position: top
-    label: "Editorial Queue"
-    data_source: editorial/get-review-stats
-    fields:
-      title: "Editorial Queue"
-      subtitle: "$.pending_count pending · $.reviewed_today reviewed today"
+    title: "Editorial Queue"
+    subtitle: "$.total_pending items pending review"
+    breadcrumbs:
+      - label: Editorial Queue
+    actions:
+      buttons:
+        - label: Bulk Approve
+          flow: editorial/bulk-approve
+          variant: primary
+          icon: check-check
+          visible_when: "$.selected_count > 0"
+          confirm: true
+          confirm_message: "Approve all selected items? This cannot be undone."
+        - label: Trigger Reprocess
+          flow: editorial/trigger-bulk-reprocess
+          variant: secondary
+          icon: refresh-cw
 
-  - id: queue-filters
+  - id: filter-controls
     component: filter-bar
-    position: top
-    label: "Filters"
-    fields:
-      - { key: reviewer, type: search-select, label: "Reviewer", search_source: users/list-users, display_field: email, value_field: id }
-      - { key: priority, type: select, label: "Priority", options: [critical, high, normal, low] }
-      - { key: submitted_after, type: date, label: "Submitted After" }
-      - { key: unassigned, type: toggle, label: "Unassigned Only" }
     apply_flow: editorial/list-editorial-queue
+    reset_label: Clear filters
+    fields:
+      - key: reviewer
+        type: search
+        label: Reviewer
+        source: users/list-users
+      - key: priority
+        type: select
+        label: Priority
+        options: [critical, high, normal, low]
+      - key: submitted_after
+        type: date-range
+        label: Submitted after
+      - key: unassigned_only
+        type: toggle
+        label: Unassigned only
 
-  - id: queue-list
+  - id: queue-items
     component: item-list
-    position: main
-    label: "Queue"
     data_source: editorial/list-editorial-queue
     item_template:
       title: "$.title"
       subtitle: "$.category · Score: $.quality_score"
-      badge: "$.status"
-      timestamp: "$.submitted_at"
+      badge: "$.priority"
+      timestamp: "$.created_at"
     item_actions:
-      - { label: Review, icon: eye, flow: content/get-content, args: { id: "$.content_id" } }
-      - { label: "Quick Approve", icon: check, flow: editorial/quick-approve, args: { content_id: "$.content_id" } }
-    interactions:
-      - pattern: bulk-select
-        actions:
-          - { label: "Bulk Approve", flow: editorial/bulk-approve, confirm: true, confirm_message: "Approve all selected items?" }
-          - { label: "Bulk Reject", flow: editorial/bulk-approve, args: { action: reject }, confirm: true }
-      - pattern: reorder
-        update_flow: content/drag-reorder
+      - label: Review
+        action:
+          type: navigate
+          path: "/editorial/review/$.id"
+      - label: Assign
+        action:
+          type: call_flow
+          flow: editorial/assign-reviewer
+      - label: Quick Approve
+        action:
+          type: call_flow
+          flow: editorial/quick-approve
+        confirm: true
+        confirm_message: "Quick-approve this item without full review?"
+      - label: Escalate
+        action:
+          type: call_flow
+          flow: editorial/escalate-to-senior
     empty_state:
       message: "Queue is empty — all caught up!"
       icon: check-circle
-    realtime_behavior:
-      on_new_item: prepend
-      on_update: highlight
-      highlight_duration_ms: 3000
+    interactions:
+      - pattern: bulk-select
+        description: Select multiple items for bulk approve/reject
+      - pattern: reorder
+        update_flow: editorial/assign-reviewer
+        description: Drag to reprioritize review order
+    pagination:
+      limit: 25
+      strategy: cursor
 
   - id: ai-assistant
     component: chat-interface
-    position: sidebar
-    label: "AI Assistant"
     data_source: processing/classify-content
-    message_roles: { user: "Editor", assistant: "Nexus AI" }
-    streaming_source: processing/classify-content
+    streaming_source: analytics/stream-sse-metrics
+    message_roles:
+      user: user
+      assistant: assistant
     input_config:
-      placeholder: "Ask about this content..."
+      placeholder: "Ask AI about this content batch..."
       submit_flow: processing/classify-content
-      submit_key: "Enter"
+      submit_key: Enter
     typing_indicator: true
     message_template:
-      content_field: "$.message"
+      content_field: "$.content"
       role_field: "$.role"
-      timestamp_field: "$.timestamp"
-    streaming_behavior:
-      source: sse
-      target_field: "$.message"
-      append: true
-      typing_indicator: true
-
-forms: []
+      timestamp_field: "$.created_at"
+    empty_state:
+      message: "Ask the AI assistant about the queue"
+      icon: bot
 
 state:
-  initial_fetch: [editorial/list-editorial-queue, editorial/get-review-stats]
-  realtime: editorial/list-editorial-queue
+  store: editorial-store
+  initial_fetch:
+    - editorial/list-editorial-queue
+  realtime:
+    enabled: true
+    subscription: ws/editorial
+    events: [queue_updated, item_approved, item_rejected]
+
+realtime_behavior:
+  on_new_item: prepend
+  on_update: update_in_place
+  highlight_duration_ms: 2000
 
 loading: skeleton
 error: retry-banner
 refresh: pull-to-refresh
+
+keyboard_shortcuts:
+  - keys: "Cmd+Shift+A"
+    label: "Quick approve selected"
+    action:
+      type: call_flow
+      flow: editorial/quick-approve
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

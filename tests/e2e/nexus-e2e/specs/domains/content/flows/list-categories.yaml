@@ -1,0 +1,53 @@
+flow:
+  id: list-categories
+  name: "List Categories"
+  type: traditional
+  domain: content
+  description: "Returns available content categories from shared types for UI autocomplete and filter dropdowns. Public endpoint, no auth required."
+  auth:
+    required: false
+
+trigger:
+  id: trigger-lstCat2N8
+  type: trigger
+  label: "GET /api/content/categories"
+  spec:
+    event: "HTTP GET /api/content/categories"
+    rate_limit:
+      window_ms: 60000
+      max_requests: 300
+  connections:
+    - targetNodeId: transform-cat3kQ7p
+
+nodes:
+  - id: transform-cat3kQ7p
+    type: transform
+    label: "Return Category List"
+    spec:
+      mode: expression
+      field_mappings:
+        categories:
+          - technology
+          - politics
+          - business
+          - science
+          - health
+          - sports
+          - entertainment
+          - world
+          - environment
+          - finance
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+
+  - id: terminal-ok-zQ7rS8tU
+    type: terminal
+    label: "Categories"
+    spec:
+      outcome: success
+      status: 200
+      body: "$.result"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

@@ -3,57 +3,75 @@ flow:
   name: "Stream SSE Metrics"
   type: traditional
   domain: analytics
-  description: "Server-Sent Events stream for metrics data"
+  description: "Server-Sent Events endpoint that pushes periodic metric snapshots every 10 seconds. For clients that cannot maintain WebSocket connections."
   auth:
     required: true
     strategy: jwt
 
 trigger:
-  id: trigger-sS1a2B3c
+  id: trigger-sseMt2xN8
   type: trigger
-  position: { x: 250, y: 0 }
+  label: "sse /api/analytics/stream"
   spec:
-    event: "sse /api/v1/metrics/stream"
-    label: "SSE metrics stream"
+    event: "sse /api/analytics/stream"
+    rate_limit:
+      window_ms: 60000
+      max_requests: 10
+  connections:
+    - targetNodeId: delay-init3
 
 nodes:
-  - id: data_store-rM4d5E6f
-    type: data_store
-    position: { x: 250, y: 130 }
+  - id: delay-init3
+    type: delay
+    label: "Initial Delay"
     spec:
-      operation: read
+      min_ms: 1000
+    connections:
+      - targetNodeId: data_store-metrics5
+
+  - id: data_store-metrics5
+    type: data_store
+    label: "Fetch Metric Snapshot"
+    spec:
+      operation: aggregate
       model: AnalyticsEvent
       query:
         where:
           occurred_at:
-            gte: "$.recent_threshold"
+            gte: "$.oneHourAgo()"
+      aggregate_fields:
+        - function: count
+          field: id
+          alias: total
+      group_by: [event_type]
+      returning: true
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: terminal-sE7g8H9i
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 250, y: 260 }
+    label: "SSE Stream"
     spec:
+      outcome: success
       status: 200
       response_type: sse
-      label: "SSE metrics stream active"
+      body: "$.result"
+      headers:
+        Content-Type: "text/event-stream"
+        Cache-Control: "no-cache"
+        Connection: "keep-alive"
 
-  - id: terminal-eD1j2K3l
+  - id: terminal-err-pSz2wV3b
     type: terminal
-    position: { x: 550, y: 130 }
+    label: "Error"
     spec:
+      outcome: error
       status: 500
-      label: "Data store error"
-      error_code: DATA_STORE_ERROR
-
-connections:
-  - source: trigger-sS1a2B3c
-    target: data_store-rM4d5E6f
-    sourceHandle: ""
-  - source: data_store-rM4d5E6f
-    target: terminal-sE7g8H9i
-    sourceHandle: "success"
-  - source: data_store-rM4d5E6f
-    target: terminal-eD1j2K3l
-    sourceHandle: "error"
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

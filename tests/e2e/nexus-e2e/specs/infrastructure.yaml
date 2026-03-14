@@ -1,59 +1,89 @@
 services:
-  - id: api
-    type: server
-    runtime: "Node.js 20"
-    framework: "Express 4"
-    entry: src/server/index.ts
-    port: 3001
-    health: /api/v1/health
-    depends_on: [postgres, redis]
-    dev_command: "npx tsx watch src/server/index.ts"
-    setup: "npx prisma migrate dev"
-
-  - id: worker
-    type: worker
-    runtime: "Node.js 20"
-    framework: "BullMQ"
-    entry: src/workers/index.ts
-    depends_on: [postgres, redis]
-    dev_command: "npx tsx watch src/workers/index.ts"
-    health: "BullMQ dashboard at :3002/admin/queues"
-
-  - id: frontend
-    type: server
-    runtime: "Next.js 14"
-    entry: src/app/
-    port: 3000
-    depends_on: [api]
-    dev_command: "npx next dev --port 3000"
-
   - id: postgres
     type: datastore
-    engine: "PostgreSQL 16"
+    engine: PostgreSQL 16
+    entry: postgres:16-alpine
     port: 5432
-    dev_command: "brew services start postgresql@16"
-    setup: "npx prisma migrate dev"
-    health: "pg_isready -p 5432"
+    health: pg_isready -U nexus -d nexus_dev
+    depends_on: []
+    dev_command: brew services start postgresql@16
+    setup: npx prisma migrate dev --name init
 
   - id: redis
     type: datastore
-    engine: "Redis 7"
+    engine: Redis 7
+    entry: redis:7-alpine
     port: 6379
-    dev_command: "brew services start redis"
-    setup: "redis-cli flushall"
-    health: "redis-cli ping"
+    health: redis-cli ping
+    depends_on: []
+    dev_command: brew services start redis
+    setup: redis-cli flushall
+
+  - id: api
+    type: server
+    runtime: Node.js 20
+    entry: src/server/index.ts
+    port: 3001
+    health: GET /health
+    depends_on: [postgres, redis]
+    dev_command: npx tsx watch src/server/index.ts
+    env_file: .env
+
+  - id: worker
+    type: worker
+    runtime: Node.js 20
+    entry: src/workers/index.ts
+    port: 3002
+    health: GET /health
+    depends_on: [postgres, redis]
+    dev_command: npx tsx watch src/workers/index.ts
+    env_file: .env
+
+  - id: frontend
+    type: server
+    runtime: Node.js 20
+    entry: next.config.ts
+    port: 3000
+    health: GET /api/health
+    depends_on: [api]
+    dev_command: npm run dev
+    env_file: .env.local
 
   - id: nginx
     type: proxy
+    entry: nginx:1.25-alpine
     port: 80
+    health: nginx -t
     depends_on: [api, frontend]
     dev_command: null
-    health: "curl -f http://localhost/health"
+    description: Production-only reverse proxy — not used in development
 
-startup_order: [postgres, redis, api, worker, frontend]
+startup_order:
+  - postgres
+  - redis
+  - api
+  - worker
+  - frontend
 
 deployment:
   local:
     strategy: process-manager
+    tool: concurrently
+    config: package.json scripts.dev
+  development:
+    strategy: docker-compose
+    file: docker-compose.yaml
+    command: docker compose up
   production:
     strategy: kubernetes
+    tool: Helm
+    chart: charts/nexus
+    registry: ghcr.io
+    image_tag: git SHA
+    namespaces:
+      - nexus-production
+      - nexus-staging
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

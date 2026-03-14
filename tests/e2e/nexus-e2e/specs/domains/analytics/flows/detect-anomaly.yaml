@@ -3,107 +3,162 @@ flow:
   name: "Detect Anomaly"
   type: traditional
   domain: analytics
-  description: "Detects metric anomalies using pattern matching and LLM analysis, then triggers alerts"
+  description: "Scheduled job that computes rolling 7-day baseline metrics and compares to last 1-hour actuals. Emits AnomalyDetected events for metrics exceeding threshold."
+  auth:
+    required: false
 
 trigger:
-  id: trigger-dA1a2B3c
+  id: trigger-detAn2cN8
   type: trigger
-  position: { x: 250, y: 0 }
+  label: "cron 0 * * * *"
   spec:
-    event: "pattern:MetricThresholdBreach"
-    label: "Metric threshold breach detected"
-    pattern_config:
-      group_by: metric_name
-      threshold: 3
-      window_ms: 300000
+    event: "cron 0 * * * *"
+    job_config:
+      queue: anomaly-detection
+      concurrency: 1
+      timeout: 30000
+  connections:
+    - targetNodeId: parallel-metrics4
 
 nodes:
-  - id: data_store-rM4d5E6f
-    type: data_store
-    position: { x: 250, y: 130 }
+  - id: parallel-metrics4
+    type: parallel
+    label: "Compute Baselines"
     spec:
-      operation: read
+      branches:
+        - id: ingestion
+          label: "Ingestion Rate"
+        - id: publish
+          label: "Publish Rate"
+        - id: errors
+          label: "Error Rate"
+    connections:
+      - targetNodeId: data_store-ingBaseline5
+        sourceHandle: branch-0
+      - targetNodeId: data_store-pubBaseline6
+        sourceHandle: branch-1
+      - targetNodeId: data_store-errBaseline7
+        sourceHandle: branch-2
+      - targetNodeId: collection-check8
+        sourceHandle: done
+
+  - id: data_store-ingBaseline5
+    type: data_store
+    label: "Ingestion Baseline"
+    spec:
+      operation: aggregate
       model: AnalyticsEvent
       query:
         where:
-          metric_name: "$.metric_name"
+          event_type: ContentIngested
           occurred_at:
-            gte: "$.window_start"
+            gte: "$.sevenDaysAgo()"
+      aggregate_fields:
+        - function: count
+          field: id
+          alias: total
+      returning: true
+    connections:
+      - targetNodeId: parallel-metrics4
 
-  - id: llm_call-lA7g8H9i
-    type: llm_call
-    position: { x: 250, y: 260 }
+  - id: data_store-pubBaseline6
+    type: data_store
+    label: "Publish Baseline"
     spec:
-      model: "anthropic/claude-sonnet"
-      prompt: "Analyze this metric anomaly and explain possible causes"
-      temperature: 0.3
-      max_tokens: 1000
-      structured_output:
-        properties:
-          explanation:
-            type: string
-          severity:
-            type: string
-          recommendation:
-            type: string
-      context_sources:
-        - ref: "$.metrics_data"
-          transform: json_stringify
+      operation: aggregate
+      model: AnalyticsEvent
+      query:
+        where:
+          event_type: ContentPublished
+          occurred_at:
+            gte: "$.sevenDaysAgo()"
+      aggregate_fields:
+        - function: count
+          field: id
+          alias: total
+      returning: true
+    connections:
+      - targetNodeId: parallel-metrics4
 
-  - id: event-eA1j2K3l
+  - id: data_store-errBaseline7
+    type: data_store
+    label: "Error Baseline"
+    spec:
+      operation: aggregate
+      model: AnalyticsEvent
+      query:
+        where:
+          event_type: PublishFailed
+          occurred_at:
+            gte: "$.sevenDaysAgo()"
+      aggregate_fields:
+        - function: count
+          field: id
+          alias: total
+      returning: true
+    connections:
+      - targetNodeId: parallel-metrics4
+
+  - id: collection-check8
+    type: collection
+    label: "Filter Anomalous Metrics"
+    spec:
+      operation: filter
+      input: "$.branch_results"
+      output: anomalies
+      predicate: "$.item.current > $.item.baseline_avg * 2 || $.item.current < $.item.baseline_avg * 0.5"
+    connections:
+      - targetNodeId: loop-emit9nR6s
+        sourceHandle: result
+      - targetNodeId: terminal-ok-noAnomaly
+        sourceHandle: empty
+
+  - id: loop-emit9nR6s
+    type: loop
+    label: "Emit Anomalies"
+    spec:
+      collection: "$.anomalies"
+      iterator: anomaly
+      body_start: event-emit-yF3g
+    connections:
+      - targetNodeId: event-emit-yF3g
+        sourceHandle: body
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: done
+
+  - id: event-emit-yF3g
     type: event
-    position: { x: 250, y: 390 }
+    label: "Emit AnomalyDetected"
     spec:
       direction: emit
-      event_name: AlertTriggered
+      event_name: AnomalyDetected
       payload:
-        metric_name: "$.metric_name"
-        explanation: "$.explanation"
-        severity: "$.severity"
-        recommendation: "$.recommendation"
+        anomaly_type: "$.anomaly.metric"
+        metric: "$.anomaly.metric"
+        current_value: "$.anomaly.current"
+        baseline_value: "$.anomaly.baseline_avg"
+        severity: "$.anomaly.deviation > 3 ? 'critical' : 'high'"
+        detected_at: "$.now()"
+    connections:
+      - targetNodeId: loop-emit9nR6s
 
-  - id: terminal-sA4m5N6o
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 250, y: 520 }
+    label: "Anomalies Emitted"
     spec:
+      outcome: success
       status: 200
-      label: "Anomaly detected and alert triggered"
+      body:
+        anomaly_count: "$.anomalies.length"
 
-  - id: terminal-eL7p8Q9r
+  - id: terminal-ok-noAnomaly
     type: terminal
-    position: { x: 550, y: 260 }
+    label: "No Anomalies"
     spec:
-      status: 500
-      label: "LLM analysis error"
-      error_code: LLM_CALL_ERROR
-
-  - id: terminal-eD1s2T3u
-    type: terminal
-    position: { x: 550, y: 130 }
-    spec:
-      status: 500
-      label: "Data store error"
-      error_code: DATA_STORE_ERROR
-
-connections:
-  - source: trigger-dA1a2B3c
-    target: data_store-rM4d5E6f
-    sourceHandle: ""
-  - source: data_store-rM4d5E6f
-    target: llm_call-lA7g8H9i
-    sourceHandle: "success"
-  - source: data_store-rM4d5E6f
-    target: terminal-eD1s2T3u
-    sourceHandle: "error"
-  - source: llm_call-lA7g8H9i
-    target: event-eA1j2K3l
-    sourceHandle: "success"
-  - source: llm_call-lA7g8H9i
-    target: terminal-eL7p8Q9r
-    sourceHandle: "error"
-  - source: event-eA1j2K3l
-    target: terminal-sA4m5N6o
-    sourceHandle: "success"
+      outcome: success
+      status: 200
+      body:
+        anomaly_count: 0
 
 metadata:
   created: "2026-03-14T00:00:00Z"

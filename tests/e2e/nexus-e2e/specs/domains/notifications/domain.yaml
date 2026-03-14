@@ -1,106 +1,127 @@
-name: Notifications
-description: "Multi-channel alert delivery"
+name: "Notifications"
+description: "Delivers in-app, email, and Slack notifications. Routes notifications by user preference and event type. Supports real-time WebSocket push, batch digest, and templated messaging via SendGrid."
 role: process
+auth:
+  required: true
+  strategy: jwt
 
-owns_schemas:
-  - Notification
+owns_schemas: ["Notification"]
+
+depends_on:
+  - domain: users
+    reason: Reads User notification preferences and contact info
+    flows_affected: [route-notification, send-templated-notification, send-batch-digest]
 
 flows:
-  - id: send-realtime-alert
-    name: "Send Realtime Alert"
-    description: "Multi-channel real-time alert with best-effort delivery"
-    type: traditional
-    tags:
-      - internal
-
-  - id: send-batch-digest
-    name: "Send Batch Digest"
-    description: "Batched digest notification delivery"
-    type: traditional
-    tags:
-      - internal
-
-  - id: get-notification-preferences
-    name: "Get Notification Preferences"
-    description: "Get user notification preferences"
-    type: traditional
-    tags:
-      - public-api
-
   - id: route-notification
     name: "Route Notification"
-    description: "Round-robin orchestrator for notification routing"
+    description: "Receives any notification event and routes to the correct delivery channel(s) based on user preferences."
     type: traditional
-    tags:
-      - internal
+    tags: [internal]
+    criticality: high
+
+  - id: send-realtime-alert
+    name: "Send Realtime Alert"
+    description: "Pushes an urgent notification to a user via WebSocket. Falls back to email if user is offline."
+    type: traditional
+    tags: [internal]
+    criticality: high
 
   - id: send-templated-notification
     name: "Send Templated Notification"
-    description: "Parameterized template-based notification"
+    description: "Sends an email notification using a SendGrid dynamic template. Handles unsubscribe and bounce tracking."
     type: traditional
-    tags:
-      - internal
-    template: true
-    parameters:
-      - name: template_name
-        type: string
-        required: true
-      - name: recipient_id
-        type: uuid
-        required: true
-      - name: variables
-        type: json
-        required: false
+    tags: [internal]
+    criticality: normal
 
-publishes_events: []
+  - id: send-batch-digest
+    name: "Send Batch Digest"
+    description: "Cron job that aggregates pending notifications per user and sends daily/weekly digest emails."
+    type: traditional
+    tags: [cron, internal]
+    criticality: normal
+
+  - id: get-notification-preferences
+    name: "Get Notification Preferences"
+    description: "Returns a user's current notification settings and recent notification history."
+    type: traditional
+    tags: [public-api]
+    criticality: low
+
+groups:
+  - id: delivery
+    name: "Delivery"
+    flows: [route-notification, send-realtime-alert, send-templated-notification]
+  - id: batch
+    name: "Batch & Preferences"
+    flows: [send-batch-digest, get-notification-preferences]
+
+publishes_events:
+  - event: NotificationSent
+    schema: Notification
+    from_flow: route-notification
+    description: "Fired after a notification is delivered — for audit and tracking"
+    payload:
+      notification_id: string
+      user_id: string
+      channel: string
+      event_type: string
 
 consumes_events:
-  - event: AlertTriggered
-    handled_by_flow: send-realtime-alert
-    description: "Send real-time alert when anomaly detected"
-    payload:
-      alert_type: string
-      metric: string
-      threshold: number
-      current_value: number
-
   - event: UserRegistered
-    handled_by_flow: send-templated-notification
-    description: "Send welcome notification to new user"
-    payload:
-      user_id: uuid
-      email: string
-      plan: string
+    from_domain: users
+    description: "Sends welcome email to newly registered users"
+    handled_by: send-templated-notification
 
   - event: ContentApproved
-    handled_by_flow: send-batch-digest
-    description: "Batch approved content notifications"
-    payload:
-      content_id: uuid
-      approved_by: uuid
-      approved_at: datetime
+    from_domain: editorial
+    description: "Notifies content author when their submission is approved"
+    handled_by: route-notification
 
   - event: ContentRejected
-    handled_by_flow: send-realtime-alert
-    description: "Send real-time alert on content rejection"
-    payload:
-      content_id: uuid
-      reason: string
-      rejected_by: uuid
+    from_domain: editorial
+    description: "Notifies content author with rejection reason"
+    handled_by: route-notification
 
-  - event: ContentPublished
-    handled_by_flow: send-batch-digest
-    description: "Batch published content notifications"
-    payload:
-      content_id: uuid
-      channel_ids: "uuid[]"
-      published_at: datetime
+  - event: ReviewAssigned
+    from_domain: editorial
+    description: "Notifies reviewer of new assignment"
+    handled_by: send-realtime-alert
+
+  - event: AnomalyDetected
+    from_domain: analytics
+    description: "Sends urgent anomaly alert to admins"
+    handled_by: send-realtime-alert
+
+  - event: PublishFailed
+    from_domain: publishing
+    description: "Notifies editors when a publish attempt fails"
+    handled_by: route-notification
+
+  - event: DailyReportGenerated
+    from_domain: analytics
+    description: "Delivers daily report email to admins"
+    handled_by: send-templated-notification
+
+  - event: WeeklyDigestReady
+    from_domain: analytics
+    description: "Sends weekly digest to subscribed users"
+    handled_by: send-batch-digest
+
+  - event: AlertTriggered
+    from_domain: monitoring
+    description: "Sends critical system alert notifications"
+    handled_by: send-realtime-alert
 
 layout:
   flows:
-    send-realtime-alert: { x: 100, y: 100 }
-    send-batch-digest: { x: 100, y: 300 }
-    get-notification-preferences: { x: 100, y: 500 }
-    route-notification: { x: 100, y: 700 }
-    send-templated-notification: { x: 100, y: 900 }
+    route-notification: { x: 400, y: 100 }
+    send-realtime-alert: { x: 100, y: 300 }
+    send-templated-notification: { x: 400, y: 300 }
+    send-batch-digest: { x: 700, y: 300 }
+    get-notification-preferences: { x: 400, y: 500 }
   portals: {}
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

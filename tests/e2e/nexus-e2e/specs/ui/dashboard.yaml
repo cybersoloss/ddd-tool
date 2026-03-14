@@ -1,97 +1,147 @@
 page: dashboard
-route: /
+title: Dashboard
+layout: sidebar
 
 sections:
-  - id: ingested-today
-    component: stat-card
-    position: top
-    label: "Ingested Today"
-    data_source: analytics/query-analytics
-    fields:
-      value: "$.ingested_today"
-      subtitle: "items ingested"
-      urgency:
-        field: "$.ingested_today"
-        rules:
-          - { threshold: 100, level: critical, color: red }
-          - { threshold: 50, level: warning, color: amber }
-          - { threshold: 0, level: normal, color: green }
-    trend:
-      value: "$.ingested_yesterday"
-      direction: auto
-      format: percent
+  - id: header
+    component: page-header
+    title: "Dashboard"
+    subtitle: "Real-time pipeline health and ingestion overview"
     actions:
-      click: { navigate: /content }
+      buttons:
+        - label: "Trigger Reprocess"
+          flow: editorial/trigger-bulk-reprocess
+          variant: secondary
+          icon: refresh-cw
 
-  - id: processed-today
+  - id: pipeline-stats
     component: stat-card
-    position: top
-    label: "Processed Today"
     data_source: analytics/query-analytics
     fields:
-      value: "$.processed_today"
-      subtitle: "items processed"
-    trend:
-      value: "$.processed_yesterday"
-      direction: auto
-      format: percent
-
-  - id: published-today
-    component: stat-card
-    position: top
-    label: "Published Today"
-    data_source: analytics/query-analytics
-    fields:
-      value: "$.published_today"
-      subtitle: "items published"
-    trend:
-      value: "$.published_yesterday"
-      direction: auto
-      format: percent
+      - key: ingested_today
+        value: "$.ingested_count"
+        subtitle: "Ingested today"
+        trend:
+          value: "$.ingested_yesterday"
+          direction: auto
+          format: percent
+      - key: processed_today
+        value: "$.processed_count"
+        subtitle: "Processed today"
+        trend:
+          value: "$.processed_yesterday"
+          direction: auto
+          format: delta
+      - key: published_today
+        value: "$.published_count"
+        subtitle: "Published today"
+        trend:
+          value: "$.published_yesterday"
+          direction: auto
+          format: percent
+      - key: queue_depth
+        value: "$.queue_depth"
+        subtitle: "Pending review"
+        urgency:
+          field: "$.queue_depth"
+          rules:
+            - threshold: 50
+              level: warning
+              color: "#f59e0b"
+            - threshold: 100
+              level: critical
+              color: "#ef4444"
+    empty_state:
+      message: "No data yet — content will appear as it's ingested"
+      icon: bar-chart-2
 
   - id: ingestion-chart
     component: chart
-    position: main
-    label: "Ingestion Rate"
-    data_source: analytics/query-analytics
     chart_type: area
-    fields:
-      labels: "$.hourly_labels"
-      series:
-        - { name: "Ingested", values: "$.hourly_ingested" }
-
-  - id: recent-alerts
-    component: item-list
-    position: sidebar
-    label: "Recent Alerts"
     data_source: analytics/query-analytics
-    item_template:
-      title: "$.alert_type"
-      subtitle: "$.metric — threshold: $.threshold"
-      timestamp: "$.occurred_at"
+    fields:
+      series: "$.hourly_ingestion"
+      labels: "$.hour_labels"
+      values: "$.counts"
+    description: Hourly ingestion rate over the last 24 hours
     empty_state:
-      message: "No alerts — system running normally"
-      icon: check-circle
+      message: "No ingestion data yet"
+      icon: trending-up
 
   - id: pipeline-health
     component: status-bar
-    position: footer
-    label: "Pipeline Health"
     data_source: monitoring/health-check
-    fields:
-      items:
-        - { label: "API", value: "$.services.api", color_when: [{ value: "healthy", color: green }, { value: "degraded", color: amber }, { value: "down", color: red }] }
-        - { label: "Worker", value: "$.services.worker", color_when: [{ value: "healthy", color: green }, { value: "down", color: red }] }
-        - { label: "Database", value: "$.services.postgres", color_when: [{ value: "healthy", color: green }, { value: "down", color: red }] }
-        - { label: "Cache", value: "$.services.redis", color_when: [{ value: "healthy", color: green }, { value: "down", color: red }] }
+    items:
+      - label: API
+        value: "$.services.api.status"
+        color_when:
+          - condition: "$.services.api.status === 'healthy'"
+            color: "#22c55e"
+          - condition: "$.services.api.status === 'degraded'"
+            color: "#f59e0b"
+          - condition: "$.services.api.status === 'down'"
+            color: "#ef4444"
+      - label: Worker
+        value: "$.services.worker.status"
+        color_when:
+          - condition: "$.services.worker.status === 'healthy'"
+            color: "#22c55e"
+          - condition: "$.services.worker.status === 'down'"
+            color: "#ef4444"
+      - label: Database
+        value: "$.services.postgres.status"
+        color_when:
+          - condition: "$.services.postgres.status === 'healthy'"
+            color: "#22c55e"
+          - condition: "$.services.postgres.status === 'down'"
+            color: "#ef4444"
+      - label: Cache
+        value: "$.services.redis.status"
+        color_when:
+          - condition: "$.services.redis.status === 'healthy'"
+            color: "#22c55e"
+          - condition: "$.services.redis.status === 'down'"
+            color: "#ef4444"
 
-forms: []
+  - id: recent-alerts
+    component: item-list
+    data_source: analytics/query-analytics
+    item_template:
+      title: "$.alert_type"
+      subtitle: "$.metric"
+      badge: "$.severity"
+      timestamp: "$.triggered_at"
+    item_actions:
+      - label: View Details
+        action:
+          type: navigate
+          path: /analytics
+    empty_state:
+      message: "No active alerts — system is healthy"
+      icon: check-circle
+    virtual_scroll: false
+    pagination:
+      limit: 10
 
 state:
   store: dashboard-store
-  initial_fetch: [analytics/query-analytics, monitoring/health-check]
-  realtime: analytics/broadcast-dashboard-update
+  initial_fetch:
+    - analytics/query-analytics
+    - monitoring/health-check
+  realtime:
+    enabled: true
+    subscription: ws/dashboard
+    events: [metric_update]
+
+realtime_behavior:
+  on_new_item: prepend
+  on_update: update_in_place
+  highlight_duration_ms: 3000
 
 loading: skeleton
 error: retry-banner
 refresh: auto-30s
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

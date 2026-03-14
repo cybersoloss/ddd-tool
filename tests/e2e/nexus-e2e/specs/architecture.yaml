@@ -1,114 +1,164 @@
 project_structure:
-  src/:
-    routes/: Express route handlers
-    services/: Business logic (one service file per flow)
-    repositories/: Data access layer (shared across flows)
-    models/: Prisma models
-    middleware/: Auth, validation, error handling
-    utils/: Shared utilities
-    types/: TypeScript type definitions
-    workers/: BullMQ worker definitions
-    agents/: AI agent implementations
-  tests/:
-    unit/: Unit tests
-    integration/: Integration tests
+  src:
+    server: Express API entry point, route registration, socket.io setup
+    workers: BullMQ worker definitions and job handlers
+    domains: Domain-scoped logic organized by bounded context
+    lib:
+      events: Domain event bus (publish/subscribe)
+      integrations: External API clients (Anthropic, OpenAI, Twitter, SendGrid, etc.)
+      auth: JWT generation and verification
+      crypto: Encryption, hashing, and token generation utilities
+    middleware: Auth verification, error handling, rate limiting
+    types: Shared TypeScript type definitions
+    config: Environment variable loading and validation
+    utils: Shared utilities (logger, hash, stealth-http)
+  prisma:
+    schema: Database schema definition
+    migrations: Database migration files
+    seeds: Seed data scripts
+    fixtures: Dev/test fixture data
+  specs: DDD spec files (source of truth for design)
+  tests:
+    unit: Unit tests per module
+    integration: Integration tests hitting real database
+    e2e: End-to-end API tests
 
 naming_conventions:
-  files: kebab-case
-  classes: PascalCase
-  functions: camelCase
-  variables: camelCase
-  constants: UPPER_SNAKE_CASE
-  database_tables: snake_case
-  api_endpoints: kebab-case
+  files: kebab-case (e.g., content-service.ts, fetch-rss-feeds.ts)
+  classes: PascalCase (e.g., ContentService, IngestionWorker)
+  functions: camelCase (e.g., createContent, fetchRssFeeds)
+  database_tables: snake_case (e.g., content_versions, publish_records)
+  api_routes: /api/v1/{domain}/{resource}
+  events: PascalCase (e.g., ContentIngested, UserRegistered)
+  env_vars: SCREAMING_SNAKE_CASE
+  constants: SCREAMING_SNAKE_CASE
+  type_aliases: PascalCase with I prefix for interfaces (e.g., IContentService)
+
+api_design:
+  base_path: /api/v1
+  response_envelope:
+    success: "{ data: T, meta?: { cursor, total, page } }"
+    error: "{ error: { code, message, details? } }"
+  pagination:
+    strategy: cursor-based
+    default_limit: 20
+    max_limit: 100
+    fields: [cursor, limit, direction]
+  auth:
+    primary: Bearer token in Authorization header
+    secondary: x-api-key header
+    fallback: ?api_key query parameter
+  error_format: "{ code: ErrorCode, message: string, details?: object }"
+  versioning: URL path (/api/v1, /api/v2)
+  rate_limiting: Per-endpoint via express-rate-limit
+
+testing:
+  framework: Vitest
+  coverage_target: 80%
+  unit_tests: src/**/*.test.ts
+  integration_tests: tests/integration/**/*.test.ts
+  e2e_tests: tests/e2e/**/*.test.ts
+  database: Real PostgreSQL (no mocks) for integration tests
+  fixtures: Prisma seed scripts for test data setup
+
+deployment:
+  development: concurrently (local process manager)
+  staging: docker-compose
+  production: Kubernetes with Helm charts
+  ci_cd: GitHub Actions
+  container_registry: ghcr.io
+  image_base: node:20-alpine
+  health_check_path: /health
 
 dependencies:
   runtime:
-    - express: "^4.18"
-    - "@prisma/client": "^5.0"
-    - zod: "^3.22"
-    - jsonwebtoken: "^9.0"
-    - bcrypt: "^5.1"
-    - bullmq: "^5.0"
-    - ioredis: "^5.3"
-    - socket.io: "^4.7"
-    - "@anthropic-ai/sdk": "^0.24"
-    - openai: "^4.0"
-    - rss-parser: "^3.13"
-    - cheerio: "^1.0"
-    - csv-parse: "^5.5"
-    - fast-xml-parser: "^4.3"
-    - marked: "^12.0"
-    - "@sendgrid/mail": "^8.1"
-    - stripe: "^14.0"
+    - express: "^4.18.0"
+    - "@prisma/client": "^5.0.0"
+    - prisma: "^5.0.0"
+    - bullmq: "^4.0.0"
+    - ioredis: "^5.0.0"
+    - jsonwebtoken: "^9.0.0"
+    - bcryptjs: "^2.4.3"
+    - zod: "^3.22.0"
+    - "@anthropic-ai/sdk": "^0.24.0"
+    - openai: "^4.0.0"
+    - axios: "^1.6.0"
+    - socket.io: "^4.7.0"
+    - winston: "^3.11.0"
+    - helmet: "^7.1.0"
+    - cors: "^2.8.5"
+    - express-rate-limit: "^7.1.0"
   dev:
-    - vitest: "^1.0"
-    - supertest: "^6.3"
-    - typescript: "^5.3"
-    - prisma: "^5.0"
-    - tsx: "^4.7"
-
-infrastructure:
-  containerization: Docker
-  orchestration: Kubernetes
-  ci_cd: GitHub Actions
-  monitoring: Prometheus + Grafana
-  logging: Pino structured JSON
-
-api_design:
-  versioning: URL prefix (/api/v1)
-  pagination:
-    style: cursor
-    default_limit: 20
-    max_limit: 100
-    response_format:
-      data: "array of items"
-      cursor: "next page cursor"
-      has_more: "boolean"
-  filtering:
-    style: query parameters
-    operators: "eq, ne, gt, gte, lt, lte, in, like"
-  error_format:
-    error:
-      code: "ERROR_CODE"
-      message: "Human-readable message"
-      details: "Optional additional context"
-
-testing:
-  framework: vitest
-  runner: "npx vitest run"
-  coverage_target: 80%
-  patterns:
-    unit: "tests/unit/**/*.test.ts"
-    integration: "tests/integration/**/*.test.ts"
-
-deployment:
-  strategy: rolling update
-  health_check: /api/v1/health
-  readiness_check: /api/v1/ready
+    - typescript: "^5.0.0"
+    - vitest: "^1.0.0"
+    - tsx: "^4.0.0"
+    - "@types/express": "^4.17.0"
+    - "@types/node": "^20.0.0"
+    - "@types/bcryptjs": "^2.4.0"
+    - "@types/jsonwebtoken": "^9.0.0"
 
 cross_cutting_patterns:
   stealth_http:
-    description: "Rotate User-Agent, randomized delays (1-3s), respect robots.txt"
+    description: Rotate User-Agent headers and add randomized delays for ethical web scraping
+    convention:
+      user_agent_rotation: true
+      user_agent_pool:
+        - "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
+        - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
+        - "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
+      delay_min_ms: 1000
+      delay_max_ms: 3000
+      respect_robots_txt: true
     used_by_domains: [ingestion]
-    convention: "Add delay between requests (1-3s), rotate UA header, check robots.txt before fetching"
+
   api_key_resolution:
-    description: "Check header -> query param -> env var -> error"
+    description: Resolve API key from multiple sources in priority order
+    convention:
+      resolution_order:
+        - x-api-key header
+        - "?api_key query parameter"
+        - API_KEY environment variable
+      error_on_missing: true
+      error_code: API_KEY_INVALID
     used_by_domains: [users, ingestion, processing]
-    convention: "Resolve API key from X-API-Key header, then ?api_key query, then env var"
+
   encryption:
-    description: "AES-256 for tokens, bcrypt for passwords, SHA-256 for content hashes"
+    description: Consistent cryptographic operations across the platform
+    convention:
+      password_hash: "bcrypt (rounds: 12)"
+      token_encrypt: AES-256-GCM (key from ENCRYPTION_KEY env)
+      content_hash: SHA-256
+      api_key_hash: SHA-256 with salt
     used_by_domains: [users]
-    convention: "Use crypto node with appropriate algorithm per data type"
+
   soft_delete:
-    description: "Filter deletedAt: null on all reads"
+    description: Non-destructive deletion — set deleted_at timestamp, filter on reads
+    convention:
+      delete_field: deleted_at
+      filter_on_read: "{ deleted_at: null }"
+      cascade: emit ContentDeleted/UserDeleted events
+      restore: set deleted_at to null, emit restore event
     used_by_domains: [content, users]
-    convention: "Add where: { deleted_at: null } to all data_store read operations on soft-delete models"
+
   content_hashing:
-    description: "SHA-256 of (source_id + source_type) for deduplication"
+    description: SHA-256 fingerprint of (source_id + source_type) for deduplication
+    convention:
+      hash_fields: [source_id, source_type]
+      algorithm: SHA-256
+      collision_action: skip (log and discard duplicate)
     used_by_domains: [ingestion]
-    convention: "Hash content fingerprint before insert, check for duplicate before write"
+
   error_handling:
-    description: "Retry 3x exponential, circuit breaker at 5 failures/minute"
+    description: Consistent retry with exponential backoff and circuit breaker for external calls
+    convention:
+      max_retries: 3
+      backoff: exponential
+      initial_delay_ms: 1000
+      circuit_breaker_threshold: 5
+      circuit_breaker_window_ms: 60000
+      circuit_breaker_recovery_ms: 30000
     used_by_domains: [ingestion, publishing, notifications]
-    convention: "Use connection.behavior: retry on service_call errors, circuit_break on repeated failures"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

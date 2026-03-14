@@ -1,51 +1,170 @@
 flow:
   id: co-author-review
-  name: Co-Author Review
-  description: Collaborative review handoff that merges co-author feedback into the editorial review flow
+  name: "Co-Author Review"
   type: traditional
   domain: editorial
-  version: "1.0.0"
-  trigger:
-    type: event
-    event: ContentClassified
-  auth: null
+  description: "Initiates a co-author collaborative review session. Creates a human gate requiring two independent reviewers to both submit their verdicts before the content progresses."
+  auth:
+    required: true
+    roles: [admin, editor]
+    strategy: jwt
+
+trigger:
+  id: trigger-coAr2xN8
+  type: trigger
+  label: "POST /api/editorial/:id/co-review"
+  spec:
+    event: "HTTP POST /api/editorial/:id/co-review"
+  connections:
+    - targetNodeId: input-vAl3kP4r
 
 nodes:
-  - id: trigger-n3o4p5q6
-    type: trigger
-    name: Content Classified Event
-    config:
-      event: ContentClassified
+  - id: input-vAl3kP4r
+    type: input
+    label: "Validate"
+    spec:
+      fields:
+        - name: id
+          type: string
+          required: true
+          format: uuid
+        - name: co_reviewer_id
+          type: string
+          required: true
+          format: uuid
+    connections:
+      - targetNodeId: data_store-upd3nR6s
+        sourceHandle: valid
+      - targetNodeId: terminal-inv-aB7cD8eF
+        sourceHandle: invalid
 
-  - id: handoff-r7s8t9u0
-    type: handoff
-    name: Collaborate on Review
-    config:
-      mode: collaborate
-      target:
-        flow: "editorial/review-content"
-      context_transfer:
-        include_types:
-          - content_data
-          - review_history
-        max_context_tokens: 4000
-      on_complete: merge
-      on_failure: escalate
+  - id: data_store-upd3nR6s
+    type: data_store
+    label: "Mark Co-Review Pending"
+    spec:
+      operation: update
+      model: Content
+      query:
+        where:
+          id: "$.id"
+          status: review
+      data:
+        metadata:
+          co_review: true
+          primary_reviewer: "$.auth.user_id"
+          co_reviewer_id: "$.co_reviewer_id"
+          co_review_started_at: "$.now()"
+      returning: true
+    connections:
+      - targetNodeId: decision-nf8tV9w
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: terminal-v1w2x3y4
+  - id: decision-nf8tV9w
+    type: decision
+    label: "Found?"
+    spec:
+      condition: "$.result !== null"
+    connections:
+      - targetNodeId: human_gate-review3
+        sourceHandle: "true"
+      - targetNodeId: terminal-notfound-cD4e
+        sourceHandle: "false"
+
+  - id: human_gate-review3
+    type: human_gate
+    label: "Await Both Reviewers"
+    spec:
+      notification_channels:
+        - type: websocket
+          users: ["$.auth.user_id", "$.co_reviewer_id"]
+      approval_options:
+        - id: both_approved
+          label: "Both Approved"
+          description: "Both reviewers agreed to approve"
+        - id: conflict
+          label: "Reviewers Disagree"
+          description: "Escalate to senior editor"
+      timeout:
+        duration: "24h"
+        action: escalate
+      context_for_human:
+        content_id: "$.id"
+        quality_score: "$.result.quality_score"
+        reviewers: ["$.auth.user_id", "$.co_reviewer_id"]
+    connections:
+      - targetNodeId: data_store-approve5
+        sourceHandle: both_approved
+      - targetNodeId: sub_flow-escalate6
+        sourceHandle: conflict
+
+  - id: data_store-approve5
+    type: data_store
+    label: "Approve Content"
+    spec:
+      operation: update
+      model: Content
+      query:
+        where:
+          id: "$.id"
+      data:
+        status: approved
+        metadata:
+          co_review_completed: true
+          reviewed_at: "$.now()"
+      returning: true
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
+
+  - id: sub_flow-escalate6
+    type: sub_flow
+    label: "Escalate Conflict"
+    spec:
+      flow_ref: editorial/escalate-to-senior
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    name: Collaboration Success
-    config:
+    label: "Co-Review Initiated"
+    spec:
+      outcome: success
       status: 200
-      response_type: success
+      body:
+        message: "Co-author review initiated"
+        content_id: "$.id"
 
-connections:
-  - from: trigger-n3o4p5q6
-    to: handoff-r7s8t9u0
+  - id: terminal-notfound-cD4e
+    type: terminal
+    label: "Not Found"
+    spec:
+      outcome: error
+      status: 404
+      body:
+        error: "CONTENT_NOT_FOUND"
 
-  - from: handoff-r7s8t9u0
-    to: terminal-v1w2x3y4
+  - id: terminal-inv-aB7cD8eF
+    type: terminal
+    label: "Invalid"
+    spec:
+      outcome: error
+      status: 400
+      body:
+        error: "VALIDATION_ERROR"
+
+  - id: terminal-err-pSz2wV3b
+    type: terminal
+    label: "Error"
+    spec:
+      outcome: error
+      status: 500
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
-  created_at: "2026-03-14T00:00:00Z"
-  updated_at: "2026-03-14T00:00:00Z"
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

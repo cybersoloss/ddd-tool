@@ -1,205 +1,154 @@
 flow:
   id: route-to-specialist
-  name: "Route To Specialist"
-  type: agent
+  name: "Route to Specialist"
+  type: traditional
   domain: processing
-  description: "Smart routing to domain-specialist analysis agents with LLM fallback"
+  description: "Smart-routes content to domain-specific processing agents (financial, legal, medical, tech) based on content category and keywords."
+  auth:
+    required: false
 
 trigger:
-  id: trigger-rS1a2B3c
+  id: trigger-rtSpec2eN8
   type: trigger
-  position: { x: 100, y: 0 }
+  label: "event:ContentAnalyzed"
   spec:
-    event: "event:ContentIngested"
-    label: "Content Ingested"
+    event: "event:ContentAnalyzed"
+  connections:
+    - targetNodeId: smart_router-spec3
 
 nodes:
-  - id: smart_router-sR4d5E6f
+  - id: smart_router-spec3
     type: smart_router
-    position: { x: 100, y: 130 }
+    label: "Route to Specialist"
     spec:
       rules:
-        - id: news-specialist
-          condition: "$.category === 'news'"
-          route: news
-        - id: opinion-specialist
-          condition: "$.category === 'opinion'"
-          route: opinion
-        - id: research-specialist
-          condition: "$.category === 'research'"
-          route: research
-      llm_routing:
-        model: "anthropic/claude-haiku"
-        confidence_threshold: 0.7
-        prompt: "Which specialist should handle this content?"
-      fallback_chain:
-        - news-specialist
+        - id: financial
+          condition: "$.payload.category === 'finance' || $.payload.category === 'business'"
+          route: llm_call-financial4
+          priority: 1
+        - id: medical
+          condition: "$.payload.category === 'health'"
+          route: llm_call-medical5
+          priority: 2
+        - id: technology
+          condition: "$.payload.category === 'technology'"
+          route: llm_call-tech6
+          priority: 3
+        - id: general
+          condition: "true"
+          route: terminal-ok-general
+          priority: 10
+    connections:
+      - targetNodeId: llm_call-financial4
+        sourceHandle: financial
+      - targetNodeId: llm_call-medical5
+        sourceHandle: medical
+      - targetNodeId: llm_call-tech6
+        sourceHandle: technology
+      - targetNodeId: terminal-ok-general
+        sourceHandle: general
 
-  - id: handoff-hN7g8H9i
-    type: handoff
-    position: { x: 100, y: 260 }
+  - id: llm_call-financial4
+    type: llm_call
+    label: "Financial Specialist LLM"
     spec:
-      mode: consult
-      target:
-        flow: "processing/score-quality"
-      context_transfer:
-        include_types:
-          - content_data
-          - classification
-      on_complete: merge
-      on_failure: fallback
-      route: news
+      model: claude-opus-4-6
+      temperature: 0.1
+      max_tokens: 500
+      prompt: |
+        You are a financial content specialist. Analyze this content for:
+        - Market sentiment (bullish/bearish/neutral)
+        - Referenced companies or tickers
+        - Regulatory concerns
 
-  - id: handoff-hO1j2K3l
-    type: handoff
-    position: { x: 400, y: 260 }
+        Content: $.payload.content_id
+      structured_output:
+        market_sentiment:
+          type: string
+        tickers:
+          type: array
+        regulatory_concerns:
+          type: boolean
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
+
+  - id: llm_call-medical5
+    type: llm_call
+    label: "Medical Specialist LLM"
     spec:
-      mode: consult
-      target:
-        flow: "processing/score-quality"
-      context_transfer:
-        include_types:
-          - content_data
-          - classification
-      on_complete: merge
-      on_failure: fallback
-      route: opinion
+      model: claude-opus-4-6
+      temperature: 0.1
+      max_tokens: 500
+      prompt: |
+        You are a medical content specialist. Review this health content for:
+        - Medical accuracy concerns
+        - Requires expert review flag
+        - Health misinformation risk
 
-  - id: handoff-hR4m5N6o
-    type: handoff
-    position: { x: 700, y: 260 }
+        Content ID: $.payload.content_id
+      structured_output:
+        accuracy_concerns:
+          type: boolean
+        requires_expert_review:
+          type: boolean
+        misinformation_risk:
+          type: string
+          enum: [none, low, medium, high]
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
+
+  - id: llm_call-tech6
+    type: llm_call
+    label: "Tech Specialist LLM"
     spec:
-      mode: consult
-      target:
-        flow: "processing/score-quality"
-      context_transfer:
-        include_types:
-          - content_data
-          - classification
-      on_complete: merge
-      on_failure: fallback
-      route: research
+      model: claude-opus-4-6
+      temperature: 0.2
+      max_tokens: 500
+      prompt: |
+        Analyze this tech content for: referenced technologies, technical accuracy, and relevance to current trends.
+      structured_output:
+        technologies:
+          type: array
+        technical_accuracy:
+          type: string
+          enum: [high, medium, low, unknown]
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: data_store-dU7p8Q9r
-    type: data_store
-    position: { x: 100, y: 390 }
-    spec:
-      operation: update
-      model: Content
-      query:
-        where:
-          id: "$.content_id"
-      fields:
-        - name: specialist_result
-          value: "$.result"
-
-  - id: terminal-tS1s2T3u
+  - id: terminal-ok-general
     type: terminal
-    position: { x: 100, y: 520 }
+    label: "No Specialist Needed"
     spec:
+      outcome: success
       status: 200
-      label: "Specialist routing complete"
+      body:
+        specialist: none
 
-  - id: data_store-dU4v5W6x
-    type: data_store
-    position: { x: 400, y: 390 }
-    spec:
-      operation: update
-      model: Content
-      query:
-        where:
-          id: "$.content_id"
-      fields:
-        - name: specialist_result
-          value: "$.result"
-
-  - id: terminal-tS7y8Z9a
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 400, y: 520 }
+    label: "Specialist Analysis Done"
     spec:
+      outcome: success
       status: 200
-      label: "Opinion specialist complete"
+      body: "$.llm_result"
 
-  - id: data_store-dU1b2C3d
-    type: data_store
-    position: { x: 700, y: 390 }
-    spec:
-      operation: update
-      model: Content
-      query:
-        where:
-          id: "$.content_id"
-      fields:
-        - name: specialist_result
-          value: "$.result"
-
-  - id: terminal-tS4e5F6g
+  - id: terminal-err-pSz2wV3b
     type: terminal
-    position: { x: 700, y: 520 }
+    label: "Error"
     spec:
-      status: 200
-      label: "Research specialist complete"
-
-  - id: terminal-tE7h8I9j
-    type: terminal
-    position: { x: 400, y: 130 }
-    spec:
+      outcome: error
       status: 500
-      label: "Router error"
-      error_code: ROUTER_ERROR
-
-connections:
-  - source: trigger-rS1a2B3c
-    target: smart_router-sR4d5E6f
-    sourceHandle: ""
-  - source: smart_router-sR4d5E6f
-    target: handoff-hN7g8H9i
-    sourceHandle: "news"
-  - source: smart_router-sR4d5E6f
-    target: handoff-hO1j2K3l
-    sourceHandle: "opinion"
-  - source: smart_router-sR4d5E6f
-    target: handoff-hR4m5N6o
-    sourceHandle: "research"
-  - source: smart_router-sR4d5E6f
-    target: terminal-tE7h8I9j
-    sourceHandle: "error"
-  - source: handoff-hN7g8H9i
-    target: data_store-dU7p8Q9r
-    sourceHandle: "success"
-  - source: handoff-hN7g8H9i
-    target: terminal-tE7h8I9j
-    sourceHandle: "error"
-  - source: handoff-hO1j2K3l
-    target: data_store-dU4v5W6x
-    sourceHandle: "success"
-  - source: handoff-hO1j2K3l
-    target: terminal-tE7h8I9j
-    sourceHandle: "error"
-  - source: handoff-hR4m5N6o
-    target: data_store-dU1b2C3d
-    sourceHandle: "success"
-  - source: handoff-hR4m5N6o
-    target: terminal-tE7h8I9j
-    sourceHandle: "error"
-  - source: data_store-dU7p8Q9r
-    target: terminal-tS1s2T3u
-    sourceHandle: "success"
-  - source: data_store-dU7p8Q9r
-    target: terminal-tE7h8I9j
-    sourceHandle: "error"
-  - source: data_store-dU4v5W6x
-    target: terminal-tS7y8Z9a
-    sourceHandle: "success"
-  - source: data_store-dU4v5W6x
-    target: terminal-tE7h8I9j
-    sourceHandle: "error"
-  - source: data_store-dU1b2C3d
-    target: terminal-tS4e5F6g
-    sourceHandle: "success"
-  - source: data_store-dU1b2C3d
-    target: terminal-tE7h8I9j
-    sourceHandle: "error"
+      body:
+        error: "PROCESSING_FAILED"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

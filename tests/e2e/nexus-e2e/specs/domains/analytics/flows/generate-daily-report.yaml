@@ -3,109 +3,194 @@ flow:
   name: "Generate Daily Report"
   type: traditional
   domain: analytics
-  description: "Generates a daily analytics report at 2 AM from the day's events"
+  description: "Cron job that aggregates yesterday's activity (ingested, approved, published, rejected counts) and emails a summary to admins via SendGrid."
+  auth:
+    required: false
 
 trigger:
-  id: trigger-gD1a2B3c
+  id: trigger-genDr2cN8
   type: trigger
-  position: { x: 250, y: 0 }
+  label: "cron 0 6 * * *"
   spec:
-    event: "cron 0 2 * * *"
-    label: "Daily at 2:00 AM"
+    event: "cron 0 6 * * *"
+    job_config:
+      queue: daily-reports
+      concurrency: 1
+      timeout: 60000
+  connections:
+    - targetNodeId: parallel-counts4
 
 nodes:
-  - id: data_store-rE4d5E6f
-    type: data_store
-    position: { x: 250, y: 130 }
+  - id: parallel-counts4
+    type: parallel
+    label: "Aggregate Yesterday"
     spec:
-      operation: read
+      branches:
+        - id: ingested
+          label: "Ingested Count"
+        - id: approved
+          label: "Approved Count"
+        - id: published
+          label: "Published Count"
+        - id: rejected
+          label: "Rejected Count"
+    connections:
+      - targetNodeId: data_store-cntIng5
+        sourceHandle: branch-0
+      - targetNodeId: data_store-cntApp6
+        sourceHandle: branch-1
+      - targetNodeId: data_store-cntPub7
+        sourceHandle: branch-2
+      - targetNodeId: data_store-cntRej8
+        sourceHandle: branch-3
+      - targetNodeId: transform-report9
+        sourceHandle: done
+
+  - id: data_store-cntIng5
+    type: data_store
+    label: "Count Ingested"
+    spec:
+      operation: aggregate
       model: AnalyticsEvent
       query:
         where:
+          event_type: ContentIngested
           occurred_at:
-            gte: "$.today_start"
-            lt: "$.today_end"
+            gte: "$.yesterday()"
+            lt: "$.today()"
+      aggregate_fields:
+        - function: count
+          field: id
+          alias: count
+      returning: true
+    connections:
+      - targetNodeId: parallel-counts4
 
-  - id: collection-rD7g8H9i
-    type: collection
-    position: { x: 250, y: 260 }
+  - id: data_store-cntApp6
+    type: data_store
+    label: "Count Approved"
     spec:
-      operation: reduce
-      expression: "accumulate stats"
-      output_field: stats
+      operation: aggregate
+      model: AnalyticsEvent
+      query:
+        where:
+          event_type: ContentApproved
+          occurred_at:
+            gte: "$.yesterday()"
+            lt: "$.today()"
+      aggregate_fields:
+        - function: count
+          field: id
+          alias: count
+      returning: true
+    connections:
+      - targetNodeId: parallel-counts4
 
-  - id: transform-tR1j2K3l
+  - id: data_store-cntPub7
+    type: data_store
+    label: "Count Published"
+    spec:
+      operation: aggregate
+      model: AnalyticsEvent
+      query:
+        where:
+          event_type: ContentPublished
+          occurred_at:
+            gte: "$.yesterday()"
+            lt: "$.today()"
+      aggregate_fields:
+        - function: count
+          field: id
+          alias: count
+      returning: true
+    connections:
+      - targetNodeId: parallel-counts4
+
+  - id: data_store-cntRej8
+    type: data_store
+    label: "Count Rejected"
+    spec:
+      operation: aggregate
+      model: AnalyticsEvent
+      query:
+        where:
+          event_type: ContentRejected
+          occurred_at:
+            gte: "$.yesterday()"
+            lt: "$.today()"
+      aggregate_fields:
+        - function: count
+          field: id
+          alias: count
+      returning: true
+    connections:
+      - targetNodeId: parallel-counts4
+
+  - id: transform-report9
     type: transform
-    position: { x: 250, y: 390 }
+    label: "Build Report"
     spec:
       mode: expression
       field_mappings:
-        summary: "Ingested: $.ingested, Processed: $.processed, Published: $.published"
-        date: "$.today"
+        report_date: "$.yesterday()"
+        ingested: "$.branch_results.ingested.count"
+        approved: "$.branch_results.approved.count"
+        published: "$.branch_results.published.count"
+        rejected: "$.branch_results.rejected.count"
+        approval_rate: "$.branch_results.approved.count / ($.branch_results.ingested.count || 1)"
+    connections:
+      - targetNodeId: service_call-email0
 
-  - id: data_store-cR4m5N6o
-    type: data_store
-    position: { x: 250, y: 520 }
+  - id: service_call-email0
+    type: service_call
+    label: "Email Report"
     spec:
-      operation: create
-      model: AnalyticsEvent
-      fields:
-        - name: event_type
-          value: "daily_report"
-        - name: summary
-          value: "$.summary"
-        - name: date
-          value: "$.date"
-        - name: stats
-          value: "$.stats"
+      method: POST
+      integration: sendgrid
+      url: "https://api.sendgrid.com/v3/mail/send"
+      request_config:
+        body:
+          template_id: "d-daily-report-template"
+          personalizations:
+            - to: [{ email: "$.env.ADMIN_EMAIL" }]
+              dynamic_template_data: "$.result"
+      error_mapping:
+        429: RATE_LIMITED
+    connections:
+      - targetNodeId: event-emit-yF3g
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: terminal-sD7p8Q9r
+  - id: event-emit-yF3g
+    type: event
+    label: "Emit DailyReportGenerated"
+    spec:
+      direction: emit
+      event_name: DailyReportGenerated
+      payload:
+        report_date: "$.result.report_date"
+        recipient_count: 1
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 250, y: 650 }
+    label: "Report Sent"
     spec:
+      outcome: success
       status: 200
-      label: "Daily report generated"
+      body:
+        message: "Daily report sent"
 
-  - id: terminal-eE1s2T3u
+  - id: terminal-err-pSz2wV3b
     type: terminal
-    position: { x: 550, y: 260 }
+    label: "Error"
     spec:
-      status: 200
-      label: "No events today - empty report"
-
-  - id: terminal-eS4v5W6x
-    type: terminal
-    position: { x: 550, y: 520 }
-    spec:
+      outcome: error
       status: 500
-      label: "Data store error"
-      error_code: DATA_STORE_ERROR
-
-connections:
-  - source: trigger-gD1a2B3c
-    target: data_store-rE4d5E6f
-    sourceHandle: ""
-  - source: data_store-rE4d5E6f
-    target: collection-rD7g8H9i
-    sourceHandle: "success"
-  - source: data_store-rE4d5E6f
-    target: terminal-eS4v5W6x
-    sourceHandle: "error"
-  - source: collection-rD7g8H9i
-    target: transform-tR1j2K3l
-    sourceHandle: "result"
-  - source: collection-rD7g8H9i
-    target: terminal-eE1s2T3u
-    sourceHandle: "empty"
-  - source: transform-tR1j2K3l
-    target: data_store-cR4m5N6o
-    sourceHandle: "success"
-  - source: data_store-cR4m5N6o
-    target: terminal-sD7p8Q9r
-    sourceHandle: "success"
-  - source: data_store-cR4m5N6o
-    target: terminal-eS4v5W6x
-    sourceHandle: "error"
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

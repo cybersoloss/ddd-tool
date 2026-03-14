@@ -1,31 +1,33 @@
 flow:
   id: update-content
-  name: Update Content
-  description: Updates content, creates a version snapshot, invalidates cache, and emits ContentUpdated event
+  name: "Update Content"
   type: traditional
   domain: content
-  version: "1.0.0"
-  trigger:
-    type: http
-    method: PATCH
-    path: /api/v1/content/:id
+  description: "Updates a content item. Creates a new ContentVersion snapshot on body changes. Re-hashes body. Emits ContentUpdated which triggers re-analysis if body changed."
   auth:
     required: true
+    roles: [admin, editor]
     strategy: jwt
 
-nodes:
-  - id: trigger-m3n4o5p6
-    type: trigger
-    name: HTTP PATCH Update Content
-    config:
-      method: PATCH
-      path: /api/v1/content/:id
+trigger:
+  id: trigger-upCt2xN8
+  type: trigger
+  label: "PATCH /api/content/:id"
+  spec:
+    event: "HTTP PATCH /api/content/:id"
+  connections:
+    - targetNodeId: input-vAl3kP4r
 
-  - id: input-q7r8s9t0
+nodes:
+  - id: input-vAl3kP4r
     type: input
-    name: Validate Update Input
-    config:
+    label: "Validate Input"
+    spec:
       fields:
+        - name: id
+          type: string
+          required: true
+          format: uuid
         - name: title
           type: string
           required: false
@@ -35,112 +37,195 @@ nodes:
         - name: category
           type: string
           required: false
+        - name: status
+          type: string
+          required: false
+          enum: [draft, review, approved, published, archived]
+        - name: change_summary
+          type: string
+          required: false
+    connections:
+      - targetNodeId: data_store-rdCt5kQ7
+        sourceHandle: valid
+      - targetNodeId: terminal-inv-aB7cD8eF
+        sourceHandle: invalid
 
-  - id: data_store-u1v2w3x4
+  - id: data_store-rdCt5kQ7
     type: data_store
-    name: Read Current Content
-    config:
+    label: "Load Existing Content"
+    spec:
       operation: read
       model: Content
       query:
-        id: "$.id"
+        where:
+          id: "$.id"
+          deleted_at: null
+      safety: strict
+      returning: true
+    connections:
+      - targetNodeId: decision-nf8tV9w
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: data_store-y5z6a7b8
+  - id: decision-nf8tV9w
+    type: decision
+    label: "Found?"
+    spec:
+      condition: "$.result !== null"
+    connections:
+      - targetNodeId: decision-bodyChanged3
+        sourceHandle: "true"
+      - targetNodeId: terminal-notfound-cD4e
+        sourceHandle: "false"
+
+  - id: decision-bodyChanged3
+    type: decision
+    label: "Body Changed?"
+    spec:
+      condition: "$.body !== undefined && $.body !== $.result.body"
+    connections:
+      - targetNodeId: crypto-hsh3nR6s
+        sourceHandle: "true"
+      - targetNodeId: data_store-upd3nR6s
+        sourceHandle: "false"
+
+  - id: crypto-hsh3nR6s
+    type: crypto
+    label: "Hash New Body"
+    spec:
+      operation: hash
+      algorithm: sha256
+      input: "$.body"
+      output: new_hash
+    connections:
+      - targetNodeId: transaction-upd8tV9w
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
+
+  - id: transaction-upd8tV9w
+    type: transaction
+    label: "Update + Version"
+    spec:
+      steps:
+        - action:
+            type: data_store
+            operation: update
+            model: Content
+            query:
+              where:
+                id: "$.id"
+            data:
+              title: "$.title"
+              body: "$.body"
+              category: "$.category"
+              status: "$.status"
+              metadata:
+                content_hash: "$.new_hash"
+            returning: true
+          rollback:
+            type: data_store
+            operation: update
+            model: Content
+            query:
+              where:
+                id: "$.id"
+            data:
+              body: "$.result.body"
+              metadata: "$.result.metadata"
+        - action:
+            type: data_store
+            operation: create
+            model: ContentVersion
+            data:
+              content_id: "$.id"
+              body_snapshot: "$.body"
+              changed_by: "$.auth.user_id"
+              change_summary: "$.change_summary"
+            returning: true
+          rollback:
+            type: data_store
+            operation: delete
+            model: ContentVersion
+            query:
+              where:
+                content_id: "$.id"
+                changed_by: "$.auth.user_id"
+    connections:
+      - targetNodeId: event-emit-yF3g
+        sourceHandle: committed
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: rolled_back
+
+  - id: data_store-upd3nR6s
     type: data_store
-    name: Update Content
-    config:
+    label: "Update Metadata Only"
+    spec:
       operation: update
       model: Content
       query:
-        id: "$.id"
-      set: "$.updates"
-
-  - id: data_store-c9d0e1f2
-    type: data_store
-    name: Create Content Version
-    config:
-      operation: create
-      model: ContentVersion
+        where:
+          id: "$.id"
       data:
-        content_id: "$.id"
-        body_snapshot: "$.previous.body"
-        version_number: "$.next_version"
+        title: "$.title"
+        category: "$.category"
+        status: "$.status"
+      returning: true
+    connections:
+      - targetNodeId: event-emit-yF3g
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: cache-g3h4i5j6
-    type: cache
-    name: Invalidate Content Cache
-    config:
-      operation: invalidate
-      key: "content:$.id"
-      store: redis
-
-  - id: event-k7l8m9n0
+  - id: event-emit-yF3g
     type: event
-    name: Emit ContentUpdated
-    config:
+    label: "Emit ContentUpdated"
+    spec:
+      direction: emit
       event_name: ContentUpdated
       payload:
         content_id: "$.id"
+        changed_fields: "$.changed_fields"
+        new_hash: "$.new_hash"
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
 
-  - id: terminal-o1p2q3r4
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    name: Update Success
-    config:
+    label: "Updated"
+    spec:
+      outcome: success
       status: 200
-      response_type: json
+      body: "$.result"
 
-  - id: terminal-s5t6u7v8
+  - id: terminal-notfound-cD4e
     type: terminal
-    name: Validation Error
-    config:
-      status: 422
-      response_type: error
+    label: "Not Found"
+    spec:
+      outcome: error
+      status: 404
+      body:
+        error: "CONTENT_NOT_FOUND"
 
-  - id: terminal-w9x0y1z2
+  - id: terminal-inv-aB7cD8eF
     type: terminal
-    name: Data Store Error
-    config:
+    label: "Invalid"
+    spec:
+      outcome: error
+      status: 400
+      body:
+        error: "VALIDATION_ERROR"
+
+  - id: terminal-err-pSz2wV3b
+    type: terminal
+    label: "Error"
+    spec:
+      outcome: error
       status: 500
-      response_type: error
-
-connections:
-  - from: trigger-m3n4o5p6
-    to: input-q7r8s9t0
-
-  - from: input-q7r8s9t0
-    to: data_store-u1v2w3x4
-
-  - from: input-q7r8s9t0
-    to: terminal-s5t6u7v8
-    handle: invalid
-
-  - from: data_store-u1v2w3x4
-    to: data_store-y5z6a7b8
-
-  - from: data_store-u1v2w3x4
-    to: terminal-w9x0y1z2
-    handle: error
-
-  - from: data_store-y5z6a7b8
-    to: data_store-c9d0e1f2
-
-  - from: data_store-y5z6a7b8
-    to: terminal-w9x0y1z2
-    handle: error
-
-  - from: data_store-c9d0e1f2
-    to: cache-g3h4i5j6
-
-  - from: data_store-c9d0e1f2
-    to: terminal-w9x0y1z2
-    handle: error
-
-  - from: cache-g3h4i5j6
-    to: event-k7l8m9n0
-
-  - from: event-k7l8m9n0
-    to: terminal-o1p2q3r4
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
-  created_at: "2026-03-14T00:00:00Z"
-  updated_at: "2026-03-14T00:00:00Z"
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

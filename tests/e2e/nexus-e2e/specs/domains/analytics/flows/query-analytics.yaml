@@ -3,130 +3,137 @@ flow:
   name: "Query Analytics"
   type: traditional
   domain: analytics
-  description: "Query analytics data with Redis caching, grouping, and aggregation"
+  description: "Flexible analytics query supporting aggregations, filters, date ranges, and group-by on the events table. Used by the analytics dashboard."
   auth:
     required: true
     strategy: jwt
 
 trigger:
-  id: trigger-qA1a2B3c
+  id: trigger-qrAn2xN8
   type: trigger
-  position: { x: 250, y: 0 }
+  label: "GET /api/analytics"
   spec:
-    event: "http GET /api/v1/analytics"
-    label: "Query analytics endpoint"
+    event: "HTTP GET /api/analytics"
+  connections:
+    - targetNodeId: input-vAl3kP4r
 
 nodes:
-  - id: cache-cK4d5E6f
+  - id: input-vAl3kP4r
+    type: input
+    label: "Validate Query"
+    spec:
+      fields:
+        - name: event_types
+          type: array
+          required: false
+        - name: date_from
+          type: string
+          required: false
+        - name: date_to
+          type: string
+          required: false
+        - name: granularity
+          type: string
+          required: false
+          default: day
+          enum: [hour, day, week, month]
+        - name: group_by
+          type: string
+          required: false
+        - name: entity_type
+          type: string
+          required: false
+    connections:
+      - targetNodeId: cache-chkAn5
+        sourceHandle: valid
+      - targetNodeId: terminal-inv-aB7cD8eF
+        sourceHandle: invalid
+
+  - id: cache-chkAn5
     type: cache
-    position: { x: 250, y: 130 }
+    label: "Check Analytics Cache"
     spec:
-      operation: get
-      key: "analytics:$.query_hash"
+      operation: check
+      key: "analytics:$.event_types.join(','):$.date_from:$.date_to:$.granularity"
       store: redis
+      ttl_ms: 60000
+    connections:
+      - targetNodeId: terminal-cached-oRy9
+        sourceHandle: hit
+      - targetNodeId: data_store-agg6kQ7
+        sourceHandle: miss
 
-  - id: terminal-hT7g8H9i
-    type: terminal
-    position: { x: 550, y: 130 }
-    spec:
-      status: 200
-      label: "Cache hit - return cached analytics"
-
-  - id: data_store-rD1j2K3l
+  - id: data_store-agg6kQ7
     type: data_store
-    position: { x: 250, y: 260 }
-    spec:
-      operation: read
-      model: AnalyticsEvent
-
-  - id: collection-gB4m5N6o
-    type: collection
-    position: { x: 250, y: 390 }
-    spec:
-      operation: group_by
-      field: "event_type"
-
-  - id: collection-aG7p8Q9r
-    type: collection
-    position: { x: 250, y: 520 }
-    spec:
-      operation: aggregate
-      functions:
-        - function: count
-          field: id
-          alias: total
-        - function: avg
-          field: processing_time
-          alias: avg_time
-
-  - id: data_store-aD1s2T3u
-    type: data_store
-    position: { x: 250, y: 650 }
+    label: "Aggregate Events"
     spec:
       operation: aggregate
       model: AnalyticsEvent
+      query:
+        where:
+          event_type:
+            in: "$.event_types"
+          occurred_at:
+            gte: "$.date_from"
+            lte: "$.date_to"
+          entity_type: "$.entity_type"
       aggregate_fields:
         - function: count
           field: id
-          alias: total_count
-      group_by:
-        - event_type
+          alias: count
+      group_by: ["event_type", "$.granularity_bucket"]
+      returning: true
+    connections:
+      - targetNodeId: cache-setAn7
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: cache-sT4v5W6x
+  - id: cache-setAn7
     type: cache
-    position: { x: 250, y: 780 }
+    label: "Cache Result"
     spec:
       operation: set
-      key: "analytics:$.query_hash"
+      key: "analytics:$.event_types.join(','):$.date_from:$.date_to:$.granularity"
       store: redis
       ttl_ms: 60000
+      value: "$.result"
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
 
-  - id: terminal-sR7y8Z9a
+  - id: terminal-cached-oRy9
     type: terminal
-    position: { x: 250, y: 910 }
+    label: "Cached"
     spec:
+      outcome: success
       status: 200
-      label: "Analytics data returned"
+      body: "$.cached_value"
 
-  - id: terminal-eQ1b2C3d
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 550, y: 260 }
+    label: "Analytics Data"
     spec:
-      status: 500
-      label: "Data store error"
-      error_code: DATA_STORE_ERROR
+      outcome: success
+      status: 200
+      body: "$.result"
 
-connections:
-  - source: trigger-qA1a2B3c
-    target: cache-cK4d5E6f
-    sourceHandle: ""
-  - source: cache-cK4d5E6f
-    target: terminal-hT7g8H9i
-    sourceHandle: "hit"
-  - source: cache-cK4d5E6f
-    target: data_store-rD1j2K3l
-    sourceHandle: "miss"
-  - source: data_store-rD1j2K3l
-    target: collection-gB4m5N6o
-    sourceHandle: "success"
-  - source: data_store-rD1j2K3l
-    target: terminal-eQ1b2C3d
-    sourceHandle: "error"
-  - source: collection-gB4m5N6o
-    target: collection-aG7p8Q9r
-    sourceHandle: "result"
-  - source: collection-aG7p8Q9r
-    target: data_store-aD1s2T3u
-    sourceHandle: "result"
-  - source: data_store-aD1s2T3u
-    target: cache-sT4v5W6x
-    sourceHandle: "success"
-  - source: data_store-aD1s2T3u
-    target: terminal-eQ1b2C3d
-    sourceHandle: "error"
-  - source: cache-sT4v5W6x
-    target: terminal-sR7y8Z9a
-    sourceHandle: "success"
+  - id: terminal-inv-aB7cD8eF
+    type: terminal
+    label: "Invalid"
+    spec:
+      outcome: error
+      status: 400
+      body:
+        error: "VALIDATION_ERROR"
+
+  - id: terminal-err-pSz2wV3b
+    type: terminal
+    label: "Error"
+    spec:
+      outcome: error
+      status: 500
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

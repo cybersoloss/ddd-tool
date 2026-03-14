@@ -1,64 +1,150 @@
 page: rule-editor
-route: /settings/rules
+title: Rule Editor
+layout: split
 
 sections:
+  - id: rules-header
+    component: page-header
+    title: Rule Editor
+    subtitle: "Routing and filtering rules for the content pipeline"
+    actions:
+      buttons:
+        - label: Add Rule
+          flow: settings/manage-rules
+          variant: primary
+          icon: plus
+
   - id: rule-tree
     component: tree-view
-    position: main
-    label: "Rules"
     data_source: settings/manage-rules
     fields:
-      children: "$.rules[].children"
-      label: "$.rules[].name"
-      icon: "$.rules[].type_icon"
+      children: "$.children"
+      label: "$.name"
+      icon: "$.enabled ? 'check' : 'x'"
     collapsible: true
     default_expanded_depth: 2
     item_actions:
-      - { label: Edit, icon: edit, flow: settings/manage-rules, args: { action: edit, id: "$.id" } }
-      - { label: Delete, icon: trash, flow: settings/manage-rules, args: { action: delete, id: "$.id" }, confirm: true, confirm_message: "Delete this rule?" }
-      - { label: Toggle, icon: power, flow: settings/manage-rules, args: { action: toggle, id: "$.id" } }
+      - label: Edit
+        action:
+          type: call_flow
+          flow: settings/manage-rules
+      - label: Toggle
+        action:
+          type: call_flow
+          flow: settings/manage-rules
+        confirm: false
+      - label: Delete
+        action:
+          type: call_flow
+          flow: settings/manage-rules
+        confirm: true
+        confirm_message: "Delete this rule? Child rules will also be deleted."
+    empty_state:
+      message: "No rules configured"
+      icon: filter
+      cta:
+        label: Create your first rule
+        action:
+          type: call_flow
+          flow: settings/manage-rules
 
   - id: rule-detail
     component: detail-card
-    position: sidebar
-    label: "Rule Details"
     data_source: settings/manage-rules
     fields:
-      name: { value: "$.selected_rule.name" }
-      type: { value: "$.selected_rule.type" }
-      priority: { value: "$.selected_rule.priority" }
-      enabled: { value: "$.selected_rule.enabled" }
+      - key: name
+        value: "$.name"
+        label: Name
+      - key: type
+        value: "$.type"
+        label: Type
+      - key: priority
+        value: "$.priority"
+        label: Priority
+      - key: enabled
+        value: "$.enabled"
+        label: Enabled
+    empty_state:
+      message: "Select a rule to edit"
+      icon: edit-2
 
 forms:
   - id: rule-form
-    label: "Edit Rule"
-    position: sidebar
     fields:
-      - { name: type, type: select, label: "Rule Type", required: true, options: [ingestion, routing, publishing] }
+      - name: rule_type
+        type: select
+        label: Rule Type
+        options: [ingestion, routing, publishing]
+        required: true
+      - name: name
+        type: text
+        label: Rule Name
+        placeholder: e.g. Block low-quality content
+        required: true
+        validation:
+          min_length: 3
+          max_length: 200
       - name: conditions
         type: repeating_group
-        label: "Conditions"
+        label: Conditions
+        required: true
         repeating_group:
           columns:
-            - { name: field, type: text, label: "Field", required: true }
-            - { name: operator, type: select, label: "Operator", options: [eq, ne, gt, gte, lt, lte, in, like], required: true }
-            - { name: value, type: text, label: "Value", required: true }
+            - name: field
+              type: text
+              label: Field
+              required: true
+            - name: operator
+              type: select
+              label: Operator
+              options: [equals, not_equals, contains, greater_than, less_than, in, not_in]
+              required: true
+            - name: value
+              type: text
+              label: Value
+              required: true
           min_rows: 1
           max_rows: 10
           add_label: "Add condition"
           remove_label: "Remove"
-      - { name: action, type: select, label: "Action", required: true, options: [allow, block, route, transform, flag] }
-      - { name: priority, type: number, label: "Priority", required: true, default: 0 }
-      - { name: enabled, type: toggle, label: "Enabled", default: true }
+      - name: action
+        type: select
+        label: Action
+        options: [allow, block, tag, route, enrich]
+        required: true
+      - name: priority
+        type: number
+        label: Priority
+        placeholder: 0
+        required: true
+        default: 0
+        validation:
+          min: 0
+          max: 9999
+      - name: enabled
+        type: toggle
+        label: Enabled
+        default: true
     submit:
       flow: settings/manage-rules
-      label: "Save Rule"
-      loading_label: "Saving..."
-      success: { message: "Rule saved" }
-      error: { message: "Failed to save rule", retry: true }
+      label: Save Rule
+      loading_label: Saving...
+      success:
+        message: "Rule saved successfully"
+        action: refresh
+      error:
+        message: "Failed to save rule — check for syntax errors"
+        retry: true
 
 state:
-  initial_fetch: [settings/manage-rules]
+  store: rules-store
+  initial_fetch:
+    - settings/manage-rules
 
 loading: skeleton
 error: toast
+refresh: manual
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

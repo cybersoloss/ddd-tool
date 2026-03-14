@@ -1,37 +1,64 @@
 name: ApiKey
-description: User API access keys
 inherits: _base
+description: API key issued to users for programmatic access with scope-based permissions
+owned_by: users
+
 fields:
   - name: user_id
     type: uuid
     required: true
+    description: Foreign key to the owning user
+
   - name: key_hash
     type: string
     required: true
-    encrypted: true
+    description: SHA-256 hash of the actual API key (never store plaintext)
+
   - name: name
     type: string
     required: true
-    constraints:
-      max_length: 100
+    max_length: 100
+    description: Human-readable label for this key (e.g. "CI Pipeline", "Mobile App")
+
+  - name: scopes
+    type: json
+    required: false
+    description: Allowed permission scopes (array of ApiKeyScope values)
+
+  - name: allowed_ips
+    type: json
+    required: false
+    description: IP allowlist for this key (empty = all IPs allowed)
+
   - name: last_used_at
-    type: datetime
+    type: date
     required: false
+    description: Timestamp of the most recent successful API call using this key
+
   - name: expires_at
-    type: datetime
+    type: date
     required: false
+    description: Optional expiry timestamp — null means never expires
 
 relationships:
-  - name: user
-    type: belongs_to
-    target: User
+  - type: belongs_to
+    model: User
     foreign_key: user_id
+    description: The user who owns this API key
 
 indexes:
   - fields: [user_id]
     type: btree
+    description: List all keys for a user
+
   - fields: [expires_at]
     type: btree
+    description: Find and purge expired keys
+
+  - fields: [key_hash]
+    unique: true
+    type: btree
+    description: Fast key lookup for authentication
 
 metadata:
   created: "2026-03-14T00:00:00Z"

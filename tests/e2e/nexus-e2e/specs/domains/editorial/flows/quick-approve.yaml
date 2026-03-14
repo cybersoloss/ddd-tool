@@ -1,87 +1,171 @@
 flow:
   id: quick-approve
-  name: Quick Approve
-  description: Keyboard shortcut to quickly approve the current content item
+  name: "Quick Approve"
   type: traditional
   domain: editorial
-  version: "1.0.0"
-  trigger:
-    type: shortcut
-    shortcut: "Cmd+Shift+A"
-    debounce_ms: 300
-  auth: null
+  description: "One-click approval for high-quality content (quality_score >= threshold). Triggered by Cmd+Shift+A keyboard shortcut. Skips the full review form."
+  auth:
+    required: true
+    roles: [admin, editor, reviewer]
+    strategy: jwt
+  keyboard_shortcut: "Cmd+Shift+A"
+
+trigger:
+  id: trigger-qApp2xN8
+  type: trigger
+  label: "POST /api/editorial/:id/quick-approve"
+  spec:
+    event: "HTTP POST /api/editorial/:id/quick-approve"
+  connections:
+    - targetNodeId: input-vAl3kP4r
 
 nodes:
-  - id: trigger-z1a2b3c4
-    type: trigger
-    name: Shortcut Trigger
-    config:
-      shortcut: "Cmd+Shift+A"
-      debounce_ms: 300
+  - id: input-vAl3kP4r
+    type: input
+    label: "Validate ID"
+    spec:
+      fields:
+        - name: id
+          type: string
+          required: true
+          format: uuid
+    connections:
+      - targetNodeId: data_store-rdCt5kQ7
+        sourceHandle: valid
+      - targetNodeId: terminal-inv-aB7cD8eF
+        sourceHandle: invalid
 
-  - id: data_store-d5e6f7g8
+  - id: data_store-rdCt5kQ7
     type: data_store
-    name: Read Current Item
-    config:
+    label: "Fetch Content"
+    spec:
       operation: read
       model: Content
       query:
-        id: "$.current_content_id"
+        where:
+          id: "$.id"
+          status: review
+      safety: strict
+      returning: true
+    connections:
+      - targetNodeId: decision-nf8tV9w
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: data_store-h9i0j1k2
+  - id: decision-nf8tV9w
+    type: decision
+    label: "Found?"
+    spec:
+      condition: "$.result !== null"
+    connections:
+      - targetNodeId: sub_flow-threshold3
+        sourceHandle: "true"
+      - targetNodeId: terminal-notfound-cD4e
+        sourceHandle: "false"
+
+  - id: sub_flow-threshold3
+    type: sub_flow
+    label: "Load Quality Threshold"
+    spec:
+      flow_ref: settings/get-settings
+    connections:
+      - targetNodeId: decision-qualityOk5
+
+  - id: decision-qualityOk5
+    type: decision
+    label: "Meets Threshold?"
+    spec:
+      condition: "$.result.quality_score >= ($.settings.quality_threshold || 75)"
+    connections:
+      - targetNodeId: data_store-approve6
+        sourceHandle: "true"
+      - targetNodeId: terminal-below-xA1b
+        sourceHandle: "false"
+
+  - id: data_store-approve6
     type: data_store
-    name: Update Status Approved
-    config:
+    label: "Set Approved"
+    spec:
       operation: update
       model: Content
       query:
-        id: "$.content.id"
-      set:
+        where:
+          id: "$.id"
+      data:
         status: approved
+        metadata:
+          reviewer_id: "$.auth.user_id"
+          quick_approved: true
+          reviewed_at: "$.now()"
+      returning: true
+    connections:
+      - targetNodeId: event-emit-yF3g
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: event-l3m4n5o6
+  - id: event-emit-yF3g
     type: event
-    name: Emit ContentApproved
-    config:
+    label: "Emit ContentApproved"
+    spec:
+      direction: emit
       event_name: ContentApproved
       payload:
-        content_id: "$.content.id"
+        content_id: "$.id"
+        reviewer_id: "$.auth.user_id"
+        approved_at: "$.now()"
+        quality_score: "$.result.quality_score"
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
 
-  - id: terminal-p7q8r9s0
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    name: Quick Approve Success
-    config:
+    label: "Approved"
+    spec:
+      outcome: success
       status: 200
-      response_type: success
+      body:
+        message: "Content approved"
+        content_id: "$.id"
 
-  - id: terminal-t1u2v3w4
+  - id: terminal-below-xA1b
     type: terminal
-    name: Data Store Error
-    config:
+    label: "Below Threshold"
+    spec:
+      outcome: error
+      status: 422
+      body:
+        error: "VALIDATION_ERROR"
+        message: "Quality score below auto-approve threshold"
+
+  - id: terminal-notfound-cD4e
+    type: terminal
+    label: "Not Found"
+    spec:
+      outcome: error
+      status: 404
+      body:
+        error: "CONTENT_NOT_FOUND"
+
+  - id: terminal-inv-aB7cD8eF
+    type: terminal
+    label: "Invalid"
+    spec:
+      outcome: error
+      status: 400
+      body:
+        error: "VALIDATION_ERROR"
+
+  - id: terminal-err-pSz2wV3b
+    type: terminal
+    label: "Error"
+    spec:
+      outcome: error
       status: 500
-      response_type: error
-
-connections:
-  - from: trigger-z1a2b3c4
-    to: data_store-d5e6f7g8
-
-  - from: data_store-d5e6f7g8
-    to: data_store-h9i0j1k2
-
-  - from: data_store-d5e6f7g8
-    to: terminal-t1u2v3w4
-    handle: error
-
-  - from: data_store-h9i0j1k2
-    to: event-l3m4n5o6
-
-  - from: data_store-h9i0j1k2
-    to: terminal-t1u2v3w4
-    handle: error
-
-  - from: event-l3m4n5o6
-    to: terminal-p7q8r9s0
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
-  created_at: "2026-03-14T00:00:00Z"
-  updated_at: "2026-03-14T00:00:00Z"
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

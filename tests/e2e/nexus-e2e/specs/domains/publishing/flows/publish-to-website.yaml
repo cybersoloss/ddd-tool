@@ -1,112 +1,154 @@
 flow:
   id: publish-to-website
-  name: Publish to Website
-  description: Transforms content and publishes to the CMS via API call
+  name: "Publish to Website"
   type: traditional
   domain: publishing
-  version: "1.0.0"
-  contract:
-    inputs:
-      - content_id
-      - format
-    outputs:
-      - publish_url
-      - published_at
-  trigger:
-    type: sub_flow
-  auth: null
+  description: "Pushes content to the website CMS via REST API with circuit breaker, retry, and publish record status update."
+  auth:
+    required: false
+
+trigger:
+  id: trigger-pubW2eN8
+  type: trigger
+  label: "event:ContentApproved (website channel)"
+  spec:
+    event: "event:ContentApproved"
+  connections:
+    - targetNodeId: data_store-rdCt5kQ7
 
 nodes:
-  - id: trigger-k7l8m9n0
-    type: trigger
-    name: Sub Flow Trigger
-    config:
-      type: sub_flow
-
-  - id: data_store-o1p2q3r4
+  - id: data_store-rdCt5kQ7
     type: data_store
-    name: Read Content
-    config:
+    label: "Load Content"
+    spec:
       operation: read
       model: Content
       query:
-        id: "$.content_id"
+        where:
+          id: "$.payload.content_id"
+      safety: strict
+      returning: true
+    connections:
+      - targetNodeId: service_call-cms5
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: transform-s5t6u7v8
-    type: transform
-    name: Transform to CMS Payload
-    config:
-      mode: schema
-      input_schema: Content
-      output_schema: CMSPayload
-      field_mappings:
-        title: "$.title"
-        body: "$.body"
-        category: "$.category"
-
-  - id: service_call-w9x0y1z2
+  - id: service_call-cms5
     type: service_call
-    name: Post to CMS
-    config:
+    label: "POST to CMS"
+    spec:
       method: POST
-      integration: null
-      url: "$.cms_url/api/posts"
-      body: "$.cms_payload"
+      url: "$.env.CMS_BASE_URL + '/api/articles'"
+      request_config:
+        headers:
+          Authorization: "Bearer $.env.CMS_API_KEY"
+        timeout: 30000
+        body:
+          title: "$.result.title"
+          body: "$.result.body"
+          category: "$.result.category"
+          metadata: "$.result.metadata"
+      error_mapping:
+        429: RATE_LIMITED
+        502: PUBLISH_FAILED
+        503: CIRCUIT_OPEN
+      circuit_break_config:
+        failure_threshold: 5
+        recovery_timeout_ms: 60000
+        half_open_max_calls: 2
+    connections:
+      - targetNodeId: data_store-updPub7
+        sourceHandle: success
+      - targetNodeId: data_store-failPub8
+        sourceHandle: error
+    behavior: circuit_break
 
-  - id: data_store-a3b4c5d6
+  - id: data_store-updPub7
     type: data_store
-    name: Create Publish Record
-    config:
-      operation: create
+    label: "Mark Published"
+    spec:
+      operation: update
       model: PublishRecord
+      query:
+        where:
+          content_id: "$.payload.content_id"
+          channel_id: website
       data:
-        content_id: "$.content_id"
-        channel: website
-        publish_url: "$.response.url"
-        published_at: "$.response.published_at"
+        status: success
+        published_at: "$.now()"
+        publish_url: "$.service_result.url"
+      returning: true
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: terminal-e7f8g9h0
+  - id: data_store-failPub8
+    type: data_store
+    label: "Mark Failed"
+    spec:
+      operation: update
+      model: PublishRecord
+      query:
+        where:
+          content_id: "$.payload.content_id"
+          channel_id: website
+      data:
+        status: failed
+        error: "$.error.message"
+        attempts: "$.result.attempts + 1"
+      returning: true
+    connections:
+      - targetNodeId: event-fail-emit9
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
+
+  - id: event-fail-emit9
+    type: event
+    label: "Emit PublishFailed"
+    spec:
+      direction: emit
+      event_name: PublishFailed
+      payload:
+        content_id: "$.payload.content_id"
+        channel_id: website
+        error: "$.error.message"
+        attempts: "$.result.attempts"
+    connections:
+      - targetNodeId: terminal-fail-xA1b
+
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    name: Website Publish Success
-    config:
+    label: "Published to Website"
+    spec:
+      outcome: success
       status: 200
-      response_type: success
+      body:
+        channel: website
+        publish_url: "$.service_result.url"
 
-  - id: terminal-i1j2k3l4
+  - id: terminal-fail-xA1b
     type: terminal
-    name: Service Call Error
-    config:
+    label: "Publish Failed"
+    spec:
+      outcome: error
+      status: 502
+      body:
+        error: "PUBLISH_FAILED"
+        channel: website
+
+  - id: terminal-err-pSz2wV3b
+    type: terminal
+    label: "Error"
+    spec:
+      outcome: error
       status: 500
-      response_type: error
-
-connections:
-  - from: trigger-k7l8m9n0
-    to: data_store-o1p2q3r4
-
-  - from: data_store-o1p2q3r4
-    to: transform-s5t6u7v8
-
-  - from: data_store-o1p2q3r4
-    to: terminal-i1j2k3l4
-    handle: error
-
-  - from: transform-s5t6u7v8
-    to: service_call-w9x0y1z2
-
-  - from: service_call-w9x0y1z2
-    to: data_store-a3b4c5d6
-
-  - from: service_call-w9x0y1z2
-    to: terminal-i1j2k3l4
-    handle: error
-
-  - from: data_store-a3b4c5d6
-    to: terminal-e7f8g9h0
-
-  - from: data_store-a3b4c5d6
-    to: terminal-i1j2k3l4
-    handle: error
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
-  created_at: "2026-03-14T00:00:00Z"
-  updated_at: "2026-03-14T00:00:00Z"
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

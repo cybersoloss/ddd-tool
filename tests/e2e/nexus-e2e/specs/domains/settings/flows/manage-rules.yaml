@@ -3,185 +3,230 @@ flow:
   name: "Manage Rules"
   type: traditional
   domain: settings
-  description: "Admin-only CRUD operations for system rules"
+  description: "CRUD for routing/filtering/publishing rules with tree hierarchy. Routes by action param: create, update, toggle, delete (cascades to children)."
   auth:
     required: true
+    roles: [admin]
     strategy: jwt
-    roles:
-      - admin
 
 trigger:
-  id: trigger-mR1a2B3c
+  id: trigger-mRul2xN8
   type: trigger
-  position: { x: 250, y: 0 }
+  label: "POST /api/rules/:action"
   spec:
-    event: "http POST /api/v1/settings/rules"
-    label: "Rule management endpoint"
+    event: "HTTP POST /api/rules/:action"
+  connections:
+    - targetNodeId: input-vAl3kP4r
 
 nodes:
-  - id: input-vR4d5E6f
+  - id: input-vAl3kP4r
     type: input
-    position: { x: 250, y: 130 }
+    label: "Validate Input"
     spec:
-      validate:
-        operation:
-          required: true
-          type: string
-        rule:
-          required: false
-          type: object
-
-  - id: decision-oP7g8H9i
-    type: decision
-    position: { x: 250, y: 260 }
-    spec:
-      condition: "$.operation"
-      description: "Route to create, read, update, or delete operation"
-      branches:
-        - value: create
-        - value: read
-        - value: update
-        - value: delete
-
-  - id: data_store-cR1j2K3l
-    type: data_store
-    position: { x: 0, y: 390 }
-    spec:
-      operation: create
-      model: Rule
       fields:
-        - name: name
-          value: "$.rule.name"
-        - name: condition
-          value: "$.rule.condition"
         - name: action
-          value: "$.rule.action"
+          type: string
+          required: true
+          enum: [create, update, toggle, delete, list]
+        - name: id
+          type: string
+          required: false
+          description: "Rule ID (required for update/toggle/delete)"
+        - name: type
+          type: string
+          required: false
+          enum: [ingestion, routing, publishing]
+        - name: name
+          type: string
+          required: false
+        - name: conditions
+          type: array
+          required: false
+        - name: action_value
+          type: string
+          required: false
+          enum: [allow, block, tag, route, enrich]
+        - name: priority
+          type: number
+          required: false
+        - name: enabled
+          type: boolean
+          required: false
+        - name: parent_id
+          type: string
+          required: false
+    connections:
+      - targetNodeId: smart_router-rAct5kQ7
+        sourceHandle: valid
+      - targetNodeId: terminal-inv-aB7cD8eF
+        sourceHandle: invalid
 
-  - id: terminal-sC4m5N6o
-    type: terminal
-    position: { x: 0, y: 520 }
+  - id: smart_router-rAct5kQ7
+    type: smart_router
+    label: "Route by Action"
     spec:
-      status: 201
-      label: "Rule created"
+      rules:
+        - id: list
+          condition: "$.action === 'list'"
+          route: data_store-list9wX2y
+          priority: 1
+        - id: create
+          condition: "$.action === 'create'"
+          route: data_store-crt8tV9w
+          priority: 2
+        - id: update
+          condition: "$.action === 'update'"
+          route: data_store-upd3nR6s
+          priority: 3
+        - id: toggle
+          condition: "$.action === 'toggle'"
+          route: data_store-tog6mP4q
+          priority: 4
+        - id: delete
+          condition: "$.action === 'delete'"
+          route: data_store-del7kO3p
+          priority: 5
+      fallback_chain: [terminal-inv-aB7cD8eF]
+    connections:
+      - targetNodeId: data_store-list9wX2y
+        sourceHandle: list
+      - targetNodeId: data_store-crt8tV9w
+        sourceHandle: create
+      - targetNodeId: data_store-upd3nR6s
+        sourceHandle: update
+      - targetNodeId: data_store-tog6mP4q
+        sourceHandle: toggle
+      - targetNodeId: data_store-del7kO3p
+        sourceHandle: delete
 
-  - id: data_store-rR7p8Q9r
+  - id: data_store-list9wX2y
     type: data_store
-    position: { x: 200, y: 390 }
+    label: "List Rules"
     spec:
       operation: read
       model: Rule
       query:
         where:
-          id: "$.rule_id"
+          type: "$.type"
+      returning: true
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: terminal-sR1s2T3u
-    type: terminal
-    position: { x: 200, y: 520 }
-    spec:
-      status: 200
-      label: "Rule retrieved"
-
-  - id: data_store-uR4v5W6x
+  - id: data_store-crt8tV9w
     type: data_store
-    position: { x: 400, y: 390 }
+    label: "Create Rule"
+    spec:
+      operation: create
+      model: Rule
+      data:
+        type: "$.type"
+        name: "$.name"
+        condition: "$.conditions"
+        action: "$.action_value"
+        priority: "$.priority"
+        enabled: "$.enabled"
+        parent_id: "$.parent_id"
+      returning: true
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
+
+  - id: data_store-upd3nR6s
+    type: data_store
+    label: "Update Rule"
     spec:
       operation: update
       model: Rule
       query:
         where:
-          id: "$.rule_id"
-      fields:
-        - name: condition
-          value: "$.rule.condition"
-        - name: action
-          value: "$.rule.action"
+          id: "$.id"
+      data:
+        name: "$.name"
+        condition: "$.conditions"
+        action: "$.action_value"
+        priority: "$.priority"
+        enabled: "$.enabled"
+      returning: true
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: success
+      - targetNodeId: terminal-notfound-cD4e
+        sourceHandle: error
 
-  - id: terminal-sU7y8Z9a
-    type: terminal
-    position: { x: 400, y: 520 }
-    spec:
-      status: 200
-      label: "Rule updated"
-
-  - id: data_store-dR1b2C3d
+  - id: data_store-tog6mP4q
     type: data_store
-    position: { x: 600, y: 390 }
+    label: "Toggle Rule"
     spec:
-      operation: delete
+      operation: update
       model: Rule
       query:
         where:
-          id: "$.rule_id"
+          id: "$.id"
+      data:
+        enabled: "$.enabled"
+      returning: true
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: success
+      - targetNodeId: terminal-notfound-cD4e
+        sourceHandle: error
 
-  - id: terminal-sD4e5F6g
-    type: terminal
-    position: { x: 600, y: 520 }
+  - id: data_store-del7kO3p
+    type: data_store
+    label: "Delete Rule + Children"
     spec:
+      operation: delete_many
+      model: Rule
+      query:
+        where:
+          OR:
+            - id: "$.id"
+            - parent_id: "$.id"
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
+
+  - id: terminal-ok-zQ7rS8tU
+    type: terminal
+    label: "Success"
+    spec:
+      outcome: success
       status: 200
-      label: "Rule deleted"
+      body: "$.result"
 
-  - id: terminal-eV7h8I9j
+  - id: terminal-inv-aB7cD8eF
     type: terminal
-    position: { x: 550, y: 130 }
+    label: "Invalid"
     spec:
-      status: 422
-      label: "Invalid rule syntax"
-      error_code: VALIDATION_ERROR
+      outcome: error
+      status: 400
+      body:
+        error: "VALIDATION_ERROR"
 
-  - id: terminal-eD1k2L3m
+  - id: terminal-notfound-cD4e
     type: terminal
-    position: { x: 550, y: 260 }
+    label: "Not Found"
     spec:
+      outcome: error
+      status: 404
+      body:
+        error: "RULE_NOT_FOUND"
+
+  - id: terminal-err-pSz2wV3b
+    type: terminal
+    label: "DB Error"
+    spec:
+      outcome: error
       status: 500
-      label: "Rule operation error"
-      error_code: RULE_OPERATION_ERROR
-
-connections:
-  - source: trigger-mR1a2B3c
-    target: input-vR4d5E6f
-    sourceHandle: ""
-  - source: input-vR4d5E6f
-    target: decision-oP7g8H9i
-    sourceHandle: "valid"
-  - source: input-vR4d5E6f
-    target: terminal-eV7h8I9j
-    sourceHandle: "invalid"
-  - source: decision-oP7g8H9i
-    target: data_store-cR1j2K3l
-    sourceHandle: "create"
-  - source: decision-oP7g8H9i
-    target: data_store-rR7p8Q9r
-    sourceHandle: "read"
-  - source: decision-oP7g8H9i
-    target: data_store-uR4v5W6x
-    sourceHandle: "update"
-  - source: decision-oP7g8H9i
-    target: data_store-dR1b2C3d
-    sourceHandle: "delete"
-  - source: data_store-cR1j2K3l
-    target: terminal-sC4m5N6o
-    sourceHandle: "success"
-  - source: data_store-cR1j2K3l
-    target: terminal-eD1k2L3m
-    sourceHandle: "error"
-  - source: data_store-rR7p8Q9r
-    target: terminal-sR1s2T3u
-    sourceHandle: "success"
-  - source: data_store-rR7p8Q9r
-    target: terminal-eD1k2L3m
-    sourceHandle: "error"
-  - source: data_store-uR4v5W6x
-    target: terminal-sU7y8Z9a
-    sourceHandle: "success"
-  - source: data_store-uR4v5W6x
-    target: terminal-eD1k2L3m
-    sourceHandle: "error"
-  - source: data_store-dR1b2C3d
-    target: terminal-sD4e5F6g
-    sourceHandle: "success"
-  - source: data_store-dR1b2C3d
-    target: terminal-eD1k2L3m
-    sourceHandle: "error"
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

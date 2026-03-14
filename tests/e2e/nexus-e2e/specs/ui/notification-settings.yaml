@@ -1,53 +1,93 @@
 page: notification-settings
-route: /settings/notifications
+title: Notification Settings
+layout: centered
 
 sections:
-  - id: channel-prefs
+  - id: notif-header
+    component: page-header
+    title: Notification Settings
+    subtitle: Configure how and when you receive alerts
+
+  - id: preferences-card
     component: detail-card
-    position: main
-    label: "Channel Preferences"
     data_source: notifications/get-notification-preferences
     fields:
-      email_enabled: { value: "$.email_enabled" }
-      slack_enabled: { value: "$.slack_enabled" }
+      - key: email_enabled
+        value: "$.email_enabled"
+        label: Email Notifications
+      - key: slack_enabled
+        value: "$.slack_enabled"
+        label: Slack Notifications
+      - key: digest_frequency
+        value: "$.digest_frequency"
+        label: Digest Frequency
+    empty_state:
+      message: "Preferences not loaded"
+      icon: bell
 
   - id: notification-history
     component: item-list
-    position: main
-    label: "Notification History"
     data_source: notifications/get-notification-preferences
     item_template:
       title: "$.title"
-      subtitle: "$.body"
-      badge: "$.type"
+      subtitle: "$.type"
+      badge: "$.read"
       timestamp: "$.created_at"
     empty_state:
       message: "No notifications yet"
       icon: bell-off
+    pagination:
+      limit: 20
 
 forms:
-  - id: notification-form
-    label: "Notification Preferences"
-    position: main
+  - id: notification-prefs-form
+    auto_save:
+      debounce_ms: 1000
+      flow: settings/update-settings
     fields:
-      - { name: email_enabled, type: toggle, label: "Email Notifications", default: true }
-      - { name: slack_enabled, type: toggle, label: "Slack Notifications", default: false }
-      - { name: event_types, type: multi-select, label: "Event Types to Notify", options: [content_ingested, content_classified, content_approved, content_published, alert_triggered] }
-      - { name: digest_frequency, type: select, label: "Digest Frequency", options: [realtime, hourly, daily, weekly], default: daily }
+      - name: email_enabled
+        type: toggle
+        label: Email notifications
+        default: true
+      - name: slack_enabled
+        type: toggle
+        label: Slack notifications
+        default: false
       - name: slack_webhook_url
         type: text
-        label: "Slack Webhook URL"
-        visible_when: { field: slack_enabled, value: true }
-        placeholder: "https://hooks.slack.com/services/..."
-    submit:
-      flow: notifications/update-notification-preferences
-      label: "Save Preferences"
-      loading_label: "Saving..."
-      success: { message: "Preferences saved" }
-      error: { message: "Failed to save", retry: true }
+        label: Slack Webhook URL
+        placeholder: https://hooks.slack.com/services/...
+        required: false
+        visible_when:
+          field: slack_enabled
+          value: true
+        validation:
+          format: url
+      - name: notify_event_types
+        type: multi-select
+        label: Events to notify
+        options:
+          - content_approved
+          - content_rejected
+          - content_published
+          - alert_triggered
+          - publish_failed
+        required: false
+      - name: digest_frequency
+        type: select
+        label: Digest frequency
+        options: [realtime, hourly, daily, weekly]
+        default: daily
 
 state:
-  initial_fetch: [notifications/get-notification-preferences]
+  store: notifications-store
+  initial_fetch:
+    - notifications/get-notification-preferences
 
-loading: skeleton
+loading: spinner
 error: toast
+refresh: manual
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

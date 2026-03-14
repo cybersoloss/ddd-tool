@@ -1,76 +1,108 @@
 name: Content
-description: Central content entity with lifecycle management
 inherits: _base
+description: Core content entity — ingested from external sources, analyzed by AI, reviewed by editors, and published to channels
+owned_by: content
+
 fields:
   - name: title
     type: string
     required: true
-    constraints:
-      max_length: 500
+    max_length: 500
+    description: Content headline or title
+
   - name: body
     type: text
     required: true
+    description: Full content body text
+
   - name: summary
     type: text
     required: false
+    description: AI-generated or manually written summary
+
   - name: category
     type: enum
-    required: true
-    ref: content_category
+    ref: ContentCategory
+    required: false
+    description: AI-assigned classification category
+
   - name: status
     type: enum
+    ref: ContentStatus
     required: true
-    ref: content_status
     default: draft
+    description: Current lifecycle status
+
   - name: quality_score
     type: decimal
     required: false
+    min: 0.0
+    max: 1.0
+    description: AI quality score (0.0 low — 1.0 high)
+
   - name: bias_score
     type: decimal
     required: false
+    min: 0.0
+    max: 1.0
+    description: AI bias detection score (0.0 neutral — 1.0 highly biased)
+
   - name: source_type
     type: string
     required: true
+    description: Origin source type (rss, web, csv, webhook, social, filesystem)
+
   - name: source_id
     type: string
     required: false
+    description: External source item identifier for deduplication
+
   - name: metadata
     type: json
     required: false
+    description: Additional source-specific metadata (tags, author, original URL, etc.)
+
   - name: deleted_at
-    type: datetime
+    type: date
     required: false
-    description: Soft delete timestamp
+    description: Soft delete timestamp — null means active
 
 relationships:
-  - name: versions
-    type: has_many
-    target: ContentVersion
+  - type: has_many
+    model: ContentVersion
     foreign_key: content_id
-  - name: rejections
-    type: has_many
-    target: ContentRejection
+    description: Version history snapshots
+
+  - type: has_many
+    model: ContentRejection
     foreign_key: content_id
-  - name: source
-    type: belongs_to
-    target: ContentSource
+    description: Rejection records with reasons
+
+  - type: belongs_to
+    model: ContentSource
     foreign_key: source_id
-  - name: channels
-    type: many_to_many
-    target: Channel
-    through: PublishRecord
+    as: source
+    description: The ingestion source this content came from
+
+  - type: many_to_many
+    model: Channel
+    through: content_channels
+    as: channels
+    description: Channels this content has been published to
 
 indexes:
   - fields: [title]
     type: gin
-    description: "Full-text search on title"
+    description: Full-text search index on content title
+
   - fields: [status, created_at]
-    description: "Filter by status sorted by date"
+    type: btree
+    description: Filter by status with date ordering — most common query pattern
+
   - fields: [source_type, source_id]
     unique: true
-    description: "Prevent duplicate imports from same source"
-  - fields: [deleted_at]
-    description: "Soft delete filtering"
+    type: btree
+    description: Deduplication index — prevents ingesting the same external item twice
 
 transitions:
   field: status
@@ -85,16 +117,32 @@ transitions:
       to: [archived]
     - from: rejected
       to: [draft]
-  on_invalid: reject
+  on_invalid: error
 
 seed:
-  - name: sample-content
-    description: "Sample content items for development"
-    strategy: fixture
-    data:
-      - { title: "AI Advances in 2026", body: "Content body here...", category: news, status: draft, source_type: rss }
-      - { title: "Opinion: Future of ML", body: "Opinion piece...", category: opinion, status: review, source_type: web }
-      - { title: "Research Paper Summary", body: "Research summary...", category: research, status: approved, source_type: csv }
+  strategy: fixture
+  data:
+    - id: "00000000-0000-0000-0000-000000000001"
+      title: "AI Breakthrough in Natural Language Processing"
+      body: "Researchers have announced a major breakthrough in natural language processing, achieving human-level performance on multiple benchmark tasks using a novel architecture."
+      summary: "New NLP architecture achieves human-level benchmark performance."
+      status: published
+      category: research
+      source_type: rss
+      quality_score: 0.92
+    - id: "00000000-0000-0000-0000-000000000002"
+      title: "Market Analysis: Tech Sector Q1 2026"
+      body: "The technology sector showed strong growth in the first quarter of 2026, driven by AI adoption and cloud infrastructure investment."
+      status: review
+      category: news
+      source_type: web
+      quality_score: 0.78
+    - id: "00000000-0000-0000-0000-000000000003"
+      title: "Opinion: The Future of Autonomous Systems"
+      body: "As we move deeper into the age of automation, the question is not whether autonomous systems will transform industries, but how quickly they will do so."
+      status: draft
+      category: opinion
+      source_type: csv
 
 metadata:
   created: "2026-03-14T00:00:00Z"

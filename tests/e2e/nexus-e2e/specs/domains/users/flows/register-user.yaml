@@ -3,34 +3,54 @@ flow:
   name: "Register User"
   type: traditional
   domain: users
-  description: "User registration with password hashing, API key generation, and event emission"
+  description: "Creates a new user account. Validates email uniqueness, hashes password with bcrypt, creates UserProfile, charges Stripe for paid plans, emits UserRegistered."
   auth:
     required: false
 
 trigger:
-  id: trigger-rU1a2B3c
+  id: trigger-regU2xN8
   type: trigger
-  position: { x: 250, y: 0 }
+  label: "POST /api/auth/register"
   spec:
-    event: "http POST /api/v1/auth/register"
-    label: "User registration endpoint"
+    event: "HTTP POST /api/auth/register"
+    rate_limit:
+      window_ms: 60000
+      max_requests: 10
+  connections:
+    - targetNodeId: input-vAl3kP4r
 
 nodes:
-  - id: input-vR4d5E6f
+  - id: input-vAl3kP4r
     type: input
-    position: { x: 250, y: 130 }
+    label: "Validate Input"
     spec:
-      validate:
-        email:
-          required: true
+      fields:
+        - name: email
           type: string
-        password:
           required: true
+          format: email
+        - name: password
           type: string
+          required: true
+          min_length: 8
+        - name: plan
+          type: string
+          required: false
+          default: free
+          enum: [free, pro, enterprise]
+        - name: role
+          type: string
+          required: false
+          default: viewer
+    connections:
+      - targetNodeId: data_store-chkEmail5
+        sourceHandle: valid
+      - targetNodeId: terminal-inv-aB7cD8eF
+        sourceHandle: invalid
 
-  - id: data_store-cE7g8H9i
+  - id: data_store-chkEmail5
     type: data_store
-    position: { x: 250, y: 260 }
+    label: "Check Email Unique"
     spec:
       operation: read
       model: User
@@ -38,138 +58,175 @@ nodes:
         where:
           email: "$.email"
       safety: strict
+      returning: true
+    connections:
+      - targetNodeId: decision-emailTaken3
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: decision-eX1j2K3l
+  - id: decision-emailTaken3
     type: decision
-    position: { x: 250, y: 390 }
+    label: "Email Taken?"
     spec:
-      condition: "$.user != null"
-      description: "Check if user with this email already exists"
+      condition: "$.result !== null"
+    connections:
+      - targetNodeId: terminal-dup-xA1b
+        sourceHandle: "true"
+      - targetNodeId: crypto-hsh3nR6s
+        sourceHandle: "false"
 
-  - id: terminal-dP4m5N6o
-    type: terminal
-    position: { x: 550, y: 390 }
-    spec:
-      status: 409
-      label: "Email already registered"
-      error_code: DUPLICATE_ENTRY
-
-  - id: crypto-hP7p8Q9r
+  - id: crypto-hsh3nR6s
     type: crypto
-    position: { x: 250, y: 520 }
+    label: "Hash Password"
     spec:
       operation: hash
       algorithm: bcrypt
       input: "$.password"
-      output_field: password_hash
+      output: password_hash
+    connections:
+      - targetNodeId: decision-paidPlan7
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: crypto-gK1s2T3u
-    type: crypto
-    position: { x: 250, y: 650 }
+  - id: decision-paidPlan7
+    type: decision
+    label: "Paid Plan?"
     spec:
-      operation: generate_key
-      algorithm: random
-      length: 32
-      output_field: api_key
+      condition: "$.plan !== 'free'"
+    connections:
+      - targetNodeId: service_call-stripe9
+        sourceHandle: "true"
+      - targetNodeId: transaction-crtUser8
+        sourceHandle: "false"
 
-  - id: data_store-cU4v5W6x
-    type: data_store
-    position: { x: 250, y: 780 }
+  - id: service_call-stripe9
+    type: service_call
+    label: "Create Stripe Customer"
     spec:
-      operation: create
-      model: User
-      fields:
-        - name: email
-          value: "$.email"
-        - name: password_hash
-          value: "$.password_hash"
-        - name: api_key
-          value: "$.api_key"
+      method: POST
+      integration: stripe
+      url: "https://api.stripe.com/v1/customers"
+      request_config:
+        body:
+          email: "$.email"
+          metadata:
+            plan: "$.plan"
+      error_mapping:
+        402: RATE_LIMITED
+    connections:
+      - targetNodeId: transaction-crtUser8
+        sourceHandle: success
+      - targetNodeId: terminal-stripe-err
+        sourceHandle: error
 
-  - id: event-uR7y8Z9a
+  - id: transaction-crtUser8
+    type: transaction
+    label: "Create User + Profile"
+    spec:
+      steps:
+        - action:
+            type: data_store
+            operation: create
+            model: User
+            data:
+              email: "$.email"
+              password_hash: "$.password_hash"
+              plan: "$.plan"
+              metadata:
+                stripe_customer_id: "$.stripe_customer_id"
+            returning: true
+          rollback:
+            type: data_store
+            operation: delete
+            model: User
+            query:
+              where:
+                email: "$.email"
+        - action:
+            type: data_store
+            operation: create
+            model: UserProfile
+            data:
+              user_id: "$.created_user_id"
+              display_name: "$.email"
+            returning: true
+          rollback:
+            type: data_store
+            operation: delete
+            model: UserProfile
+            query:
+              where:
+                user_id: "$.created_user_id"
+    connections:
+      - targetNodeId: event-emit-yF3g
+        sourceHandle: committed
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: rolled_back
+
+  - id: event-emit-yF3g
     type: event
-    position: { x: 250, y: 910 }
+    label: "Emit UserRegistered"
     spec:
       direction: emit
       event_name: UserRegistered
       payload:
-        user_id: "$.user.id"
+        user_id: "$.created_user_id"
         email: "$.email"
+        role: "$.role"
+        plan: "$.plan"
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
 
-  - id: terminal-sC1b2C3d
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 250, y: 1040 }
+    label: "Registered"
     spec:
+      outcome: success
       status: 201
-      label: "User registered successfully"
+      body:
+        user_id: "$.created_user_id"
+        email: "$.email"
+        plan: "$.plan"
 
-  - id: terminal-eV4e5F6g
+  - id: terminal-dup-xA1b
     type: terminal
-    position: { x: 550, y: 130 }
+    label: "Email Taken"
     spec:
-      status: 422
-      label: "Invalid registration data"
-      error_code: VALIDATION_ERROR
+      outcome: error
+      status: 409
+      body:
+        error: "DUPLICATE_ENTRY"
+        message: "Email already registered"
 
-  - id: terminal-eC7h8I9j
+  - id: terminal-stripe-err
     type: terminal
-    position: { x: 550, y: 520 }
+    label: "Stripe Error"
     spec:
+      outcome: error
+      status: 502
+      body:
+        error: "INTERNAL_ERROR"
+        message: "Payment setup failed"
+
+  - id: terminal-inv-aB7cD8eF
+    type: terminal
+    label: "Invalid"
+    spec:
+      outcome: error
+      status: 400
+      body:
+        error: "VALIDATION_ERROR"
+
+  - id: terminal-err-pSz2wV3b
+    type: terminal
+    label: "Error"
+    spec:
+      outcome: error
       status: 500
-      label: "Crypto error"
-      error_code: CRYPTO_ERROR
-
-  - id: terminal-eD1k2L3m
-    type: terminal
-    position: { x: 550, y: 780 }
-    spec:
-      status: 500
-      label: "Data store error"
-      error_code: DATA_STORE_ERROR
-
-connections:
-  - source: trigger-rU1a2B3c
-    target: input-vR4d5E6f
-    sourceHandle: ""
-  - source: input-vR4d5E6f
-    target: data_store-cE7g8H9i
-    sourceHandle: "valid"
-  - source: input-vR4d5E6f
-    target: terminal-eV4e5F6g
-    sourceHandle: "invalid"
-  - source: data_store-cE7g8H9i
-    target: decision-eX1j2K3l
-    sourceHandle: "success"
-  - source: data_store-cE7g8H9i
-    target: terminal-eD1k2L3m
-    sourceHandle: "error"
-  - source: decision-eX1j2K3l
-    target: terminal-dP4m5N6o
-    sourceHandle: "true"
-  - source: decision-eX1j2K3l
-    target: crypto-hP7p8Q9r
-    sourceHandle: "false"
-  - source: crypto-hP7p8Q9r
-    target: crypto-gK1s2T3u
-    sourceHandle: "success"
-  - source: crypto-hP7p8Q9r
-    target: terminal-eC7h8I9j
-    sourceHandle: "error"
-  - source: crypto-gK1s2T3u
-    target: data_store-cU4v5W6x
-    sourceHandle: "success"
-  - source: crypto-gK1s2T3u
-    target: terminal-eC7h8I9j
-    sourceHandle: "error"
-  - source: data_store-cU4v5W6x
-    target: event-uR7y8Z9a
-    sourceHandle: "success"
-  - source: data_store-cU4v5W6x
-    target: terminal-eD1k2L3m
-    sourceHandle: "error"
-  - source: event-uR7y8Z9a
-    target: terminal-sC1b2C3d
-    sourceHandle: "success"
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

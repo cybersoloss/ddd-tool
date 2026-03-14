@@ -1,91 +1,116 @@
-name: Users
-description: "Auth and user management"
+name: "Users"
+description: "User account lifecycle, authentication, role management, API key management, and session tokens. Implements JWT + bcrypt auth with soft delete, encrypted API keys, and Stripe plan management."
 role: entity
-
 auth:
   required: true
   strategy: jwt
 
-owns_schemas:
-  - User
-  - UserProfile
-  - Role
-  - ApiKey
+owns_schemas: ["User", "UserProfile", "Role", "ApiKey"]
 
 flows:
   - id: register-user
     name: "Register User"
-    description: "User registration with email validation and password hashing"
+    description: "Creates a new user account. Hashes password with bcrypt, assigns default role, creates UserProfile, charges Stripe for paid plans."
     type: traditional
-    tags:
-      - public-api
+    tags: [public-api]
+    criticality: critical
+    auth:
+      required: false
 
   - id: login-user
     name: "Login User"
-    description: "User login with JWT issuance"
+    description: "Authenticates credentials, generates JWT access token and refresh token. Enforces rate limiting."
     type: traditional
-    tags:
-      - public-api
-
-  - id: generate-session-token
-    name: "Generate Session Token"
-    description: "Generate a session token for authenticated user"
-    type: traditional
-    tags:
-      - public-api
-
-  - id: manage-api-keys
-    name: "Manage API Keys"
-    description: "CRUD operations for API keys"
-    type: traditional
-    tags:
-      - public-api
-
-  - id: update-user-role
-    name: "Update User Role"
-    description: "Change user role with permission check"
-    type: traditional
-    tags:
-      - public-api
-
-  - id: list-users
-    name: "List Users"
-    description: "List users with filters and pagination"
-    type: traditional
-    tags:
-      - public-api
+    tags: [public-api]
+    criticality: critical
+    auth:
+      required: false
 
   - id: refresh-token
     name: "Refresh Token"
-    description: "Refresh JWT using refresh token"
+    description: "Validates a refresh token and issues a new JWT access token with sliding expiry."
     type: traditional
-    tags:
-      - public-api
+    tags: [public-api]
+    criticality: critical
+    auth:
+      required: false
+
+  - id: generate-session-token
+    name: "Generate Session Token"
+    description: "Generates an opaque session token for non-JWT clients (embedded widgets, webhooks)."
+    type: traditional
+    tags: [internal]
+    criticality: normal
+
+  - id: list-users
+    name: "List Users"
+    description: "Returns paginated user list with optional role/plan filters. Admin only."
+    type: traditional
+    tags: [public-api]
+    criticality: normal
+    auth:
+      required: true
+      roles: [admin]
+      strategy: jwt
+
+  - id: update-user-role
+    name: "Update User Role"
+    description: "Changes a user's role assignment. Validates that admin cannot demote the last admin."
+    type: traditional
+    tags: [public-api]
+    criticality: high
+    auth:
+      required: true
+      roles: [admin]
+      strategy: jwt
 
   - id: delete-user
     name: "Delete User"
-    description: "Soft delete a user account"
+    description: "Soft-deletes a user account (sets deleted_at). Revokes all API keys and active sessions. Admin only."
     type: traditional
-    tags:
-      - public-api
+    tags: [public-api]
+    criticality: high
+    auth:
+      required: true
+      roles: [admin]
+      strategy: jwt
+
+  - id: manage-api-keys
+    name: "Manage API Keys"
+    description: "CRUD for API keys. Creates new keys (hashed + encrypted), lists active keys, and revokes keys. Supports scope and IP allowlist."
+    type: traditional
+    tags: [public-api]
+    criticality: high
+
+groups:
+  - id: auth
+    name: "Authentication"
+    flows: [register-user, login-user, refresh-token, generate-session-token]
+  - id: user-admin
+    name: "User Administration"
+    flows: [list-users, update-user-role, delete-user]
+  - id: api-keys
+    name: "API Key Management"
+    flows: [manage-api-keys]
 
 publishes_events:
   - event: UserRegistered
+    schema: User
     from_flow: register-user
-    description: "New user registered"
+    description: "Fired after successful registration — triggers welcome notification"
     payload:
-      user_id: uuid
+      user_id: string
       email: string
+      role: string
       plan: string
 
-  - event: RoleChanged
-    from_flow: update-user-role
-    description: "User role changed"
+  - event: UserDeleted
+    schema: User
+    from_flow: delete-user
+    description: "Fired after soft-delete — consumed by any domain that needs to clean up user references"
     payload:
-      user_id: uuid
-      old_role: string
-      new_role: string
-      changed_by: uuid
+      user_id: string
+      deleted_at: string
 
 consumes_events: []
 
@@ -93,10 +118,14 @@ layout:
   flows:
     register-user: { x: 100, y: 100 }
     login-user: { x: 100, y: 300 }
-    generate-session-token: { x: 100, y: 500 }
-    manage-api-keys: { x: 100, y: 700 }
-    update-user-role: { x: 100, y: 900 }
-    list-users: { x: 100, y: 1100 }
-    refresh-token: { x: 100, y: 1300 }
-    delete-user: { x: 100, y: 1500 }
+    refresh-token: { x: 100, y: 500 }
+    generate-session-token: { x: 100, y: 700 }
+    list-users: { x: 400, y: 100 }
+    update-user-role: { x: 400, y: 300 }
+    delete-user: { x: 400, y: 500 }
+    manage-api-keys: { x: 700, y: 100 }
   portals: {}
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

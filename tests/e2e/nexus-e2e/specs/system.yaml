@@ -1,11 +1,12 @@
-name: nexus
-version: "1.0.0"
-description: AI-powered content intelligence platform
+project:
+  name: Nexus
+  description: AI-powered content intelligence platform
+  version: 1.0.0
 
 tech_stack:
   language: TypeScript
   runtime: Node.js 20
-  framework: Express 4
+  backend: Express 4
   frontend: Next.js 14
   database: PostgreSQL 16
   orm: Prisma
@@ -13,183 +14,233 @@ tech_stack:
   queue: BullMQ
   auth: JWT + bcrypt
   ui: shadcn/ui
-  state: Zustand
+  state_management: Zustand
+  ai_primary: Anthropic API (claude-3-5-sonnet-20241022)
+  ai_secondary: OpenAI API (gpt-4o)
 
 environments:
-  - name: development
-    url: http://localhost:3000
-  - name: staging
-    url: https://staging.nexus.example.com
-  - name: production
-    url: https://api.nexus.example.com
+  development:
+    api_url: http://localhost:3001
+    frontend_url: http://localhost:3000
+    database_url: postgresql://localhost:5432/nexus_dev
+    redis_url: redis://localhost:6379
+  production:
+    api_url: https://api.nexus.io
+    frontend_url: https://nexus.io
+    database_url: ${DATABASE_URL}
+    redis_url: ${REDIS_URL}
+
+integrations:
+  anthropic:
+    id: anthropic
+    base_url: https://api.anthropic.com/v1
+    auth:
+      type: api_key
+      header: x-api-key
+      env: ANTHROPIC_API_KEY
+    rate_limits:
+      requests_per_minute: 60
+    timeout_ms: 30000
+    retry:
+      max_attempts: 3
+      backoff: exponential
+
+  openai:
+    id: openai
+    base_url: https://api.openai.com/v1
+    auth:
+      type: bearer
+      env: OPENAI_API_KEY
+    rate_limits:
+      requests_per_minute: 60
+    timeout_ms: 30000
+    retry:
+      max_attempts: 3
+      backoff: exponential
+
+  twitter:
+    id: twitter
+    base_url: https://api.twitter.com/2
+    auth:
+      type: oauth2
+      bearer_env: TWITTER_BEARER_TOKEN
+    oauth1a:
+      api_key_env: TWITTER_API_KEY
+      api_secret_env: TWITTER_API_SECRET
+      access_token_env: TWITTER_ACCESS_TOKEN
+      access_token_secret_env: TWITTER_ACCESS_TOKEN_SECRET
+    rate_limits:
+      requests_per_15min: 300
+    timeout_ms: 15000
+    retry:
+      max_attempts: 2
+      backoff: linear
+
+  sendgrid:
+    id: sendgrid
+    base_url: https://api.sendgrid.com/v3
+    auth:
+      type: bearer
+      env: SENDGRID_API_KEY
+    rate_limits:
+      requests_per_second: 10
+    timeout_ms: 10000
+    retry:
+      max_attempts: 3
+      backoff: exponential
+
+  google_cse:
+    id: google_cse
+    base_url: https://www.googleapis.com/customsearch/v1
+    auth:
+      type: api_key
+      param: key
+      env: GOOGLE_CSE_API_KEY
+    rate_limits:
+      requests_per_day: 10000
+    timeout_ms: 10000
+    retry:
+      max_attempts: 2
+      backoff: linear
+
+  stripe:
+    id: stripe
+    base_url: https://api.stripe.com/v1
+    auth:
+      type: bearer
+      env: STRIPE_SECRET_KEY
+    rate_limits:
+      requests_per_second: 100
+    timeout_ms: 10000
+    retry:
+      max_attempts: 3
+      backoff: exponential
 
 zones:
   - id: ingestion-zone
-    name: Ingestion
-    domains: [ingestion, monitoring]
-  - id: processing-zone
-    name: Processing
+    name: Content Ingestion
+    domains: [ingestion]
+  - id: ai-pipeline-zone
+    name: AI Processing Pipeline
     domains: [processing]
   - id: editorial-zone
-    name: Editorial
-    domains: [editorial]
-  - id: distribution-zone
-    name: Distribution
-    domains: [publishing, notifications]
-  - id: data-zone
-    name: Data
-    domains: [content, analytics, users, settings]
-
-integrations:
-  twitter_api:
-    base_url: "https://api.twitter.com/2"
-    auth:
-      method: oauth2
-      credentials_env: TWITTER_BEARER_TOKEN
-    rate_limits:
-      requests_per_window: 300
-      window_seconds: 900
-    retry:
-      max_attempts: 3
-      backoff_ms: 1000
-      strategy: exponential
-    timeout_ms: 15000
-    used_by_domains: [ingestion, publishing]
-
-  sendgrid:
-    base_url: "https://api.sendgrid.com/v3"
-    auth:
-      method: api_key
-      credentials_env: SENDGRID_API_KEY
-    rate_limits:
-      requests_per_second: 100
-    retry:
-      max_attempts: 3
-      backoff_ms: 2000
-    timeout_ms: 15000
-    used_by_domains: [notifications, publishing]
-
-  google_cse:
-    base_url: "https://www.googleapis.com/customsearch/v1"
-    auth:
-      method: api_key
-      credentials_env: GOOGLE_CSE_API_KEY
-    rate_limits:
-      requests_per_window: 100
-      window_seconds: 86400
-    timeout_ms: 10000
-    used_by_domains: [processing]
-
-  stripe:
-    base_url: "https://api.stripe.com/v1"
-    auth:
-      method: api_key
-      credentials_env: STRIPE_SECRET_KEY
-    rate_limits:
-      requests_per_second: 25
-    timeout_ms: 30000
-    used_by_domains: [users]
-
-  anthropic:
-    base_url: "https://api.anthropic.com/v1"
-    auth:
-      method: api_key
-      credentials_env: ANTHROPIC_API_KEY
-    rate_limits:
-      requests_per_window: 60
-      window_seconds: 60
-    retry:
-      max_attempts: 2
-      backoff_ms: 5000
-    timeout_ms: 120000
-    used_by_domains: [processing]
-
-  openai:
-    base_url: "https://api.openai.com/v1"
-    auth:
-      method: api_key
-      credentials_env: OPENAI_API_KEY
-    rate_limits:
-      requests_per_window: 60
-      window_seconds: 60
-    retry:
-      max_attempts: 2
-      backoff_ms: 5000
-    timeout_ms: 120000
-    used_by_domains: [processing]
-
-ws_topology:
-  - channel: "publishing"
-    producer_flow: "publishing/broadcast-metric-update"
-    consumer_pages: ["dashboard", "publishing"]
-  - channel: "dashboard"
-    producer_flow: "analytics/broadcast-dashboard-update"
-    consumer_pages: ["dashboard", "analytics"]
-  - channel: "content"
-    producer_flow: "content/drag-reorder"
-    consumer_pages: ["content-feed"]
-  - channel: "editorial"
-    producer_flow: "editorial/list-editorial-queue"
-    consumer_pages: ["editorial-queue"]
+    name: Editorial & Publishing
+    domains: [editorial, publishing]
+  - id: content-zone
+    name: Content Management
+    domains: [content]
+  - id: analytics-zone
+    name: Analytics & Monitoring
+    domains: [analytics, monitoring]
+  - id: platform-zone
+    name: Platform Services
+    domains: [users, notifications, settings]
 
 schedules:
   - frequency: "*/15 * * * *"
     label: "Every 15 minutes"
-    flows: [ingestion/fetch-rss-feeds]
+    flows: ["ingestion/fetch-rss-feeds"]
   - frequency: "0 */4 * * *"
     label: "Every 4 hours"
-    flows: [ingestion/scrape-web-content]
+    flows: ["ingestion/scrape-web-content"]
   - frequency: "*/30 * * * *"
     label: "Every 30 minutes"
-    flows: [ingestion/monitor-social-feeds]
+    flows: ["ingestion/monitor-social-feeds"]
   - frequency: "0 * * * *"
-    label: "Every hour"
-    flows: [processing/summarize-batch]
+    label: "Hourly"
+    flows: ["processing/summarize-batch"]
   - frequency: "0 2 * * *"
     label: "Daily at 2am"
-    flows: [analytics/generate-daily-report]
+    flows: ["analytics/generate-daily-report"]
   - frequency: "0 6 * * 1"
-    label: "Monday 6am"
-    flows: [analytics/generate-weekly-digest]
+    label: "Monday at 6am"
+    flows: ["analytics/generate-weekly-digest"]
+
+ws_topology:
+  hubs:
+    - id: metrics-hub
+      domain: analytics
+      path: /api/v1/ws/metrics
+      description: Live metric streaming to dashboard clients
+    - id: content-hub
+      domain: content
+      path: /api/v1/ws/content
+      description: Real-time content change events
+    - id: publishing-hub
+      domain: publishing
+      path: /api/v1/ws/publishing
+      description: Publishing status and queue updates
+    - id: dashboard-hub
+      domain: analytics
+      path: /api/v1/ws/dashboard
+      description: Dashboard aggregate metric updates
+  fanout:
+    - from: analytics/broadcast-dashboard-update
+      to: dashboard-hub
+      event: metric_update
+    - from: analytics/stream-live-metrics
+      to: metrics-hub
+      event: live_metrics
+    - from: publishing/broadcast-metric-update
+      to: publishing-hub
+      event: content_published
+    - from: content/drag-reorder
+      to: content-hub
+      event: reordered
+
+pipelines:
+  - id: content-ingestion-pipeline
+    name: Content Ingestion Pipeline
+    description: End-to-end flow from source acquisition to multi-channel publication
+    stages:
+      - domain: ingestion
+        description: Acquire content from external sources
+        events_emitted: [ContentIngested]
+      - domain: processing
+        description: AI classification, fact-checking, quality scoring
+        events_consumed: [ContentIngested]
+        events_emitted: [ContentClassified]
+      - domain: editorial
+        description: Human review and approval workflow
+        events_consumed: [ContentClassified]
+        events_emitted: [ContentApproved, ContentRejected]
+      - domain: publishing
+        description: Distribute approved content across channels
+        events_consumed: [ContentApproved]
+        events_emitted: [ContentPublished]
+      - domain: analytics
+        description: Record metrics and update dashboards
+        events_consumed: [ContentPublished, ContentRejected]
 
 data_flows:
   - from: ingestion-zone
-    to: processing-zone
-    label: "ContentIngested events"
-    volume: high
-  - from: processing-zone
+    to: ai-pipeline-zone
+    label: ContentIngested
+  - from: ai-pipeline-zone
     to: editorial-zone
-    label: "ContentClassified events"
-    volume: high
+    label: ContentClassified
   - from: editorial-zone
-    to: distribution-zone
-    label: "ContentApproved events"
-    volume: medium
-  - from: distribution-zone
-    to: data-zone
-    label: "ContentPublished events"
-    volume: medium
-  - from: data-zone
-    to: processing-zone
-    label: "ContentUpdated events"
-    volume: low
-    style: dashed
+    to: analytics-zone
+    label: ContentApproved, ContentRejected
+  - from: editorial-zone
+    to: content-zone
+    label: ContentRejected (status update)
+  - from: editorial-zone
+    to: platform-zone
+    label: ContentApproved → notifications
+  - from: content-zone
+    to: ai-pipeline-zone
+    label: ContentUpdated, ContentRestored
 
 characteristics:
-  - "Event-driven"
-  - "Multi-agent AI pipeline"
-  - "6 cron schedules"
-  - "6 external APIs"
-  - "Real-time WebSocket analytics"
-  - "Multi-channel publishing"
+  - Event-driven architecture
+  - Multi-agent AI analysis pipeline
+  - Real-time WebSocket streaming
+  - Multi-channel publishing (website, social, newsletter)
+  - 6 external API integrations
+  - Cursor-based pagination
+  - Soft-delete content lifecycle
 
-pipelines:
-  - id: content-pipeline
-    name: Content Processing Pipeline
-    description: "End-to-end from ingestion to publication"
-    steps:
-      - { domain: ingestion, flow: fetch-rss-feeds, event_out: ContentIngested }
-      - { domain: processing, flow: classify-content, event_out: ContentClassified }
-      - { domain: editorial, flow: review-content, event_out: ContentApproved }
-      - { domain: publishing, flow: publish-content, event_out: ContentPublished }
-    spans_domains: [ingestion, processing, editorial, publishing]
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

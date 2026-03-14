@@ -1,117 +1,114 @@
 flow:
   id: list-editorial-queue
-  name: List Editorial Queue
-  description: Returns the editorial review queue filtered, sorted, and paginated
+  name: "List Editorial Queue"
   type: traditional
   domain: editorial
-  version: "1.0.0"
-  trigger:
-    type: http
-    method: GET
-    path: /api/v1/editorial/queue
+  description: "Returns paginated editorial queue filtered by status, reviewer, and priority. Content status must be 'review'. Supports cursor pagination."
   auth:
     required: true
+    roles: [admin, editor, reviewer]
     strategy: jwt
 
-nodes:
-  - id: trigger-f7g8h9i0
-    type: trigger
-    name: HTTP GET Editorial Queue
-    config:
-      method: GET
-      path: /api/v1/editorial/queue
+trigger:
+  id: trigger-lstQ2xN8
+  type: trigger
+  label: "GET /api/editorial/queue"
+  spec:
+    event: "HTTP GET /api/editorial/queue"
+  connections:
+    - targetNodeId: input-vAl3kP4r
 
-  - id: data_store-j1k2l3m4
+nodes:
+  - id: input-vAl3kP4r
+    type: input
+    label: "Validate Filters"
+    spec:
+      fields:
+        - name: reviewer_id
+          type: string
+          required: false
+        - name: priority
+          type: string
+          required: false
+          enum: [high, medium, low]
+        - name: date_from
+          type: string
+          required: false
+        - name: date_to
+          type: string
+          required: false
+        - name: unassigned_only
+          type: boolean
+          required: false
+          default: false
+        - name: cursor
+          type: string
+          required: false
+        - name: limit
+          type: number
+          required: false
+          default: 25
+    connections:
+      - targetNodeId: data_store-rdQueue5
+        sourceHandle: valid
+      - targetNodeId: terminal-inv-aB7cD8eF
+        sourceHandle: invalid
+
+  - id: data_store-rdQueue5
     type: data_store
-    name: Read Content in Review
-    config:
+    label: "Query Editorial Queue"
+    spec:
       operation: read
       model: Content
       query:
-        status: review
+        where:
+          status: review
+          metadata:
+            reviewer_id: "$.reviewer_id"
+            priority: "$.priority"
+            assigned: "$.unassigned_only ? null : undefined"
+          created_at:
+            gte: "$.date_from"
+            lte: "$.date_to"
+        cursor: "$.cursor"
+        limit: "$.limit"
+        order_by:
+          quality_score: desc
+      include:
+        source: true
+      returning: true
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: collection-n5o6p7q8
-    type: collection
-    name: Filter by Reviewer and Priority
-    config:
-      operation: filter
-      condition: "$.reviewer_id && $.priority"
-
-  - id: collection-r9s0t1u2
-    type: collection
-    name: Sort by Submitted At
-    config:
-      operation: sort
-      field: submitted_at
-      order: desc
-
-  - id: collection-v3w4x5y6
-    type: collection
-    name: Join with Content Details
-    config:
-      operation: join
-      right: "Content"
-      on: "$.content_id === $.id"
-      join_type: inner
-
-  - id: collection-z7a8b9c0
-    type: collection
-    name: Take First 20
-    config:
-      operation: first
-      count: 20
-
-  - id: terminal-d1e2f3g4
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    name: Queue Response
-    config:
+    label: "Queue Items"
+    spec:
+      outcome: success
       status: 200
-      response_type: json
+      body: "$.result"
 
-  - id: terminal-h5i6j7k8
+  - id: terminal-inv-aB7cD8eF
     type: terminal
-    name: Data Store Error
-    config:
-      status: 500
-      response_type: error
-
-  - id: terminal-l9m0n1o2
-    type: terminal
-    name: Empty Queue Response
-    config:
-      status: 200
-      response_type: json
+    label: "Invalid"
+    spec:
+      outcome: error
+      status: 400
       body:
-        data: []
-        has_more: false
+        error: "VALIDATION_ERROR"
 
-connections:
-  - from: trigger-f7g8h9i0
-    to: data_store-j1k2l3m4
-
-  - from: data_store-j1k2l3m4
-    to: collection-n5o6p7q8
-
-  - from: data_store-j1k2l3m4
-    to: terminal-h5i6j7k8
-    handle: error
-
-  - from: collection-n5o6p7q8
-    to: collection-r9s0t1u2
-
-  - from: collection-n5o6p7q8
-    to: terminal-l9m0n1o2
-    handle: empty
-
-  - from: collection-r9s0t1u2
-    to: collection-v3w4x5y6
-
-  - from: collection-v3w4x5y6
-    to: collection-z7a8b9c0
-
-  - from: collection-z7a8b9c0
-    to: terminal-d1e2f3g4
+  - id: terminal-err-pSz2wV3b
+    type: terminal
+    label: "Error"
+    spec:
+      outcome: error
+      status: 500
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
-  created_at: "2026-03-14T00:00:00Z"
-  updated_at: "2026-03-14T00:00:00Z"
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

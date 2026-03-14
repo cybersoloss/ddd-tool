@@ -3,126 +3,93 @@ flow:
   name: "Scrape Web Content"
   type: traditional
   domain: ingestion
-  description: "Crawls enabled web content sources on a schedule, parses HTML content using CSS selectors, filters duplicates, and emits ContentIngested events."
-  pattern_governed: stealth_http
+  description: "Uses stealth HTTP to fetch and parse a web page, extracting title, body, and metadata using CSS selectors. Applies stealth_http cross-cutting pattern."
+  auth:
+    required: false
 
 trigger:
-  id: trigger-wS1a2B3c
+  id: trigger-scrW2eN8
   type: trigger
-  position: { x: 100, y: 0 }
+  label: "manual"
   spec:
-    event: "cron 0 */4 * * *"
-    label: "Every 4 hours"
+    event: "manual"
+  connections:
+    - targetNodeId: delay-throttle3
 
 nodes:
-  - id: data_store-dR4d5E6f
-    type: data_store
-    position: { x: 100, y: 130 }
+  - id: delay-throttle3
+    type: delay
+    label: "Rate Throttle"
     spec:
-      operation: read
-      model: ContentSource
-      query:
-        where:
-          type: web
-          enabled: true
+      min_ms: 2000
+    connections:
+      - targetNodeId: service_call-fetch4
 
-  - id: loop-lP7g8H9i
-    type: loop
-    position: { x: 100, y: 260 }
-    spec:
-      collection: "$.sources"
-      iterator: "source"
-
-  - id: service_call-sC1j2K3l
+  - id: service_call-fetch4
     type: service_call
-    position: { x: 100, y: 390 }
+    label: "Fetch Page (Stealth)"
     spec:
       method: GET
-      url: "$.source.url"
+      url: "$.url"
       request_config:
         headers:
-          User-Agent: "$.rotated_ua"
-        timeout_ms: 10000
+          User-Agent: "$.random_user_agent()"
+          Accept: "text/html,application/xhtml+xml"
+          Accept-Language: "en-US,en;q=0.9"
+          Referer: "https://www.google.com"
+        timeout: 20000
+      error_mapping:
+        403: FORBIDDEN
+        429: RATE_LIMITED
+    connections:
+      - targetNodeId: parse-html5
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: parse-pH4m5N6o
+  - id: parse-html5
     type: parse
-    position: { x: 100, y: 520 }
+    label: "Extract Content"
     spec:
       format: html
+      input: "$.response_body"
+      output: page_content
       selectors:
-        title: "h1"
-        body: ".article-body"
-        date: "time"
+        title: "h1, meta[property='og:title']"
+        body: "article, main, .content, p"
+        published_at: "time, meta[property='article:published_time']"
+    connections:
+      - targetNodeId: sub_flow-route6
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: collection-cF7p8Q9r
-    type: collection
-    position: { x: 100, y: 650 }
+  - id: sub_flow-route6
+    type: sub_flow
+    label: "Route Content"
     spec:
-      operation: filter
-      condition: "$.url not in existing_urls"
+      flow_ref: ingestion/route-by-source-type
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
 
-  - id: data_store-dC1s2T3u
-    type: data_store
-    position: { x: 100, y: 780 }
-    spec:
-      operation: create
-      model: Content
-
-  - id: event-eI4v5W6x
-    type: event
-    position: { x: 100, y: 910 }
-    spec:
-      direction: emit
-      event_name: ContentIngested
-
-  - id: terminal-tS7y8Z9a
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 100, y: 1040 }
+    label: "Scraped"
     spec:
+      outcome: success
       status: 200
-      label: "All sources scraped"
+      body:
+        url: "$.url"
+        title: "$.page_content.title"
 
-  - id: terminal-tE1b2C3d
+  - id: terminal-err-pSz2wV3b
     type: terminal
-    position: { x: 400, y: 390 }
+    label: "Scrape Error"
     spec:
-      status: 500
-      label: "Scrape failed after retry"
-      error_code: SCRAPE_ERROR
-
-connections:
-  - source: trigger-wS1a2B3c
-    target: data_store-dR4d5E6f
-    sourceHandle: ""
-  - source: data_store-dR4d5E6f
-    target: loop-lP7g8H9i
-    sourceHandle: "success"
-  - source: loop-lP7g8H9i
-    target: service_call-sC1j2K3l
-    sourceHandle: "body"
-  - source: service_call-sC1j2K3l
-    target: parse-pH4m5N6o
-    sourceHandle: "success"
-  - source: service_call-sC1j2K3l
-    target: terminal-tE1b2C3d
-    sourceHandle: "error"
-    behavior: retry
-  - source: parse-pH4m5N6o
-    target: collection-cF7p8Q9r
-    sourceHandle: "success"
-  - source: collection-cF7p8Q9r
-    target: data_store-dC1s2T3u
-    sourceHandle: "success"
-  - source: data_store-dC1s2T3u
-    target: event-eI4v5W6x
-    sourceHandle: "success"
-  - source: event-eI4v5W6x
-    target: loop-lP7g8H9i
-    sourceHandle: "success"
-    label: "Continue loop"
-  - source: loop-lP7g8H9i
-    target: terminal-tS7y8Z9a
-    sourceHandle: "done"
+      outcome: error
+      status: 502
+      body:
+        error: "INGESTION_FAILED"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

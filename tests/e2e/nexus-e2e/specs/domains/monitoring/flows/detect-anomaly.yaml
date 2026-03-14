@@ -3,124 +3,63 @@ flow:
   name: "Detect Anomaly"
   type: traditional
   domain: monitoring
-  description: "Detects metric anomalies using LLM analysis and hands off to notification flow for alerting"
+  description: "Receives AnomalyDetected events from analytics. Evaluates severity against thresholds. Fires AlertTriggered for critical anomalies."
+  auth:
+    required: false
 
 trigger:
-  id: trigger-dM1a2B3c
+  id: trigger-dAnm2eN8
   type: trigger
-  position: { x: 250, y: 0 }
+  label: "event:AnomalyDetected"
   spec:
-    event: "pattern:MetricThresholdBreach"
-    label: "Metric threshold breach detected"
-    pattern_config:
-      group_by: metric_name
-      threshold: 3
-      window_ms: 300000
+    event: "event:AnomalyDetected"
+  connections:
+    - targetNodeId: decision-sev5kQ7p
 
 nodes:
-  - id: data_store-rM4d5E6f
-    type: data_store
-    position: { x: 250, y: 130 }
+  - id: decision-sev5kQ7p
+    type: decision
+    label: "Critical Severity?"
     spec:
-      operation: read
-      model: AnalyticsEvent
-      query:
-        where:
-          metric_name: "$.metric_name"
-          occurred_at:
-            gte: "$.window_start"
+      condition: "$.payload.severity === 'critical' || $.payload.severity === 'high'"
+    connections:
+      - targetNodeId: event-alert-eEm8tV9w
+        sourceHandle: "true"
+      - targetNodeId: terminal-log-xA1b
+        sourceHandle: "false"
 
-  - id: llm_call-lM7g8H9i
-    type: llm_call
-    position: { x: 250, y: 260 }
-    spec:
-      model: "anthropic/claude-sonnet"
-      prompt: "Explain this anomaly"
-      temperature: 0.3
-      max_tokens: 1000
-      structured_output:
-        properties:
-          explanation:
-            type: string
-          severity:
-            type: string
-          recommendation:
-            type: string
-      context_sources:
-        - ref: "$.metrics_data"
-          transform: json_stringify
-
-  - id: handoff-hN1j2K3l
-    type: handoff
-    position: { x: 250, y: 390 }
-    spec:
-      mode: transfer
-      target:
-        flow: "notifications/send-realtime-alert"
-      context_transfer:
-        include_types:
-          - anomaly_data
-          - explanation
-      on_complete: done
-      on_failure: retry
-
-  - id: event-aT4m5N6o
+  - id: event-alert-eEm8tV9w
     type: event
-    position: { x: 250, y: 520 }
+    label: "Emit AlertTriggered"
     spec:
       direction: emit
       event_name: AlertTriggered
       payload:
-        metric_name: "$.metric_name"
-        explanation: "$.explanation"
-        severity: "$.severity"
-        recommendation: "$.recommendation"
+        alert_type: "$.payload.anomaly_type"
+        severity: "$.payload.severity"
+        message: "$.payload.metric + ' anomaly: ' + $.payload.current_value + ' vs baseline ' + $.payload.baseline_value"
+        triggered_at: "$.payload.detected_at"
+        service: "$.payload.metric"
+    connections:
+      - targetNodeId: terminal-alerted-zQ7r
 
-  - id: terminal-sM7p8Q9r
+  - id: terminal-alerted-zQ7r
     type: terminal
-    position: { x: 250, y: 650 }
+    label: "Alert Triggered"
     spec:
+      outcome: success
       status: 200
-      label: "Anomaly detected, alert triggered, and notification handed off"
+      body:
+        message: "Alert triggered"
 
-  - id: terminal-eL1s2T3u
+  - id: terminal-log-xA1b
     type: terminal
-    position: { x: 550, y: 260 }
+    label: "Logged Only"
     spec:
-      status: 500
-      label: "LLM analysis error"
-      error_code: LLM_CALL_ERROR
-
-  - id: terminal-eD4v5W6x
-    type: terminal
-    position: { x: 550, y: 130 }
-    spec:
-      status: 500
-      label: "Data store error"
-      error_code: DATA_STORE_ERROR
-
-connections:
-  - source: trigger-dM1a2B3c
-    target: data_store-rM4d5E6f
-    sourceHandle: ""
-  - source: data_store-rM4d5E6f
-    target: llm_call-lM7g8H9i
-    sourceHandle: "success"
-  - source: data_store-rM4d5E6f
-    target: terminal-eD4v5W6x
-    sourceHandle: "error"
-  - source: llm_call-lM7g8H9i
-    target: handoff-hN1j2K3l
-    sourceHandle: "success"
-  - source: llm_call-lM7g8H9i
-    target: terminal-eL1s2T3u
-    sourceHandle: "error"
-  - source: handoff-hN1j2K3l
-    target: event-aT4m5N6o
-    sourceHandle: "done"
-  - source: event-aT4m5N6o
-    target: terminal-sM7p8Q9r
-    sourceHandle: "success"
+      outcome: success
+      status: 200
+      body:
+        message: "Anomaly logged, below alert threshold"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

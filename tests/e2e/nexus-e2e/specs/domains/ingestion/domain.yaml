@@ -1,126 +1,154 @@
-name: Ingestion
-description: "Acquires content from all external source types"
+name: "Ingestion"
+description: "Pulls content from external sources — RSS feeds, webhooks, social media, CSV imports, web scraping, and filesystem watches. Routes ingested items into the processing pipeline."
 role: process
-
 auth:
   required: true
   strategy: jwt
+  roles: [admin, editor]
 
-depends_on:
-  - domain: settings
-    reason: "Reads source configuration and API credentials"
-    flows_affected:
-      - fetch-rss-feeds
-      - scrape-web-content
-      - monitor-social-feeds
-
-owns_schemas:
-  - ContentSource
+owns_schemas: ["ContentSource"]
 
 flows:
   - id: fetch-rss-feeds
     name: "Fetch RSS Feeds"
-    description: "Scheduled RSS feed fetching with deduplication"
+    description: "Cron job that polls all active RSS/Atom sources, fetches new items, deduplicates by URL hash, and enqueues for processing."
     type: traditional
-    tags:
-      - cron
+    tags: [cron, internal]
     criticality: high
-    throughput: "~200 items/day"
-
-  - id: scrape-web-content
-    name: "Scrape Web Content"
-    description: "Stealth web scraping with retry"
-    type: traditional
-    tags:
-      - cron
-
-  - id: import-csv-content
-    name: "Import CSV Content"
-    description: "Bulk CSV content import via API"
-    type: traditional
-    tags:
-      - public-api
-
-  - id: process-webhook
-    name: "Process Webhook"
-    description: "Handle incoming webhook payloads with HMAC verification"
-    type: traditional
-    tags:
-      - public-api
+    throughput: "~500 items/day"
 
   - id: process-xml-feed
     name: "Process XML Feed"
-    description: "Parse XML feeds triggered by source update events"
+    description: "Parses a raw XML/Atom feed payload, extracts articles, and hands off each item to route-by-source-type."
     type: traditional
-    tags:
-      - internal
+    tags: [internal]
+    criticality: high
+
+  - id: scrape-web-content
+    name: "Scrape Web Content"
+    description: "Uses stealth HTTP to fetch and parse a web page, extracting title, body, and metadata using CSS selectors."
+    type: traditional
+    tags: [internal]
+    criticality: normal
 
   - id: monitor-social-feeds
     name: "Monitor Social Feeds"
-    description: "Twitter monitoring with OAuth 1.0a and circuit breaker"
+    description: "Polls Twitter filtered stream and search API for keyword-matched content using OAuth 1.0a."
     type: traditional
-    tags:
-      - cron
+    tags: [cron, internal]
+    criticality: normal
+    throughput: "~200 items/day"
+
+  - id: process-webhook
+    name: "Process Webhook"
+    description: "Receives and validates HMAC-signed webhook payloads from external publishers, normalizes, and routes content."
+    type: traditional
+    tags: [public-api]
+    criticality: high
+
+  - id: import-csv-content
+    name: "Import CSV Content"
+    description: "Accepts a CSV file upload, parses rows into content items, validates required fields, and bulk-inserts."
+    type: traditional
+    tags: [public-api]
+    criticality: normal
+
+  - id: watch-filesystem
+    name: "Watch Filesystem"
+    description: "Monitors a local directory for new or modified files (markdown, text), ingests changed files as content."
+    type: traditional
+    tags: [internal]
+    criticality: low
+
+  - id: route-by-source-type
+    name: "Route by Source Type"
+    description: "Smart-routes a normalized content item to the correct channel-specific ingestion handler based on source type."
+    type: traditional
+    tags: [internal]
     criticality: high
 
   - id: manual-content-entry
     name: "Manual Content Entry"
-    description: "Manual content creation via form"
+    description: "API endpoint for editors to manually submit a content item bypassing external ingestion."
     type: traditional
-    tags:
-      - public-api
+    tags: [public-api]
+    criticality: normal
+    auth:
+      required: true
+      roles: [admin, editor]
+      strategy: jwt
 
-  - id: watch-filesystem
-    name: "Watch Filesystem"
-    description: "IPC-triggered filesystem content watcher"
+  - id: list-sources
+    name: "List Sources"
+    description: "Returns paginated list of all content sources with status and last-sync metadata."
     type: traditional
-    tags:
-      - internal
+    tags: [public-api]
+    criticality: normal
 
-  - id: route-by-source-type
-    name: "Route By Source Type"
-    description: "Event-driven routing to appropriate ingestion handler"
+  - id: list-known-domains
+    name: "List Known Domains"
+    description: "Returns autocomplete suggestions for known source domains (used by UI source form)."
     type: traditional
-    tags:
-      - internal
+    tags: [public-api, internal]
+    criticality: low
+
+groups:
+  - id: external-pull
+    name: "External Pull Sources"
+    flows: [fetch-rss-feeds, process-xml-feed, scrape-web-content, monitor-social-feeds]
+  - id: push-sources
+    name: "Push Sources"
+    flows: [process-webhook, import-csv-content, watch-filesystem, manual-content-entry]
+  - id: routing
+    name: "Routing"
+    flows: [route-by-source-type, list-sources, list-known-domains]
 
 publishes_events:
   - event: ContentIngested
     schema: Content
-    from_flow: fetch-rss-feeds
-    description: "New content ingested from any source"
+    from_flow: route-by-source-type
+    description: "Fired after a content item is normalized and stored, ready for AI processing"
     payload:
-      content_id: uuid
+      content_id: string
       source_type: string
-      raw_url: string
-      ingested_at: datetime
+      source_id: string
+      category: string
 
-  - event: SourceUpdated
-    from_flow: monitor-social-feeds
-    description: "Content source configuration or status changed"
+  - event: SourceAdded
+    schema: ContentSource
+    from_flow: manual-content-entry
+    description: "Fired when a new content source is registered"
     payload:
-      source_id: uuid
-      source_type: string
-      update_type: string
+      source_id: string
+      type: string
+      name: string
 
 consumes_events:
-  - event: SourceUpdated
-    handled_by_flow: process-xml-feed
-    description: "Process XML feeds when source is updated"
-    payload:
-      source_id: uuid
-      source_type: string
-      update_type: string
+  - event: ContentUpdated
+    from_domain: content
+    description: "Re-route updated content through ingestion if source metadata changed"
+    handled_by: route-by-source-type
+
+sla_config:
+  max_latency_ms: 30000
+  max_error_rate: 0.05
+  alert_channel: monitoring
 
 layout:
   flows:
     fetch-rss-feeds: { x: 100, y: 100 }
-    scrape-web-content: { x: 100, y: 300 }
-    import-csv-content: { x: 100, y: 500 }
-    process-webhook: { x: 100, y: 700 }
-    process-xml-feed: { x: 100, y: 900 }
-    monitor-social-feeds: { x: 100, y: 1100 }
-    manual-content-entry: { x: 100, y: 1300 }
-    watch-filesystem: { x: 100, y: 1500 }
-    route-by-source-type: { x: 100, y: 1700 }
+    process-xml-feed: { x: 100, y: 300 }
+    scrape-web-content: { x: 100, y: 500 }
+    monitor-social-feeds: { x: 100, y: 700 }
+    process-webhook: { x: 400, y: 100 }
+    import-csv-content: { x: 400, y: 300 }
+    watch-filesystem: { x: 400, y: 500 }
+    manual-content-entry: { x: 400, y: 700 }
+    route-by-source-type: { x: 700, y: 400 }
+    list-sources: { x: 700, y: 600 }
+    list-known-domains: { x: 700, y: 800 }
   portals: {}
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

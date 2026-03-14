@@ -1,129 +1,148 @@
 flow:
   id: publish-to-newsletter
-  name: Publish to Newsletter
-  description: Sends content to newsletter subscribers grouped by tier with batch processing
+  name: "Publish to Newsletter"
   type: traditional
   domain: publishing
-  version: "1.0.0"
-  contract:
-    inputs:
-      - content_id
-      - tier
-    outputs:
-      - sent_count
-  trigger:
-    type: sub_flow
-  auth: null
+  description: "Creates and sends a SendGrid newsletter campaign for approved content. Manages subscriber lists and updates publish record."
+  auth:
+    required: false
+
+trigger:
+  id: trigger-pubN2eN8
+  type: trigger
+  label: "event:ContentApproved (newsletter channel)"
+  spec:
+    event: "event:ContentApproved"
+  connections:
+    - targetNodeId: data_store-rdCt5kQ7
 
 nodes:
-  - id: trigger-a5b6c7d8
-    type: trigger
-    name: Sub Flow Trigger
-    config:
-      type: sub_flow
-
-  - id: data_store-e9f0g1h2
+  - id: data_store-rdCt5kQ7
     type: data_store
-    name: Read Subscribers
-    config:
+    label: "Load Content"
+    spec:
       operation: read
-      model: Subscriber
+      model: Content
       query:
-        active: true
+        where:
+          id: "$.payload.content_id"
+      safety: strict
+      returning: true
+    connections:
+      - targetNodeId: service_call-sgCampaign5
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: collection-i3j4k5l6
-    type: collection
-    name: Group by Subscription Tier
-    config:
-      operation: group_by
-      field: "$.subscription_tier"
-
-  - id: batch-m7n8o9p0
-    type: batch
-    name: Batch Send Emails
-    config:
-      concurrency: 10
-      operation_template: "send email"
-
-  - id: service_call-q1r2s3t4
+  - id: service_call-sgCampaign5
     type: service_call
-    name: Send via SendGrid
-    config:
+    label: "Create SendGrid Campaign"
+    spec:
       method: POST
       integration: sendgrid
-      url: "https://api.sendgrid.com/v3/mail/send"
-      body:
-        to: "$.batch_item.email"
-        subject: "$.content.title"
-        content: "$.content.newsletter_body"
+      url: "https://api.sendgrid.com/v3/marketing/campaigns"
+      request_config:
+        body:
+          name: "$.result.title"
+          subject: "$.result.title"
+          send_to:
+            list_ids: ["$.env.SENDGRID_LIST_ID"]
+          content:
+            - type: text/html
+              value: "$.result.body"
+      error_mapping:
+        429: RATE_LIMITED
+        400: VALIDATION_ERROR
+    connections:
+      - targetNodeId: service_call-sgSend6
+        sourceHandle: success
+      - targetNodeId: data_store-failPub8
+        sourceHandle: error
 
-  - id: data_store-u5v6w7x8
+  - id: service_call-sgSend6
+    type: service_call
+    label: "Send Campaign"
+    spec:
+      method: POST
+      integration: sendgrid
+      url: "https://api.sendgrid.com/v3/marketing/campaigns/$.campaign_id/schedules/now"
+      error_mapping:
+        429: RATE_LIMITED
+    connections:
+      - targetNodeId: data_store-updPub7
+        sourceHandle: success
+      - targetNodeId: data_store-failPub8
+        sourceHandle: error
+
+  - id: data_store-updPub7
     type: data_store
-    name: Create Publish Record
-    config:
-      operation: create
+    label: "Mark Published"
+    spec:
+      operation: update
       model: PublishRecord
+      query:
+        where:
+          content_id: "$.payload.content_id"
+          channel_id: newsletter
       data:
-        content_id: "$.content_id"
+        status: success
+        published_at: "$.now()"
+      returning: true
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
+
+  - id: data_store-failPub8
+    type: data_store
+    label: "Mark Failed"
+    spec:
+      operation: update
+      model: PublishRecord
+      query:
+        where:
+          content_id: "$.payload.content_id"
+          channel_id: newsletter
+      data:
+        status: failed
+        error: "$.error.message"
+        attempts: "$.result.attempts + 1"
+      returning: true
+    connections:
+      - targetNodeId: terminal-fail-xA1b
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
+
+  - id: terminal-ok-zQ7rS8tU
+    type: terminal
+    label: "Newsletter Sent"
+    spec:
+      outcome: success
+      status: 200
+      body:
         channel: newsletter
-        sent_count: "$.batch_results.success_count"
 
-  - id: terminal-y9z0a1b2
+  - id: terminal-fail-xA1b
     type: terminal
-    name: Newsletter Success
-    config:
-      status: 200
-      response_type: success
+    label: "Newsletter Failed"
+    spec:
+      outcome: error
+      status: 502
+      body:
+        error: "PUBLISH_FAILED"
+        channel: newsletter
 
-  - id: terminal-c3d4e5f6
+  - id: terminal-err-pSz2wV3b
     type: terminal
-    name: Service Call Error
-    config:
+    label: "Error"
+    spec:
+      outcome: error
       status: 500
-      response_type: error
-
-  - id: terminal-g7h8i9j0
-    type: terminal
-    name: Empty Subscribers
-    config:
-      status: 200
-      response_type: success
-
-connections:
-  - from: trigger-a5b6c7d8
-    to: data_store-e9f0g1h2
-
-  - from: data_store-e9f0g1h2
-    to: collection-i3j4k5l6
-
-  - from: data_store-e9f0g1h2
-    to: terminal-c3d4e5f6
-    handle: error
-
-  - from: collection-i3j4k5l6
-    to: batch-m7n8o9p0
-
-  - from: collection-i3j4k5l6
-    to: terminal-g7h8i9j0
-    handle: empty
-
-  - from: batch-m7n8o9p0
-    to: service_call-q1r2s3t4
-
-  - from: service_call-q1r2s3t4
-    to: data_store-u5v6w7x8
-
-  - from: service_call-q1r2s3t4
-    to: terminal-c3d4e5f6
-    handle: error
-
-  - from: data_store-u5v6w7x8
-    to: terminal-y9z0a1b2
-
-  - from: data_store-u5v6w7x8
-    to: terminal-c3d4e5f6
-    handle: error
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
-  created_at: "2026-03-14T00:00:00Z"
-  updated_at: "2026-03-14T00:00:00Z"
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

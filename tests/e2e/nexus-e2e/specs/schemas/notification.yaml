@@ -1,40 +1,60 @@
 name: Notification
-description: User notification records
 inherits: _base
+description: In-app notification delivered to a user for significant platform events
+owned_by: notifications
+
 fields:
   - name: user_id
     type: uuid
     required: true
+    description: Foreign key to the notification recipient
+
   - name: type
     type: string
     required: true
-    constraints:
-      max_length: 50
+    description: Notification event type (mirrors NotificationEventType enum)
+
   - name: title
     type: string
     required: true
-    constraints:
-      max_length: 200
+    max_length: 200
+    description: Short notification headline
+
   - name: body
     type: text
     required: true
+    description: Full notification message body
+
   - name: read
     type: boolean
     required: true
     default: false
+    description: Whether the user has read this notification
+
+  - name: action_url
+    type: string
+    required: false
+    description: Optional deep-link URL for the notification action
+
+  - name: metadata
+    type: json
+    required: false
+    description: Additional context (entity_id, entity_type, etc.)
 
 relationships:
-  - name: user
-    type: belongs_to
-    target: User
+  - type: belongs_to
+    model: User
     foreign_key: user_id
+    description: The user receiving this notification
 
 indexes:
   - fields: [user_id, read]
-    description: "Unread notifications per user"
+    type: btree
+    description: Unread notification count and inbox query
+
   - fields: [created_at]
     type: btree
-    description: "Notification timeline"
+    description: Chronological notification history
 
 metadata:
   created: "2026-03-14T00:00:00Z"

@@ -1,88 +1,133 @@
 required:
-  - name: DATABASE_URL
-    type: string
-    description: PostgreSQL connection string
-    example: "postgresql://user:pass@localhost:5432/nexus"
-    sensitive: true
-  - name: REDIS_URL
-    type: string
+  DATABASE_URL:
+    description: PostgreSQL connection string (Prisma format)
+    example: "postgresql://nexus:password@localhost:5432/nexus_dev"
+    validation: must start with postgresql://
+
+  REDIS_URL:
     description: Redis connection string
     example: "redis://localhost:6379"
-    sensitive: false
-  - name: JWT_SECRET
-    type: string
-    description: Secret key for JWT signing
-    sensitive: true
-  - name: ANTHROPIC_API_KEY
-    type: string
-    description: Anthropic API key for AI processing
-    sensitive: true
-  - name: OPENAI_API_KEY
-    type: string
-    description: OpenAI API key (secondary AI provider)
-    sensitive: true
-  - name: TWITTER_BEARER_TOKEN
-    type: string
-    description: Twitter API v2 bearer token
-    sensitive: true
-  - name: TWITTER_API_KEY
-    type: string
-    description: Twitter OAuth 1.0a consumer key
-    sensitive: true
-  - name: TWITTER_API_SECRET
-    type: string
-    description: Twitter OAuth 1.0a consumer secret
-    sensitive: true
-  - name: TWITTER_ACCESS_TOKEN
-    type: string
+    validation: must start with redis://
+
+  JWT_SECRET:
+    description: Secret key for signing JWTs — minimum 32 characters
+    example: "super-secret-jwt-key-change-in-production-minimum-32-chars"
+    validation: min_length 32
+
+  ENCRYPTION_KEY:
+    description: AES-256 encryption key for token storage — 64-char hex (32 bytes)
+    example: "0000000000000000000000000000000000000000000000000000000000000000"
+    validation: exactly 64 hex characters
+
+  ANTHROPIC_API_KEY:
+    description: Anthropic API key for Claude models (primary AI provider)
+    example: "sk-ant-..."
+
+  OPENAI_API_KEY:
+    description: OpenAI API key for GPT models (secondary AI provider)
+    example: "sk-..."
+
+  SENDGRID_API_KEY:
+    description: SendGrid API key for transactional email delivery
+    example: "SG...."
+
+  TWITTER_API_KEY:
+    description: Twitter OAuth 1.0a consumer API key
+    example: "xxxxxxxxxxxxxxxxxxxx"
+
+  TWITTER_API_SECRET:
+    description: Twitter OAuth 1.0a consumer API secret
+    example: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+  TWITTER_ACCESS_TOKEN:
     description: Twitter OAuth 1.0a access token
-    sensitive: true
-  - name: TWITTER_ACCESS_TOKEN_SECRET
-    type: string
+    example: "xxxxxxxxxxxxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+  TWITTER_ACCESS_TOKEN_SECRET:
     description: Twitter OAuth 1.0a access token secret
-    sensitive: true
-  - name: SENDGRID_API_KEY
-    type: string
-    description: SendGrid API key for email delivery
-    sensitive: true
-  - name: GOOGLE_CSE_API_KEY
-    type: string
-    description: Google Custom Search API key
-    sensitive: true
-  - name: GOOGLE_CSE_ID
-    type: string
-    description: Google Custom Search engine ID
-  - name: STRIPE_SECRET_KEY
-    type: string
-    description: Stripe secret key for billing
-    sensitive: true
+    example: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+  TWITTER_BEARER_TOKEN:
+    description: Twitter OAuth 2.0 bearer token for read-only API access
+    example: "AAAA..."
+
+  GOOGLE_CSE_API_KEY:
+    description: Google Custom Search Engine API key
+    example: "AIza..."
+
+  GOOGLE_CSE_ID:
+    description: Google Custom Search Engine ID (cx parameter)
+    example: "xxxxxxxxxxxxxxxxx:xxxxxxxxxx"
+
+  STRIPE_SECRET_KEY:
+    description: Stripe secret key for billing operations
+    example: "sk_live_..."
+
+  STRIPE_WEBHOOK_SECRET:
+    description: Stripe webhook endpoint signing secret for HMAC verification
+    example: "whsec_..."
 
 optional:
-  - name: PORT
+  PORT:
+    description: API server listen port
+    default: "3001"
     type: number
-    default: 3001
-    description: Backend API server port
-  - name: FRONTEND_PORT
+
+  FRONTEND_PORT:
+    description: Next.js development server port
+    default: "3000"
     type: number
-    default: 3000
-    description: Frontend server port
-  - name: LOG_LEVEL
-    type: string
-    default: "info"
-    description: "Logging level (debug, info, warn, error)"
-  - name: CORS_ORIGINS
-    type: string
-    default: "*"
-    description: Comma-separated allowed CORS origins
-  - name: RATE_LIMIT_RPM
+
+  NODE_ENV:
+    description: Runtime environment
+    default: development
+    values: [development, production, test]
+
+  LOG_LEVEL:
+    description: Winston logger verbosity
+    default: info
+    values: [debug, info, warn, error]
+
+  WORKER_CONCURRENCY:
+    description: BullMQ job concurrency per queue
+    default: "5"
     type: number
-    default: 60
-    description: Requests per minute per IP
-  - name: WEBHOOK_SECRET
-    type: string
-    description: HMAC secret for webhook signature verification
-    sensitive: true
-  - name: NODE_ENV
-    type: string
-    default: "development"
-    description: Node environment
+
+  CONTENT_HASH_SECRET:
+    description: HMAC secret for content fingerprint generation
+    default: ""
+
+  BULLMQ_DASHBOARD_PORT:
+    description: BullMQ Arena dashboard port (dev only)
+    default: "3002"
+    type: number
+
+  NEXT_PUBLIC_API_URL:
+    description: Frontend API base URL (injected at build time)
+    default: "http://localhost:3001"
+
+  NEXT_PUBLIC_WS_URL:
+    description: Frontend WebSocket server URL (injected at build time)
+    default: "ws://localhost:3001"
+
+  WEBHOOK_HMAC_SECRET:
+    description: HMAC secret for verifying incoming webhook signatures
+    default: ""
+
+  QUALITY_THRESHOLD:
+    description: Minimum AI quality score (0-100) to auto-approve content
+    default: "75"
+    type: number
+
+  MAX_INGESTION_BATCH_SIZE:
+    description: Maximum items per ingestion batch
+    default: "100"
+    type: number
+
+  CORS_ORIGINS:
+    description: Comma-separated list of allowed CORS origins
+    default: "http://localhost:3000"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

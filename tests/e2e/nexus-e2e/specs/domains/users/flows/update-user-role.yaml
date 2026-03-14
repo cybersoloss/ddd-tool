@@ -3,135 +3,177 @@ flow:
   name: "Update User Role"
   type: traditional
   domain: users
-  description: "Admin-only endpoint to change a user's role with permission check"
+  description: "Changes a user's role assignment. Validates that admin cannot demote the last remaining admin in the system. Admin only."
   auth:
     required: true
+    roles: [admin]
     strategy: jwt
-    roles:
-      - admin
 
 trigger:
-  id: trigger-uR1a2B3c
+  id: trigger-updR2xN8
   type: trigger
-  position: { x: 250, y: 0 }
+  label: "PATCH /api/users/:id/role"
   spec:
-    event: "http PATCH /api/v1/users/:id/role"
-    label: "Update user role endpoint"
+    event: "HTTP PATCH /api/users/:id/role"
+  connections:
+    - targetNodeId: input-vAl3kP4r
 
 nodes:
-  - id: input-vR4d5E6f
+  - id: input-vAl3kP4r
     type: input
-    position: { x: 250, y: 130 }
+    label: "Validate Input"
     spec:
-      validate:
-        role:
-          required: true
+      fields:
+        - name: id
           type: string
+          required: true
+          format: uuid
+        - name: role
+          type: string
+          required: true
+          enum: [admin, editor, reviewer, viewer]
+    connections:
+      - targetNodeId: data_store-rdUser5
+        sourceHandle: valid
+      - targetNodeId: terminal-inv-aB7cD8eF
+        sourceHandle: invalid
 
-  - id: decision-hP7g8H9i
-    type: decision
-    position: { x: 250, y: 260 }
-    spec:
-      condition: "$.auth.role == 'admin'"
-      description: "Check if caller has admin permission"
-
-  - id: terminal-fB1j2K3l
-    type: terminal
-    position: { x: 550, y: 260 }
-    spec:
-      status: 403
-      label: "Insufficient permissions"
-      error_code: FORBIDDEN
-
-  - id: data_store-rU4m5N6o
+  - id: data_store-rdUser5
     type: data_store
-    position: { x: 250, y: 390 }
+    label: "Fetch Target User"
     spec:
       operation: read
       model: User
       query:
         where:
-          id: "$.params.id"
+          id: "$.id"
+          deleted_at: null
+      safety: strict
+      returning: true
+    connections:
+      - targetNodeId: decision-nf8tV9w
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: data_store-uR7p8Q9r
+  - id: decision-nf8tV9w
+    type: decision
+    label: "User Found?"
+    spec:
+      condition: "$.result !== null"
+    connections:
+      - targetNodeId: decision-lastAdmin3
+        sourceHandle: "true"
+      - targetNodeId: terminal-notfound-cD4e
+        sourceHandle: "false"
+
+  - id: decision-lastAdmin3
+    type: decision
+    label: "Demoting Last Admin?"
+    spec:
+      condition: "$.result.role_id === 'admin' && $.role !== 'admin'"
+    connections:
+      - targetNodeId: data_store-cntAdmins7
+        sourceHandle: "true"
+      - targetNodeId: data_store-upd3nR6s
+        sourceHandle: "false"
+
+  - id: data_store-cntAdmins7
     type: data_store
-    position: { x: 250, y: 520 }
+    label: "Count Admins"
+    spec:
+      operation: aggregate
+      model: User
+      query:
+        where:
+          role_id: admin
+          deleted_at: null
+      aggregate_fields:
+        - function: count
+          field: id
+          alias: admin_count
+      returning: true
+    connections:
+      - targetNodeId: decision-onlyAdmin9
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
+
+  - id: decision-onlyAdmin9
+    type: decision
+    label: "Last Admin?"
+    spec:
+      condition: "$.result.admin_count <= 1"
+    connections:
+      - targetNodeId: terminal-lastAdmin-xA1b
+        sourceHandle: "true"
+      - targetNodeId: data_store-upd3nR6s
+        sourceHandle: "false"
+
+  - id: data_store-upd3nR6s
+    type: data_store
+    label: "Update Role"
     spec:
       operation: update
       model: User
       query:
         where:
-          id: "$.params.id"
-      fields:
-        - name: role_id
-          value: "$.role"
+          id: "$.id"
+      data:
+        role_id: "$.role"
+      returning: true
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: event-rC1s2T3u
-    type: event
-    position: { x: 250, y: 650 }
-    spec:
-      direction: emit
-      event_name: RoleChanged
-      payload:
-        user_id: "$.params.id"
-        old_role: "$.user.role"
-        new_role: "$.role"
-        changed_by: "$.auth.user_id"
-
-  - id: terminal-sR4v5W6x
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 250, y: 780 }
+    label: "Role Updated"
     spec:
+      outcome: success
       status: 200
-      label: "Role updated successfully"
+      body:
+        user_id: "$.id"
+        new_role: "$.role"
 
-  - id: terminal-eV7y8Z9a
+  - id: terminal-lastAdmin-xA1b
     type: terminal
-    position: { x: 550, y: 130 }
+    label: "Cannot Demote Last Admin"
     spec:
+      outcome: error
       status: 422
-      label: "Invalid role data"
-      error_code: VALIDATION_ERROR
+      body:
+        error: "VALIDATION_ERROR"
+        message: "Cannot demote the last admin"
 
-  - id: terminal-eD1b2C3d
+  - id: terminal-notfound-cD4e
     type: terminal
-    position: { x: 550, y: 520 }
+    label: "User Not Found"
     spec:
-      status: 500
-      label: "Data store error"
-      error_code: DATA_STORE_ERROR
+      outcome: error
+      status: 404
+      body:
+        error: "USER_NOT_FOUND"
 
-connections:
-  - source: trigger-uR1a2B3c
-    target: input-vR4d5E6f
-    sourceHandle: ""
-  - source: input-vR4d5E6f
-    target: decision-hP7g8H9i
-    sourceHandle: "valid"
-  - source: input-vR4d5E6f
-    target: terminal-eV7y8Z9a
-    sourceHandle: "invalid"
-  - source: decision-hP7g8H9i
-    target: terminal-fB1j2K3l
-    sourceHandle: "false"
-  - source: decision-hP7g8H9i
-    target: data_store-rU4m5N6o
-    sourceHandle: "true"
-  - source: data_store-rU4m5N6o
-    target: data_store-uR7p8Q9r
-    sourceHandle: "success"
-  - source: data_store-rU4m5N6o
-    target: terminal-eD1b2C3d
-    sourceHandle: "error"
-  - source: data_store-uR7p8Q9r
-    target: event-rC1s2T3u
-    sourceHandle: "success"
-  - source: data_store-uR7p8Q9r
-    target: terminal-eD1b2C3d
-    sourceHandle: "error"
-  - source: event-rC1s2T3u
-    target: terminal-sR4v5W6x
-    sourceHandle: "success"
+  - id: terminal-inv-aB7cD8eF
+    type: terminal
+    label: "Invalid"
+    spec:
+      outcome: error
+      status: 400
+      body:
+        error: "VALIDATION_ERROR"
+
+  - id: terminal-err-pSz2wV3b
+    type: terminal
+    label: "Error"
+    spec:
+      outcome: error
+      status: 500
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

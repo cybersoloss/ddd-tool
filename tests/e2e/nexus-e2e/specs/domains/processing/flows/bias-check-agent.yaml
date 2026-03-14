@@ -3,116 +3,104 @@ flow:
   name: "Bias Check Agent"
   type: agent
   domain: processing
-  description: "Bias detection agent using vector knowledge base for pattern matching"
+  description: "Autonomous agent that detects political, gender, and cultural bias using multi-perspective analysis. Returns bias_score (0-100) and specific bias_flags."
+  auth:
+    required: false
 
 trigger:
-  id: trigger-bC1a2B3c
+  id: trigger-biasAg2eN8
   type: trigger
-  position: { x: 100, y: 0 }
+  label: "event:ContentIngested"
   spec:
-    event: "event:ContentClassified"
-    label: "Content Classified"
+    event: "event:ContentIngested"
+  connections:
+    - targetNodeId: data_store-rdCt3
 
 nodes:
-  - id: data_store-dR4d5E6f
+  - id: data_store-rdCt3
     type: data_store
-    position: { x: 100, y: 130 }
+    label: "Load Content"
     spec:
       operation: read
       model: Content
       query:
         where:
-          id: "$.content_id"
+          id: "$.payload.content_id"
+      safety: strict
+      returning: true
+    connections:
+      - targetNodeId: agent_loop-biasCheck4
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: agent_loop-aL7g8H9i
+  - id: agent_loop-biasCheck4
     type: agent_loop
-    position: { x: 100, y: 260 }
+    label: "Bias Detector Agent"
     spec:
-      model: "anthropic/claude-sonnet"
-      max_iterations: 5
+      model: claude-opus-4-6
+      max_iterations: 4
       tools:
-        - name: check_bias
-          description: "Analyze text for bias patterns"
-          parameters:
-            text:
-              type: string
-            bias_types:
-              type: array
-        - name: submit_result
-          description: "Submit bias analysis result"
-          parameters:
-            bias_score:
-              type: number
-            bias_types:
-              type: array
-            explanation:
-              type: string
+        - name: analyze_political_bias
+          description: "Analyze text for political bias indicators (left/right lean)"
+          is_terminal: false
+        - name: analyze_gender_bias
+          description: "Detect gender-biased language or framing"
+          is_terminal: false
+        - name: analyze_cultural_bias
+          description: "Detect cultural or regional bias in content"
+          is_terminal: false
+        - name: submit_bias_results
+          description: "Submit final bias score and flags"
           is_terminal: true
-      memory:
-        - type: vector_store
-          embedding_model: "text-embedding-3-small"
-          similarity_threshold: 0.8
-          max_results: 10
-          namespace: "bias-patterns"
+      context_sources:
+        - "$.result.title"
+        - "$.result.body.substring(0, 3000)"
+    connections:
+      - targetNodeId: data_store-upd5nR6s
+        sourceHandle: done
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: data_store-dU1j2K3l
+  - id: data_store-upd5nR6s
     type: data_store
-    position: { x: 100, y: 390 }
+    label: "Store Bias Results"
     spec:
       operation: update
       model: Content
       query:
         where:
-          id: "$.content_id"
-      fields:
-        - name: bias_score
-          value: "$.bias_score"
+          id: "$.payload.content_id"
+      data:
+        bias_score: "$.agent_result.bias_score"
+        metadata:
+          bias_flags: "$.agent_result.bias_flags"
+          bias_checked_at: "$.now()"
+      returning: true
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: terminal-tS4m5N6o
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 100, y: 520 }
+    label: "Bias Checked"
     spec:
+      outcome: success
       status: 200
-      label: "Bias check complete"
+      body:
+        bias_score: "$.agent_result.bias_score"
+        bias_flags: "$.agent_result.bias_flags"
 
-  - id: terminal-tE7p8Q9r
+  - id: terminal-err-pSz2wV3b
     type: terminal
-    position: { x: 400, y: 260 }
+    label: "Error"
     spec:
+      outcome: error
       status: 500
-      label: "Agent loop error"
-      error_code: AGENT_LOOP_ERROR
-
-  - id: terminal-tE1s2T3u
-    type: terminal
-    position: { x: 400, y: 130 }
-    spec:
-      status: 500
-      label: "Data store error"
-      error_code: DATA_STORE_ERROR
-
-connections:
-  - source: trigger-bC1a2B3c
-    target: data_store-dR4d5E6f
-    sourceHandle: ""
-  - source: data_store-dR4d5E6f
-    target: agent_loop-aL7g8H9i
-    sourceHandle: "success"
-  - source: data_store-dR4d5E6f
-    target: terminal-tE1s2T3u
-    sourceHandle: "error"
-  - source: agent_loop-aL7g8H9i
-    target: data_store-dU1j2K3l
-    sourceHandle: "done"
-  - source: agent_loop-aL7g8H9i
-    target: terminal-tE7p8Q9r
-    sourceHandle: "error"
-  - source: data_store-dU1j2K3l
-    target: terminal-tS4m5N6o
-    sourceHandle: "success"
-  - source: data_store-dU1j2K3l
-    target: terminal-tE1s2T3u
-    sourceHandle: "error"
+      body:
+        error: "PROCESSING_FAILED"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

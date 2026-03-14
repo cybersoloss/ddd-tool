@@ -1,44 +1,57 @@
 name: PublishRecord
-description: Publication attempt records per content per channel
 inherits: _base
+description: Record of a single publication attempt — tracks status and retry count per channel
+owned_by: publishing
+
 fields:
   - name: content_id
     type: uuid
     required: true
+    description: Foreign key to the content being published
+
   - name: channel_id
     type: uuid
     required: true
+    description: Foreign key to the target channel
+
   - name: status
     type: enum
+    ref: PublishStatus
     required: true
-    ref: publish_status
     default: pending
+    description: Current status of this publication attempt
+
   - name: published_at
-    type: datetime
+    type: date
     required: false
+    description: Timestamp when publication succeeded (null if pending/failed)
+
   - name: error
     type: string
     required: false
+    description: Error message if publication failed
+
   - name: attempts
     type: number
     required: true
     default: 0
+    description: Number of publication attempts made (supports retry tracking)
+
+  - name: publish_url
+    type: string
+    required: false
+    description: Public URL where content was published (if applicable)
 
 relationships:
-  - name: content
-    type: belongs_to
-    target: Content
+  - type: belongs_to
+    model: Content
     foreign_key: content_id
-  - name: channel
-    type: belongs_to
-    target: Channel
-    foreign_key: channel_id
+    description: The content item being published
 
-indexes:
-  - fields: [content_id, channel_id]
-    description: "Find publish records for content+channel"
-  - fields: [status]
-    type: btree
+  - type: belongs_to
+    model: Channel
+    foreign_key: channel_id
+    description: The channel being published to
 
 transitions:
   field: status
@@ -47,7 +60,16 @@ transitions:
       to: [success, failed]
     - from: failed
       to: [pending]
-  on_invalid: reject
+  on_invalid: error
+
+indexes:
+  - fields: [content_id, channel_id]
+    type: btree
+    description: Find publish record for a specific content+channel combination
+
+  - fields: [status, created_at]
+    type: btree
+    description: Find pending/failed records for retry processing
 
 metadata:
   created: "2026-03-14T00:00:00Z"

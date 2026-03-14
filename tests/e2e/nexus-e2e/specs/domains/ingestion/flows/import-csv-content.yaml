@@ -3,96 +3,124 @@ flow:
   name: "Import CSV Content"
   type: traditional
   domain: ingestion
-  description: "Accepts a CSV file upload via HTTP, validates the file, parses CSV rows, batch-inserts content records, and returns an import count."
+  description: "Accepts a CSV file upload, parses rows into content items, validates required fields, and bulk-inserts via batch route-by-source-type calls."
   auth:
     required: true
-    strategy: api_key
+    roles: [admin, editor]
+    strategy: jwt
 
 trigger:
-  id: trigger-cI1a2B3c
+  id: trigger-csvImp2xN8
   type: trigger
-  position: { x: 100, y: 0 }
+  label: "POST /api/ingest/csv"
   spec:
-    event: "HTTP POST /api/v1/content/import"
-    label: "CSV file upload"
+    event: "HTTP POST /api/ingest/csv"
+  connections:
+    - targetNodeId: input-vAl3kP4r
 
 nodes:
-  - id: input-iV4d5E6f
+  - id: input-vAl3kP4r
     type: input
-    position: { x: 100, y: 130 }
+    label: "Validate Upload"
     spec:
-      validate:
-        file:
-          required: true
+      fields:
+        - name: file
           type: file
+          required: true
+          allowed_types: [text/csv, application/csv]
+          max_size_mb: 50
+        - name: category
+          type: string
+          required: false
+        - name: source_id
+          type: string
+          required: false
+    connections:
+      - targetNodeId: parse-csv3
+        sourceHandle: valid
+      - targetNodeId: terminal-inv-aB7cD8eF
+        sourceHandle: invalid
 
-  - id: parse-pC7g8H9i
+  - id: parse-csv3
     type: parse
-    position: { x: 100, y: 260 }
+    label: "Parse CSV"
     spec:
       format: csv
+      input: "$.file.buffer"
+      output: csv_rows
+      options:
+        header: true
+        delimiter: ","
+        required_columns: [title, body]
+    connections:
+      - targetNodeId: guardrail-size4
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: batch-bO1j2K3l
+  - id: guardrail-size4
+    type: guardrail
+    label: "Row Count Check"
+    spec:
+      checks:
+        - type: business_rule
+          rule: "$.csv_rows.length <= 10000"
+          message: "CSV exceeds maximum 10,000 rows"
+    connections:
+      - targetNodeId: batch-route5
+        sourceHandle: pass
+      - targetNodeId: terminal-toolarge-xA1b
+        sourceHandle: block
+
+  - id: batch-route5
     type: batch
-    position: { x: 100, y: 390 }
+    label: "Route Each Row"
     spec:
-      operation_template: "insert content"
-      concurrency: 5
+      input: "$.csv_rows"
+      sub_flow_ref: ingestion/route-by-source-type
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: done
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: data_store-dM4m5N6o
-    type: data_store
-    position: { x: 100, y: 520 }
-    spec:
-      operation: create_many
-      model: Content
-
-  - id: terminal-tS7p8Q9r
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 100, y: 650 }
+    label: "Import Complete"
     spec:
-      status: 201
-      label: "Import complete"
+      outcome: success
+      status: 200
       body:
-        imported: "$.count"
+        imported: "$.csv_rows.length"
+        message: "CSV import complete"
 
-  - id: terminal-tE1s2T3u
+  - id: terminal-toolarge-xA1b
     type: terminal
-    position: { x: 400, y: 130 }
+    label: "Too Large"
     spec:
+      outcome: error
       status: 422
-      label: "Validation failed"
-      error_code: VALIDATION_ERROR
+      body:
+        error: "VALIDATION_ERROR"
+        message: "CSV exceeds 10,000 row limit"
 
-  - id: terminal-tE4v5W6x
+  - id: terminal-inv-aB7cD8eF
     type: terminal
-    position: { x: 400, y: 390 }
+    label: "Invalid"
     spec:
-      status: 500
-      label: "Batch insert failed"
-      error_code: INTERNAL_ERROR
+      outcome: error
+      status: 400
+      body:
+        error: "VALIDATION_ERROR"
 
-connections:
-  - source: trigger-cI1a2B3c
-    target: input-iV4d5E6f
-    sourceHandle: ""
-  - source: input-iV4d5E6f
-    target: parse-pC7g8H9i
-    sourceHandle: "valid"
-  - source: input-iV4d5E6f
-    target: terminal-tE1s2T3u
-    sourceHandle: "invalid"
-  - source: parse-pC7g8H9i
-    target: batch-bO1j2K3l
-    sourceHandle: "success"
-  - source: batch-bO1j2K3l
-    target: data_store-dM4m5N6o
-    sourceHandle: "success"
-  - source: batch-bO1j2K3l
-    target: terminal-tE4v5W6x
-    sourceHandle: "error"
-  - source: data_store-dM4m5N6o
-    target: terminal-tS7p8Q9r
-    sourceHandle: "success"
+  - id: terminal-err-pSz2wV3b
+    type: terminal
+    label: "Error"
+    spec:
+      outcome: error
+      status: 500
+      body:
+        error: "INGESTION_FAILED"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

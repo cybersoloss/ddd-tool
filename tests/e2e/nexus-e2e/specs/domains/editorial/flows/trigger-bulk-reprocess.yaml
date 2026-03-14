@@ -1,84 +1,149 @@
 flow:
   id: trigger-bulk-reprocess
-  name: Trigger Bulk Reprocess
-  description: Manually triggers reprocessing of selected content by emitting ContentIngested events
+  name: "Trigger Bulk Reprocess"
   type: traditional
   domain: editorial
-  version: "1.0.0"
-  trigger:
-    type: manual
-  auth: null
+  description: "Admin action to re-run AI analysis on a batch of content items. Enqueues each item into the processing BullMQ queue. Used after model updates or re-calibration."
+  auth:
+    required: true
+    roles: [admin]
+    strategy: jwt
+
+trigger:
+  id: trigger-blkRp2xN8
+  type: trigger
+  label: "POST /api/editorial/reprocess"
+  spec:
+    event: "HTTP POST /api/editorial/reprocess"
+  connections:
+    - targetNodeId: input-vAl3kP4r
 
 nodes:
-  - id: trigger-b7c8d9e0
-    type: trigger
-    name: Manual Trigger
-    config:
-      type: manual
+  - id: input-vAl3kP4r
+    type: input
+    label: "Validate"
+    spec:
+      fields:
+        - name: content_ids
+          type: array
+          required: false
+          description: "If empty, reprocesses all draft/review content"
+        - name: category
+          type: string
+          required: false
+        - name: status_filter
+          type: array
+          required: false
+          default: [draft, review]
+    connections:
+      - targetNodeId: data_store-rdCt5kQ7
+        sourceHandle: valid
+      - targetNodeId: terminal-inv-aB7cD8eF
+        sourceHandle: invalid
 
-  - id: data_store-f1g2h3i4
+  - id: data_store-rdCt5kQ7
     type: data_store
-    name: Read Selected Content
-    config:
+    label: "Fetch Target Content"
+    spec:
       operation: read
       model: Content
       query:
-        id:
-          in: "$.selected_ids"
+        where:
+          id:
+            in: "$.content_ids"
+          status:
+            in: "$.status_filter"
+          category: "$.category"
+          deleted_at: null
+        limit: 500
+      returning: true
+    connections:
+      - targetNodeId: collection-ids6kQ7
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: loop-j5k6l7m8
+  - id: collection-ids6kQ7
+    type: collection
+    label: "Extract IDs"
+    spec:
+      operation: reduce
+      input: "$.result"
+      output: content_id_list
+      reducer: "$.acc.concat($.item.id)"
+      initial: "[]"
+    connections:
+      - targetNodeId: loop-enq7nR6s
+        sourceHandle: result
+      - targetNodeId: terminal-ok-empty
+        sourceHandle: empty
+
+  - id: loop-enq7nR6s
     type: loop
-    name: Iterate Content Items
-    config:
-      collection: "$.content_items"
-      iterator: "item"
+    label: "Enqueue for Reprocess"
+    spec:
+      collection: "$.content_id_list"
+      iterator: content_id
+      body_start: event-enq8tV9w
+    connections:
+      - targetNodeId: event-enq8tV9w
+        sourceHandle: body
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: done
 
-  - id: event-n9o0p1q2
+  - id: event-enq8tV9w
     type: event
-    name: Emit ContentIngested
-    config:
+    label: "Enqueue to Processing Queue"
+    spec:
+      direction: emit
       event_name: ContentIngested
-      target_queue: processing
+      target_queue: content-analysis
+      async: true
       payload:
-        content_id: "$.item.id"
+        content_id: "$.content_id"
+        reprocess: true
+        triggered_by: "$.auth.user_id"
+    connections:
+      - targetNodeId: loop-enq7nR6s
 
-  - id: terminal-r3s4t5u6
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    name: Reprocess Success
-    config:
+    label: "Queued"
+    spec:
+      outcome: success
       status: 200
-      response_type: success
+      body:
+        message: "Bulk reprocess queued"
+        count: "$.content_id_list.length"
 
-  - id: terminal-v7w8x9y0
+  - id: terminal-ok-empty
     type: terminal
-    name: Data Store Error
-    config:
+    label: "No Items"
+    spec:
+      outcome: success
+      status: 200
+      body:
+        message: "No matching content found"
+        count: 0
+
+  - id: terminal-inv-aB7cD8eF
+    type: terminal
+    label: "Invalid"
+    spec:
+      outcome: error
+      status: 400
+      body:
+        error: "VALIDATION_ERROR"
+
+  - id: terminal-err-pSz2wV3b
+    type: terminal
+    label: "Error"
+    spec:
+      outcome: error
       status: 500
-      response_type: error
-
-connections:
-  - from: trigger-b7c8d9e0
-    to: data_store-f1g2h3i4
-
-  - from: data_store-f1g2h3i4
-    to: loop-j5k6l7m8
-
-  - from: data_store-f1g2h3i4
-    to: terminal-v7w8x9y0
-    handle: error
-
-  - from: loop-j5k6l7m8
-    to: event-n9o0p1q2
-    handle: body
-
-  - from: event-n9o0p1q2
-    to: loop-j5k6l7m8
-    label: next iteration
-
-  - from: loop-j5k6l7m8
-    to: terminal-r3s4t5u6
-    handle: done
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
-  created_at: "2026-03-14T00:00:00Z"
-  updated_at: "2026-03-14T00:00:00Z"
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

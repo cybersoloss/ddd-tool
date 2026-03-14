@@ -1,80 +1,107 @@
 errors:
+  # --- Standard HTTP Errors ---
   VALIDATION_ERROR:
-    http_status: 422
-    message_template: "Validation failed: {details}"
-    log_level: warn
+    http_status: 400
+    message: Validation failed
+    description: Input data failed schema validation rules
 
   UNAUTHORIZED:
     http_status: 401
-    message_template: "Authentication required"
-    log_level: warn
+    message: Authentication required
+    description: No valid authentication credentials provided
+
+  INVALID_CREDENTIALS:
+    http_status: 401
+    message: Invalid email or password
+    description: Authentication credentials do not match any account
+
+  TOKEN_EXPIRED:
+    http_status: 401
+    message: Token has expired
+    description: The JWT or session token has passed its expiry time
+
+  API_KEY_INVALID:
+    http_status: 401
+    message: Invalid or expired API key
+    description: The provided API key is not valid, has been revoked, or has expired
 
   FORBIDDEN:
     http_status: 403
-    message_template: "Insufficient permissions"
-    log_level: warn
+    message: Access denied
+    description: Authenticated user lacks the required role or permission
 
   NOT_FOUND:
     http_status: 404
-    message_template: "{resource} not found"
-    log_level: info
+    message: Resource not found
+    description: The requested resource does not exist or has been soft-deleted
 
   DUPLICATE_ENTRY:
     http_status: 409
-    message_template: "{resource} already exists"
-    log_level: warn
+    message: Resource already exists
+    description: A resource with the same unique key or identifier already exists
+
+  CONTENT_INVALID_STATUS:
+    http_status: 422
+    message: Invalid content status transition
+    description: The requested status change is not permitted from the current state
 
   RATE_LIMITED:
     http_status: 429
-    message_template: "Too many requests, try again in {retry_after}s"
-    log_level: warn
+    message: Rate limit exceeded
+    description: Too many requests — please retry after the reset window
 
-  INTERNAL_ERROR:
-    http_status: 500
-    message_template: "An unexpected error occurred"
-    log_level: error
-
-  SERVICE_UNAVAILABLE:
-    http_status: 503
-    message_template: "{service} is temporarily unavailable"
-    log_level: error
-
+  # --- Domain-Specific Errors ---
   CONTENT_NOT_FOUND:
     http_status: 404
-    message_template: "Content item not found"
-    log_level: info
+    message: Content not found
+    description: The requested content item does not exist or was deleted
 
-  INVALID_CONTENT_STATUS:
-    http_status: 422
-    message_template: "Invalid status transition: {from} -> {to}"
-    log_level: warn
+  SOURCE_NOT_FOUND:
+    http_status: 404
+    message: Content source not found
+    description: The requested ingestion source does not exist
 
-  WEBHOOK_SIGNATURE_INVALID:
-    http_status: 401
-    message_template: "Invalid webhook signature"
-    log_level: warn
+  USER_NOT_FOUND:
+    http_status: 404
+    message: User not found
+    description: The requested user account does not exist or was deleted
 
-  AI_PROCESSING_FAILED:
-    http_status: 502
-    message_template: "AI service error: {details}"
-    log_level: error
+  RULE_NOT_FOUND:
+    http_status: 404
+    message: Rule not found
+    description: The requested routing/publishing rule does not exist
 
   PUBLISH_FAILED:
     http_status: 502
-    message_template: "Publication failed: {details}"
-    log_level: error
+    message: Publishing failed
+    description: Failed to publish content to one or more target channels
 
-  CIRCUIT_BREAKER_OPEN:
+  INGESTION_FAILED:
+    http_status: 502
+    message: Ingestion failed
+    description: Failed to acquire or parse content from the external source
+
+  PROCESSING_FAILED:
+    http_status: 500
+    message: AI processing failed
+    description: The AI analysis pipeline encountered an unrecoverable error
+
+  CIRCUIT_OPEN:
     http_status: 503
-    message_template: "Circuit breaker open for {service}"
-    log_level: error
+    message: Service temporarily unavailable
+    description: Circuit breaker is open due to repeated failures — retry after recovery window
 
-  QUOTA_EXCEEDED:
-    http_status: 429
-    message_template: "API quota exceeded for {service}"
-    log_level: warn
+  INVALID_RULE_SYNTAX:
+    http_status: 422
+    message: Invalid rule syntax
+    description: The rule condition or action expression could not be parsed
 
-  INVALID_API_KEY:
-    http_status: 401
-    message_template: "Invalid or expired API key"
-    log_level: warn
+  # --- Server Errors ---
+  INTERNAL_ERROR:
+    http_status: 500
+    message: Internal server error
+    description: An unexpected error occurred — see server logs for details
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

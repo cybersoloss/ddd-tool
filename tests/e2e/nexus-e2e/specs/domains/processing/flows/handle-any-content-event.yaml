@@ -3,115 +3,70 @@ flow:
   name: "Handle Any Content Event"
   type: traditional
   domain: processing
-  description: "Unified handler for content lifecycle event group using correlation key"
+  description: "Generic event handler that normalizes ContentIngested and ContentUpdated events into standard analysis requests and enqueues them for orchestrate-analysis."
+  auth:
+    required: false
 
 trigger:
-  id: trigger-hA1a2B3c
+  id: trigger-anyC2eN8
   type: trigger
-  position: { x: 100, y: 0 }
+  label: "event:ContentIngested"
   spec:
-    event: "event_group:content_lifecycle"
-    label: "Content Lifecycle Event"
-    correlation_key: "content_id"
+    event: "event:ContentIngested"
+  connections:
+    - targetNodeId: decision-reprocess3
 
 nodes:
-  - id: data_store-dR4d5E6f
-    type: data_store
-    position: { x: 100, y: 130 }
-    spec:
-      operation: read
-      model: Content
-      query:
-        where:
-          id: "$.content_id"
-
-  - id: decision-dC7g8H9i
+  - id: decision-reprocess3
     type: decision
-    position: { x: 100, y: 260 }
+    label: "Reprocess Mode?"
     spec:
-      condition: "$.content !== null"
+      condition: "$.payload.reprocess === true"
+    connections:
+      - targetNodeId: event-enq-high5
+        sourceHandle: "true"
+      - targetNodeId: event-enq-normal6
+        sourceHandle: "false"
 
-  - id: process-pR1j2K3l
-    type: process
-    position: { x: 100, y: 390 }
-    spec:
-      category: business_logic
-      description: "Route to appropriate handler based on event type"
-
-  - id: data_store-dU4m5N6o
-    type: data_store
-    position: { x: 100, y: 520 }
-    spec:
-      operation: update
-      model: Content
-      query:
-        where:
-          id: "$.content_id"
-      fields:
-        - name: status
-          value: "processing"
-
-  - id: event-eC7p8Q9r
+  - id: event-enq-high5
     type: event
-    position: { x: 100, y: 650 }
+    label: "Enqueue High Priority"
     spec:
       direction: emit
-      event_name: ContentClassified
+      event_name: ContentIngested
+      target_queue: content-analysis
+      async: true
+      priority: 1
       payload:
-        content_id: "$.content_id"
-        reprocessing: true
+        content_id: "$.payload.content_id"
+        source_type: "$.payload.source_type"
+        reprocess: true
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
 
-  - id: terminal-tS1s2T3u
-    type: terminal
-    position: { x: 100, y: 780 }
+  - id: event-enq-normal6
+    type: event
+    label: "Enqueue Normal Priority"
     spec:
+      direction: emit
+      event_name: ContentIngested
+      target_queue: content-analysis
+      async: true
+      priority: 5
+      payload:
+        content_id: "$.payload.content_id"
+        source_type: "$.payload.source_type"
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+
+  - id: terminal-ok-zQ7rS8tU
+    type: terminal
+    label: "Queued"
+    spec:
+      outcome: success
       status: 200
-      label: "Content event handled"
-
-  - id: terminal-tE4v5W6x
-    type: terminal
-    position: { x: 400, y: 260 }
-    spec:
-      status: 404
-      label: "Content not found"
-      error_code: CONTENT_NOT_FOUND
-
-  - id: terminal-tE7y8Z9a
-    type: terminal
-    position: { x: 400, y: 130 }
-    spec:
-      status: 500
-      label: "Data store error"
-      error_code: DATA_STORE_ERROR
-
-connections:
-  - source: trigger-hA1a2B3c
-    target: data_store-dR4d5E6f
-    sourceHandle: ""
-  - source: data_store-dR4d5E6f
-    target: decision-dC7g8H9i
-    sourceHandle: "success"
-  - source: data_store-dR4d5E6f
-    target: terminal-tE7y8Z9a
-    sourceHandle: "error"
-  - source: decision-dC7g8H9i
-    target: process-pR1j2K3l
-    sourceHandle: "true"
-  - source: decision-dC7g8H9i
-    target: terminal-tE4v5W6x
-    sourceHandle: "false"
-  - source: process-pR1j2K3l
-    target: data_store-dU4m5N6o
-    sourceHandle: "success"
-  - source: data_store-dU4m5N6o
-    target: event-eC7p8Q9r
-    sourceHandle: "success"
-  - source: data_store-dU4m5N6o
-    target: terminal-tE7y8Z9a
-    sourceHandle: "error"
-  - source: event-eC7p8Q9r
-    target: terminal-tS1s2T3u
-    sourceHandle: "success"
+      body:
+        message: "Content queued for analysis"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

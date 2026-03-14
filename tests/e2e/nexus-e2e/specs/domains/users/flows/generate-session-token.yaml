@@ -3,82 +3,67 @@ flow:
   name: "Generate Session Token"
   type: traditional
   domain: users
-  description: "Generates a cryptographic session token and persists the session record"
+  description: "Generates an opaque session token for embedded widgets or webhook contexts. Stores in Redis with 24h TTL."
   auth:
     required: true
     strategy: jwt
 
 trigger:
-  id: trigger-gS1a2B3c
+  id: trigger-gsSt2xN8
   type: trigger
-  position: { x: 250, y: 0 }
+  label: "POST /api/auth/session"
   spec:
-    event: "http POST /api/v1/auth/session"
-    label: "Generate session token endpoint"
+    event: "HTTP POST /api/auth/session"
+  connections:
+    - targetNodeId: crypto-tok3nR6s
 
 nodes:
-  - id: crypto-gT4d5E6f
+  - id: crypto-tok3nR6s
     type: crypto
-    position: { x: 250, y: 130 }
+    label: "Generate Token"
     spec:
       operation: generate_token
       length: 32
-      encoding: base64url
-      output_field: token
+      encoding: hex
+      output: session_token
+    connections:
+      - targetNodeId: cache-setTok5
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: data_store-cS7g8H9i
-    type: data_store
-    position: { x: 250, y: 260 }
+  - id: cache-setTok5
+    type: cache
+    label: "Store Session Token"
     spec:
-      operation: create
-      model: User
-      fields:
-        - name: user_id
-          value: "$.auth.user_id"
-        - name: session_token
-          value: "$.token"
-        - name: expires_at
-          value: "$.expiry"
+      operation: set
+      key: "session:$.session_token"
+      store: redis
+      ttl_ms: 86400000
+      value:
+        user_id: "$.auth.user_id"
+        role: "$.auth.role"
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
 
-  - id: terminal-sT1j2K3l
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 250, y: 390 }
+    label: "Session Created"
     spec:
-      status: 200
-      label: "Session token generated"
+      outcome: success
+      status: 201
+      body:
+        session_token: "$.session_token"
+        expires_in: 86400
 
-  - id: terminal-eC4m5N6o
+  - id: terminal-err-pSz2wV3b
     type: terminal
-    position: { x: 550, y: 130 }
+    label: "Error"
     spec:
+      outcome: error
       status: 500
-      label: "Crypto error"
-      error_code: CRYPTO_ERROR
-
-  - id: terminal-eD7p8Q9r
-    type: terminal
-    position: { x: 550, y: 260 }
-    spec:
-      status: 500
-      label: "Data store error"
-      error_code: DATA_STORE_ERROR
-
-connections:
-  - source: trigger-gS1a2B3c
-    target: crypto-gT4d5E6f
-    sourceHandle: ""
-  - source: crypto-gT4d5E6f
-    target: data_store-cS7g8H9i
-    sourceHandle: "success"
-  - source: crypto-gT4d5E6f
-    target: terminal-eC4m5N6o
-    sourceHandle: "error"
-  - source: data_store-cS7g8H9i
-    target: terminal-sT1j2K3l
-    sourceHandle: "success"
-  - source: data_store-cS7g8H9i
-    target: terminal-eD7p8Q9r
-    sourceHandle: "error"
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

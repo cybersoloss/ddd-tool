@@ -3,66 +3,93 @@ flow:
   name: "Stream Live Metrics"
   type: traditional
   domain: analytics
-  description: "WebSocket stream for live metrics with heartbeat and reconnect support"
+  description: "WebSocket endpoint that streams live ingestion rate, processing queue depth, and publish throughput to connected dashboard clients."
+  auth:
+    required: true
+    strategy: jwt
 
 trigger:
-  id: trigger-sL1a2B3c
+  id: trigger-wsLM2xN8
   type: trigger
-  position: { x: 250, y: 0 }
+  label: "ws /api/analytics/live"
   spec:
-    event: "ws /api/v1/metrics/live"
-    label: "Live metrics WebSocket"
+    event: "ws /api/analytics/live"
     connection_config:
       auth_required: true
       auth_strategy: jwt
       heartbeat_ms: 30000
-      max_connections_per_client: 3
+      max_connections_per_client: 2
       reconnect: true
+  connections:
+    - targetNodeId: cache-rdMetrics5
 
 nodes:
-  - id: data_store-mS4d5E6f
+  - id: cache-rdMetrics5
+    type: cache
+    label: "Read Cached Metrics"
+    spec:
+      operation: check
+      key: "live-metrics:current"
+      store: redis
+    connections:
+      - targetNodeId: websocket_broadcast-push6
+        sourceHandle: hit
+      - targetNodeId: data_store-compMetrics7
+        sourceHandle: miss
+
+  - id: data_store-compMetrics7
     type: data_store
-    position: { x: 250, y: 130 }
+    label: "Compute Live Metrics"
     spec:
-      store_type: memory
-      store: "metrics-store"
-      operation: subscribe
+      operation: aggregate
+      model: AnalyticsEvent
+      query:
+        where:
+          occurred_at:
+            gte: "$.oneHourAgo()"
+      aggregate_fields:
+        - function: count
+          field: id
+          alias: event_count
+      group_by: [event_type]
+      returning: true
+    connections:
+      - targetNodeId: websocket_broadcast-push6
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: process-pM7g8H9i
-    type: process
-    position: { x: 250, y: 260 }
+  - id: websocket_broadcast-push6
+    type: websocket_broadcast
+    label: "Stream Metrics to Client"
     spec:
-      category: infrastructure
-      description: "Push metrics to client every 5s"
+      channel: "analytics-live"
+      event_name: metrics_update
+      payload:
+        event_count: "$.result.event_count || $.cached_value.event_count"
+        timestamp: "$.now()"
+      include_sender: false
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
 
-  - id: terminal-sD1j2K3l
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 250, y: 390 }
+    label: "Streaming"
     spec:
+      outcome: success
       status: 200
-      label: "Metrics stream established"
+      response_type: websocket
+      body:
+        message: "Live metrics stream established"
 
-  - id: terminal-eM4m5N6o
+  - id: terminal-err-pSz2wV3b
     type: terminal
-    position: { x: 550, y: 130 }
+    label: "Error"
     spec:
+      outcome: error
       status: 500
-      label: "Metrics store subscription error"
-      error_code: SUBSCRIPTION_ERROR
-
-connections:
-  - source: trigger-sL1a2B3c
-    target: data_store-mS4d5E6f
-    sourceHandle: ""
-  - source: data_store-mS4d5E6f
-    target: process-pM7g8H9i
-    sourceHandle: "success"
-  - source: data_store-mS4d5E6f
-    target: terminal-eM4m5N6o
-    sourceHandle: "error"
-  - source: process-pM7g8H9i
-    target: terminal-sD1j2K3l
-    sourceHandle: "success"
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

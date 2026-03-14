@@ -1,124 +1,164 @@
-name: Editorial
-description: "Human review with async AI assistance"
+name: "Editorial"
+description: "Human editorial review workflow. Manages the review queue, reviewer assignments, approval/rejection decisions, escalations, co-author review, and bulk operations. Acts as the quality gate before publishing."
 role: process
+auth:
+  required: true
+  strategy: jwt
+  roles: [admin, editor, reviewer]
+
+owns_schemas: ["ContentRejection"]
 
 depends_on:
   - domain: content
-    reason: "Reads and updates content status"
-    flows_affected:
-      - review-content
-      - bulk-approve
-      - list-editorial-queue
+    reason: Reads Content for review and writes rejection records
+    flows_affected: [review-content, quick-approve, bulk-approve, list-editorial-queue]
   - domain: users
-    reason: "Reads reviewer assignments and roles"
-    flows_affected:
-      - assign-reviewer
-      - list-editorial-queue
-
-owns_schemas: []
+    reason: Reads User profiles for reviewer assignment and notification
+    flows_affected: [assign-reviewer, escalate-to-senior, co-author-review]
 
 flows:
-  - id: review-content
-    name: "Review Content"
-    description: "Human editorial review with AI-generated suggestions"
+  - id: list-editorial-queue
+    name: "List Editorial Queue"
+    description: "Returns paginated editorial queue filtered by status, reviewer, priority. Supports cursor pagination."
     type: traditional
-    tags:
-      - public-api
+    tags: [public-api]
     criticality: high
 
-  - id: escalate-to-senior
-    name: "Escalate To Senior"
-    description: "Escalate content to senior editor for complex decisions"
+  - id: review-content
+    name: "Review Content"
+    description: "Reviewer submits an approval, rejection, escalation, or defer decision on a content item. Triggers downstream events."
     type: traditional
-    tags:
-      - internal
-
-  - id: co-author-review
-    name: "Co-Author Review"
-    description: "AI-assisted co-authoring during editorial review"
-    type: agentic
-    tags:
-      - internal
+    tags: [public-api]
+    criticality: critical
 
   - id: assign-reviewer
     name: "Assign Reviewer"
-    description: "Assign content to available reviewer based on expertise"
+    description: "Assigns or reassigns a content item to a specific reviewer. Sends notification to the reviewer."
     type: traditional
-    tags:
-      - internal
-
-  - id: list-editorial-queue
-    name: "List Editorial Queue"
-    description: "List pending content in the editorial review queue"
-    type: traditional
-    tags:
-      - public-api
-
-  - id: bulk-approve
-    name: "Bulk Approve"
-    description: "Approve multiple content items in a single operation"
-    type: traditional
-    tags:
-      - public-api
-
-  - id: get-review-stats
-    name: "Get Review Stats"
-    description: "Retrieve editorial review statistics and metrics"
-    type: traditional
-    tags:
-      - public-api
-
-  - id: trigger-bulk-reprocess
-    name: "Trigger Bulk Reprocess"
-    description: "Trigger reprocessing of previously reviewed content"
-    type: traditional
-    tags:
-      - internal
+    tags: [public-api]
+    criticality: normal
 
   - id: quick-approve
     name: "Quick Approve"
-    description: "One-click approval for high-confidence content"
+    description: "One-click approval for high-quality content (above threshold) without requiring full review form. Keyboard shortcut Cmd+Shift+A."
     type: traditional
-    tags:
-      - public-api
+    tags: [public-api]
+    criticality: normal
     keyboard_shortcut: "Cmd+Shift+A"
+
+  - id: bulk-approve
+    name: "Bulk Approve"
+    description: "Approves multiple content items at once using update_many. Items must meet minimum quality threshold."
+    type: traditional
+    tags: [public-api]
+    criticality: high
+
+  - id: escalate-to-senior
+    name: "Escalate to Senior"
+    description: "Escalates a flagged content item to a senior editor with optional context note."
+    type: traditional
+    tags: [public-api]
+    criticality: normal
+
+  - id: co-author-review
+    name: "Co-Author Review"
+    description: "Initiates a co-author collaborative review session — two reviewers simultaneously annotate and resolve conflicts."
+    type: traditional
+    tags: [public-api]
+    criticality: normal
+
+  - id: get-review-stats
+    name: "Get Review Stats"
+    description: "Returns reviewer performance stats: items reviewed, avg review time, approval rate."
+    type: traditional
+    tags: [public-api, internal]
+    criticality: low
+
+  - id: trigger-bulk-reprocess
+    name: "Trigger Bulk Reprocess"
+    description: "Admin action to re-run AI analysis on a batch of content items (e.g., after a model update)."
+    type: traditional
+    tags: [public-api]
+    criticality: normal
+    auth:
+      required: true
+      roles: [admin]
+      strategy: jwt
+
+groups:
+  - id: review-actions
+    name: "Review Actions"
+    flows: [review-content, quick-approve, bulk-approve, assign-reviewer, escalate-to-senior]
+  - id: collaboration
+    name: "Collaboration"
+    flows: [co-author-review, trigger-bulk-reprocess]
+  - id: reporting
+    name: "Reporting"
+    flows: [list-editorial-queue, get-review-stats]
 
 publishes_events:
   - event: ContentApproved
+    schema: Content
     from_flow: review-content
-    description: "Content approved for publishing"
+    description: "Fired when a reviewer approves content — triggers publishing pipeline"
     payload:
-      content_id: uuid
-      approved_by: uuid
-      approved_at: datetime
+      content_id: string
+      reviewer_id: string
+      approved_at: string
+      quality_score: number
 
   - event: ContentRejected
+    schema: ContentRejection
     from_flow: review-content
-    description: "Content rejected"
+    description: "Fired when content is rejected — notifies author and logs rejection"
     payload:
-      content_id: uuid
+      content_id: string
+      reviewer_id: string
       reason: string
-      rejected_by: uuid
+      rejected_at: string
+
+  - event: BulkApproveInitiated
+    schema: Content
+    from_flow: bulk-approve
+    description: "Signals that a bulk approval is in progress — processing may need to re-score borderline items"
+    payload:
+      content_ids: array
+      initiator_id: string
+      threshold: number
+
+  - event: ReviewAssigned
+    schema: Content
+    from_flow: assign-reviewer
+    description: "Fired when a reviewer is assigned — triggers notification to the reviewer"
+    payload:
+      content_id: string
+      reviewer_id: string
+      assigned_by: string
 
 consumes_events:
-  - event: ContentClassified
-    handled_by_flow: review-content
-    description: "Review content after AI classification"
-    payload:
-      content_id: uuid
-      category: string
-      confidence: number
-      quality_score: number
+  - event: ContentAnalyzed
+    from_domain: processing
+    description: "Routes newly analyzed content into the editorial queue"
+    handled_by: list-editorial-queue
+
+  - event: ContentScored
+    from_domain: processing
+    description: "High-quality items (above threshold) are eligible for quick-approve"
+    handled_by: quick-approve
 
 layout:
   flows:
-    review-content: { x: 100, y: 100 }
-    escalate-to-senior: { x: 100, y: 300 }
-    co-author-review: { x: 100, y: 500 }
-    assign-reviewer: { x: 100, y: 700 }
-    list-editorial-queue: { x: 100, y: 900 }
-    bulk-approve: { x: 100, y: 1100 }
-    get-review-stats: { x: 100, y: 1300 }
-    trigger-bulk-reprocess: { x: 100, y: 1500 }
-    quick-approve: { x: 100, y: 1700 }
+    list-editorial-queue: { x: 100, y: 100 }
+    review-content: { x: 100, y: 300 }
+    quick-approve: { x: 100, y: 500 }
+    bulk-approve: { x: 100, y: 700 }
+    assign-reviewer: { x: 400, y: 100 }
+    escalate-to-senior: { x: 400, y: 300 }
+    co-author-review: { x: 400, y: 500 }
+    get-review-stats: { x: 400, y: 700 }
+    trigger-bulk-reprocess: { x: 700, y: 100 }
   portals: {}
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"
