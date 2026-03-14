@@ -8,6 +8,7 @@ import { useSheetStore } from './stores/sheet-store';
 import { useGitStore } from './stores/git-store';
 import { useImplementationStore } from './stores/implementation-store';
 import { useUiStore } from './stores/ui-store';
+import { useValidationStore } from './stores/validation-store';
 import { isOwnWrite } from './stores/write-guard';
 import { useSpecsStore } from './stores/specs-store';
 import { Breadcrumb } from './components/Navigation/Breadcrumb';
@@ -17,6 +18,7 @@ import { DomainMap } from './components/DomainMap/DomainMap';
 import { FlowCanvas } from './components/FlowCanvas/FlowCanvas';
 import { GitPanel } from './components/GitPanel/GitPanel';
 import { SpecsSidebar } from './components/SpecsSidebar/SpecsSidebar';
+import { ProjectValidationPanel } from './components/Validation/ProjectValidationPanel';
 import { CrashRecoveryDialog } from './components/shared/CrashRecoveryDialog';
 import { SearchPalette } from './components/shared/SearchPalette';
 
@@ -68,6 +70,7 @@ export function AppShell() {
   const level = useSheetStore((s) => s.current.level);
   const panelOpen = useGitStore((s) => s.panelOpen);
   const specsPanelOpen = useUiStore((s) => s.specsPanelOpen);
+  const validationPanelOpen = useValidationStore((s) => s.panelOpen);
   const searchOpen = useUiStore((s) => s.searchOpen);
   const loadedPathRef = useRef<string | null>(null);
 
@@ -173,6 +176,7 @@ export function AppShell() {
           {level === 'domain' && <DomainMap />}
           {level === 'flow' && <FlowCanvas />}
         </div>
+        {validationPanelOpen && level !== 'flow' && <ProjectValidationPanel />}
         {panelOpen && <GitPanel />}
       </div>
 

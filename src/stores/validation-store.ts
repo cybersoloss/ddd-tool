@@ -12,12 +12,34 @@ import type { FlowDocument } from '../types/flow';
 
 export type PanelScope = ValidationScope | 'all';
 
+export interface ProjectValidationDomainFlow {
+  flowId: string;
+  name: string;
+  errorCount: number;
+  warningCount: number;
+}
+
+export interface ProjectValidationDomain {
+  domainId: string;
+  name: string;
+  errorCount: number;
+  warningCount: number;
+  flows: ProjectValidationDomainFlow[];
+}
+
+export interface ProjectValidationSummary {
+  totalErrors: number;
+  totalWarnings: number;
+  domains: ProjectValidationDomain[];
+}
+
 interface ValidationState {
   flowResults: Record<string, ValidationResult>;
   domainResults: Record<string, ValidationResult>;
   systemResult: ValidationResult | null;
   panelOpen: boolean;
   panelScope: PanelScope;
+  validatingProject: boolean;
 
   validateCurrentFlow: () => void;
   validateDomain: (domainId: string) => void;
@@ -25,12 +47,14 @@ interface ValidationState {
   validateAll: () => void;
   validateAllDomains: () => Promise<void>;
   validateDomainFlows: (domainId: string) => Promise<void>;
+  validateProject: () => Promise<void>;
   togglePanel: () => void;
   setPanelScope: (scope: PanelScope) => void;
   getNodeIssues: (flowKey: string, nodeId: string) => ValidationIssue[];
   getCurrentFlowResult: () => ValidationResult | null;
   getDomainValidationSummary: (domainId: string) => { errorCount: number; warningCount: number } | null;
   getFlowValidationResult: (flowKey: string) => ValidationResult | null;
+  getProjectValidationSummary: () => ProjectValidationSummary;
   checkImplementGate: (flowId: string, domainId: string) => ImplementGateState;
   reset: () => void;
 }
@@ -41,6 +65,7 @@ export const useValidationStore = create<ValidationState>((set, get) => ({
   systemResult: null,
   panelOpen: false,
   panelScope: 'flow',
+  validatingProject: false,
 
   validateCurrentFlow: () => {
     const flow = useFlowStore.getState().currentFlow;
@@ -134,8 +159,8 @@ export const useValidationStore = create<ValidationState>((set, get) => ({
 
       domainResults[domainId] = {
         ...domainResult,
-        errorCount: totalErrors,
-        warningCount: totalWarnings,
+        // Keep domain-level counts only — flow errors are in flowResults
+        // The "All" tab aggregates flow + domain + system separately
         isValid: totalErrors === 0,
       };
     }
@@ -188,12 +213,21 @@ export const useValidationStore = create<ValidationState>((set, get) => ({
         ...s.domainResults,
         [domainId]: {
           ...domainResult,
-          errorCount: totalErrors,
-          warningCount: totalWarnings,
+          // Keep domain-level counts only — flow errors are in flowResults
           isValid: totalErrors === 0,
         },
       },
     }));
+  },
+
+  validateProject: async () => {
+    set({ validatingProject: true });
+    try {
+      await get().validateAllDomains();
+      get().validateSystem();
+    } finally {
+      set({ validatingProject: false });
+    }
   },
 
   togglePanel: () => {
@@ -225,6 +259,62 @@ export const useValidationStore = create<ValidationState>((set, get) => ({
 
   getFlowValidationResult: (flowKey: string) => {
     return get().flowResults[flowKey] ?? null;
+  },
+
+  getProjectValidationSummary: () => {
+    const { flowResults, domainResults, systemResult } = get();
+    const domainConfigs = useProjectStore.getState().domainConfigs;
+
+    let totalErrors = 0;
+    let totalWarnings = 0;
+    const domains: ProjectValidationDomain[] = [];
+
+    for (const [domainId, config] of Object.entries(domainConfigs)) {
+      let domainErrorCount = 0;
+      let domainWarningCount = 0;
+      const flows: ProjectValidationDomainFlow[] = [];
+
+      for (const flowEntry of config.flows) {
+        const flowKey = `${domainId}/${flowEntry.id}`;
+        const fr = flowResults[flowKey];
+        const fErrors = fr?.errorCount ?? 0;
+        const fWarnings = fr?.warningCount ?? 0;
+        domainErrorCount += fErrors;
+        domainWarningCount += fWarnings;
+        flows.push({
+          flowId: flowEntry.id,
+          name: flowEntry.name,
+          errorCount: fErrors,
+          warningCount: fWarnings,
+        });
+      }
+
+      // Add domain-level issues
+      const dr = domainResults[domainId];
+      if (dr) {
+        domainErrorCount += dr.errorCount;
+        domainWarningCount += dr.warningCount;
+      }
+
+      totalErrors += domainErrorCount;
+      totalWarnings += domainWarningCount;
+
+      domains.push({
+        domainId,
+        name: config.name,
+        errorCount: domainErrorCount,
+        warningCount: domainWarningCount,
+        flows,
+      });
+    }
+
+    // Add system-level issues
+    if (systemResult) {
+      totalErrors += systemResult.errorCount;
+      totalWarnings += systemResult.warningCount;
+    }
+
+    return { totalErrors, totalWarnings, domains };
   },
 
   checkImplementGate: (flowId: string, domainId: string) => {
@@ -260,6 +350,7 @@ export const useValidationStore = create<ValidationState>((set, get) => ({
       systemResult: null,
       panelOpen: false,
       panelScope: 'flow',
+      validatingProject: false,
     });
   },
 }));
