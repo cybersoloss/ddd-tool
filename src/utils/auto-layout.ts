@@ -127,7 +127,7 @@ export async function computeElkLayout(flow: FlowDocument): Promise<Map<string, 
     edges: topEdges.map((e) => ({ id: e.id, sources: [e.source], targets: [e.target] })),
   };
 
-  const layout = await elk.layout(elkGraph as Parameters<typeof elk.layout>[0]);
+  const layout = await elk.layout(elkGraph as unknown as Parameters<typeof elk.layout>[0]);
 
   // Extract positions recursively
   const positions = new Map<string, Position>();
