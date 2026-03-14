@@ -1,36 +1,48 @@
 name: UserProfile
-description: Extended user profile information
 inherits: _base
+description: Extended user profile information — display name, avatar, bio, timezone
+owned_by: users
+
 fields:
   - name: user_id
     type: uuid
     required: true
-    constraints:
-      unique: true
+    unique: true
+    description: Foreign key to User — one profile per user
+
   - name: display_name
     type: string
     required: false
-    constraints:
-      max_length: 100
+    max_length: 100
+    description: Human-readable display name shown in UI
+
   - name: avatar_url
     type: string
     required: false
+    description: URL to the user's avatar image
+
   - name: bio
     type: text
     required: false
+    description: Short user biography
+
   - name: timezone
     type: string
     required: false
+    default: "UTC"
+    description: User's preferred timezone (IANA format, e.g. America/New_York)
 
 relationships:
-  - name: user
-    type: belongs_to
-    target: User
+  - type: belongs_to
+    model: User
     foreign_key: user_id
+    description: The user account this profile belongs to
 
 indexes:
   - fields: [user_id]
     unique: true
+    type: btree
+    description: Fast profile lookup by user ID
 
 metadata:
   created: "2026-03-14T00:00:00Z"

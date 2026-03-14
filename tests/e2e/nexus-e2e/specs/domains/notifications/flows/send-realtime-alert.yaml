@@ -3,109 +3,78 @@ flow:
   name: "Send Realtime Alert"
   type: traditional
   domain: notifications
-  description: "Multi-channel alert delivery via email and Slack in parallel with best-effort policy"
+  description: "Pushes an urgent in-app notification to a user via WebSocket. Falls back to email via SendGrid if user is offline."
+  auth:
+    required: false
 
 trigger:
-  id: trigger-sA1a2B3c
+  id: trigger-sRal2eN8
   type: trigger
-  position: { x: 250, y: 0 }
+  label: "event:AlertTriggered"
   spec:
     event: "event:AlertTriggered"
-    label: "Alert triggered"
+  connections:
+    - targetNodeId: websocket_broadcast-push4
 
 nodes:
-  - id: parallel-mC4d5E6f
-    type: parallel
-    position: { x: 250, y: 130 }
+  - id: websocket_broadcast-push4
+    type: websocket_broadcast
+    label: "Push to User"
     spec:
-      failure_policy: best_effort
-      merge_strategy: collect_success
-      branches:
-        - id: branch-0
-          output_key: email
-        - id: branch-1
-          output_key: slack
+      channel: "user-$.payload.user_id"
+      event_name: notification
+      payload:
+        type: "$.payload.alert_type || $.event_name"
+        message: "$.payload.message"
+        severity: "$.payload.severity"
+        timestamp: "$.now()"
+      include_sender: false
+    connections:
+      - targetNodeId: decision-online5
 
-  - id: service_call-sE7g8H9i
-    type: service_call
-    position: { x: 100, y: 260 }
+  - id: decision-online5
+    type: decision
+    label: "User Online?"
     spec:
-      service: SendGrid
-      method: send
+      condition: "$.broadcast_result.delivered > 0"
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: "true"
+      - targetNodeId: service_call-email6
+        sourceHandle: "false"
+
+  - id: service_call-email6
+    type: service_call
+    label: "Fallback Email"
+    spec:
+      method: POST
       integration: sendgrid
-      description: "Send alert email via SendGrid"
-      params:
-        template: alert
-        to: "$.recipient_email"
-        data: "$.alert"
+      url: "https://api.sendgrid.com/v3/mail/send"
+      request_config:
+        body:
+          template_id: "d-alert-template"
+          personalizations:
+            - to: [{ email: "$.payload.email" }]
+              dynamic_template_data: "$.payload"
+      error_mapping:
+        429: RATE_LIMITED
+      fallback:
+        value: { sent: false }
+        log: true
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: success
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: error
 
-  - id: service_call-sS1j2K3l
-    type: service_call
-    position: { x: 400, y: 260 }
-    spec:
-      service: Slack
-      method: webhook
-      description: "Send alert to Slack via webhook"
-      params:
-        channel: "$.alert_channel"
-        message: "$.alert_message"
-
-  - id: data_store-cN4m5N6o
-    type: data_store
-    position: { x: 250, y: 390 }
-    spec:
-      operation: create
-      model: Notification
-      fields:
-        - name: type
-          value: "realtime_alert"
-        - name: channels
-          value: "$.delivered_channels"
-        - name: alert_data
-          value: "$.alert"
-        - name: sent_at
-          value: "$.now"
-
-  - id: terminal-sA7p8Q9r
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 250, y: 520 }
+    label: "Alert Sent"
     spec:
+      outcome: success
       status: 200
-      label: "Alert sent successfully"
-
-  - id: terminal-eN1s2T3u
-    type: terminal
-    position: { x: 550, y: 390 }
-    spec:
-      status: 500
-      label: "Notification store error"
-      error_code: NOTIFICATION_STORE_ERROR
-
-connections:
-  - source: trigger-sA1a2B3c
-    target: parallel-mC4d5E6f
-    sourceHandle: ""
-  - source: parallel-mC4d5E6f
-    target: service_call-sE7g8H9i
-    sourceHandle: "branch-0"
-  - source: parallel-mC4d5E6f
-    target: service_call-sS1j2K3l
-    sourceHandle: "branch-1"
-  - source: service_call-sE7g8H9i
-    target: parallel-mC4d5E6f
-    sourceHandle: "complete"
-  - source: service_call-sS1j2K3l
-    target: parallel-mC4d5E6f
-    sourceHandle: "complete"
-  - source: parallel-mC4d5E6f
-    target: data_store-cN4m5N6o
-    sourceHandle: "merged"
-  - source: data_store-cN4m5N6o
-    target: terminal-sA7p8Q9r
-    sourceHandle: "success"
-  - source: data_store-cN4m5N6o
-    target: terminal-eN1s2T3u
-    sourceHandle: "error"
+      body:
+        message: "Alert sent"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

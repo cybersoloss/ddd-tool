@@ -1,100 +1,131 @@
 flow:
   id: schedule-publication
-  name: Schedule Publication
-  description: Schedules content for future publication at a specified time
+  name: "Schedule Publication"
   type: traditional
   domain: publishing
-  version: "1.0.0"
-  trigger:
-    type: http
-    method: POST
-    path: /api/v1/publishing/schedule
+  description: "Creates a delayed publication job using BullMQ. Validates the scheduled time is in the future, creates a Schedule record, and enqueues the job."
   auth:
     required: true
+    roles: [admin, editor]
     strategy: jwt
 
-nodes:
-  - id: trigger-k1l2m3n4
-    type: trigger
-    name: HTTP POST Schedule
-    config:
-      method: POST
-      path: /api/v1/publishing/schedule
+trigger:
+  id: trigger-schP2xN8
+  type: trigger
+  label: "POST /api/publishing/schedule"
+  spec:
+    event: "HTTP POST /api/publishing/schedule"
+  connections:
+    - targetNodeId: input-vAl3kP4r
 
-  - id: input-o5p6q7r8
+nodes:
+  - id: input-vAl3kP4r
     type: input
-    name: Validate Schedule Input
-    config:
+    label: "Validate Input"
+    spec:
       fields:
         - name: content_id
           type: string
           required: true
+          format: uuid
         - name: publish_at
-          type: datetime
+          type: string
           required: true
+          format: datetime
         - name: channel_ids
           type: array
           required: true
+          min_items: 1
+    connections:
+      - targetNodeId: decision-future3
+        sourceHandle: valid
+      - targetNodeId: terminal-inv-aB7cD8eF
+        sourceHandle: invalid
 
-  - id: data_store-s9t0u1v2
+  - id: decision-future3
+    type: decision
+    label: "Future Date?"
+    spec:
+      condition: "new Date($.publish_at) > new Date()"
+    connections:
+      - targetNodeId: data_store-crtSched5
+        sourceHandle: "true"
+      - targetNodeId: terminal-past-xA1b
+        sourceHandle: "false"
+
+  - id: data_store-crtSched5
     type: data_store
-    name: Create Schedule
-    config:
+    label: "Create Schedule Record"
+    spec:
       operation: create
       model: Schedule
       data:
         content_id: "$.content_id"
         publish_at: "$.publish_at"
+        channel_id: "$.channel_ids[0]"
+        created_by: "$.auth.user_id"
+        status: pending
+      returning: true
+    connections:
+      - targetNodeId: event-enq6
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
+
+  - id: event-enq6
+    type: event
+    label: "Enqueue Delayed Job"
+    spec:
+      direction: emit
+      event_name: ContentApproved
+      target_queue: publish-scheduled
+      async: true
+      delay_ms: "$.ms_until_publish_at"
+      payload:
+        content_id: "$.content_id"
         channel_ids: "$.channel_ids"
-        status: scheduled
+        schedule_id: "$.result.id"
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
 
-  - id: delay-w3x4y5z6
-    type: delay
-    name: Wait Until Publish Time
-    config:
-      strategy: scheduled
-      min_ms: "calculated from publish_at"
-
-  - id: sub_flow-a7b8c9d0
-    type: sub_flow
-    name: Execute Publish Content
-    config:
-      flow_ref: "publishing/publish-content"
-
-  - id: terminal-e1f2g3h4
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    name: Schedule Created
-    config:
+    label: "Scheduled"
+    spec:
+      outcome: success
       status: 201
-      response_type: json
+      body:
+        schedule_id: "$.result.id"
+        publish_at: "$.publish_at"
 
-  - id: terminal-i5j6k7l8
+  - id: terminal-past-xA1b
     type: terminal
-    name: Validation Error
-    config:
-      status: 422
-      response_type: error
+    label: "Date in Past"
+    spec:
+      outcome: error
+      status: 400
+      body:
+        error: "VALIDATION_ERROR"
+        message: "publish_at must be in the future"
 
-connections:
-  - from: trigger-k1l2m3n4
-    to: input-o5p6q7r8
+  - id: terminal-inv-aB7cD8eF
+    type: terminal
+    label: "Invalid"
+    spec:
+      outcome: error
+      status: 400
+      body:
+        error: "VALIDATION_ERROR"
 
-  - from: input-o5p6q7r8
-    to: data_store-s9t0u1v2
-
-  - from: input-o5p6q7r8
-    to: terminal-i5j6k7l8
-    handle: invalid
-
-  - from: data_store-s9t0u1v2
-    to: delay-w3x4y5z6
-
-  - from: delay-w3x4y5z6
-    to: sub_flow-a7b8c9d0
-
-  - from: sub_flow-a7b8c9d0
-    to: terminal-e1f2g3h4
+  - id: terminal-err-pSz2wV3b
+    type: terminal
+    label: "Error"
+    spec:
+      outcome: error
+      status: 500
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
-  created_at: "2026-03-14T00:00:00Z"
-  updated_at: "2026-03-14T00:00:00Z"
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

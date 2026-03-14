@@ -3,86 +3,86 @@ flow:
   name: "Collaborative Review"
   type: agent
   domain: processing
-  description: "Multi-agent collaborative review with round-robin coordination and shared context"
+  description: "Multi-agent collaborative review where multiple specialist agents cross-check each other's findings and synthesize a consensus analysis."
+  auth:
+    required: false
 
 trigger:
-  id: trigger-cR1a2B3c
+  id: trigger-colRev2eN8
   type: trigger
-  position: { x: 100, y: 0 }
+  label: "event:ContentAnalyzed"
   spec:
-    event: "event:ContentIngested"
-    label: "Content Ingested"
+    event: "event:ContentAnalyzed"
+    filter:
+      "payload.quality_score":
+        lt: 60
+  connections:
+    - targetNodeId: orchestrator-collab3
 
 nodes:
-  - id: agent_group-aG4d5E6f
-    type: agent_group
-    position: { x: 100, y: 130 }
+  - id: orchestrator-collab3
+    type: orchestrator
+    label: "Collaborative Analysis Orchestrator"
     spec:
-      name: "review-group"
-      members:
-        - flow: "processing/fact-check-agent"
-        - flow: "processing/bias-check-agent"
-        - flow: "processing/score-quality"
-      coordination:
-        communication: round_robin
-        max_active_agents: 2
-        selection_strategy: least_loaded
-      shared_memory:
-        type: key_value
-        store: "analysis-context"
+      strategy: parallel_then_merge
+      model: claude-opus-4-6
+      agents:
+        - flow_ref: processing/fact-check-agent
+          role: fact_checker
+        - flow_ref: processing/bias-check-agent
+          role: bias_detector
+        - flow_ref: processing/route-to-specialist
+          role: specialist
+    connections:
+      - targetNodeId: llm_call-synthesize4
 
-  - id: data_store-dU7g8H9i
-    type: data_store
-    position: { x: 100, y: 260 }
+  - id: llm_call-synthesize4
+    type: llm_call
+    label: "Synthesize Agent Findings"
     spec:
-      operation: update
-      model: Content
-      query:
-        where:
-          id: "$.content_id"
-      fields:
-        - name: review_result
-          value: "$.result"
+      model: claude-opus-4-6
+      temperature: 0.2
+      max_tokens: 800
+      prompt: |
+        Three specialized agents have analyzed this content. Synthesize their findings into a coherent analysis:
 
-  - id: terminal-tS1j2K3l
+        Fact Checker: $.orchestrator_results.fact_checker
+        Bias Detector: $.orchestrator_results.bias_detector
+        Specialist: $.orchestrator_results.specialist
+
+        Provide a unified assessment with an overall confidence score.
+      structured_output:
+        consensus_score:
+          type: number
+        confidence:
+          type: number
+        key_findings:
+          type: array
+        recommended_action:
+          type: string
+          enum: [approve, reject, escalate, review_more]
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
+
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 100, y: 390 }
+    label: "Collaborative Review Done"
     spec:
+      outcome: success
       status: 200
-      label: "Collaborative review complete"
+      body: "$.llm_result"
 
-  - id: terminal-tE4m5N6o
+  - id: terminal-err-pSz2wV3b
     type: terminal
-    position: { x: 400, y: 130 }
+    label: "Error"
     spec:
+      outcome: error
       status: 500
-      label: "Agent group error"
-      error_code: AGENT_GROUP_ERROR
-
-  - id: terminal-tE7p8Q9r
-    type: terminal
-    position: { x: 400, y: 260 }
-    spec:
-      status: 500
-      label: "Data store error"
-      error_code: DATA_STORE_ERROR
-
-connections:
-  - source: trigger-cR1a2B3c
-    target: agent_group-aG4d5E6f
-    sourceHandle: ""
-  - source: agent_group-aG4d5E6f
-    target: data_store-dU7g8H9i
-    sourceHandle: "done"
-  - source: agent_group-aG4d5E6f
-    target: terminal-tE4m5N6o
-    sourceHandle: "error"
-  - source: data_store-dU7g8H9i
-    target: terminal-tS1j2K3l
-    sourceHandle: "success"
-  - source: data_store-dU7g8H9i
-    target: terminal-tE7p8Q9r
-    sourceHandle: "error"
+      body:
+        error: "PROCESSING_FAILED"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

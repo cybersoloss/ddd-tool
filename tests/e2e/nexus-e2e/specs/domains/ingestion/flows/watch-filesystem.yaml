@@ -3,130 +3,95 @@ flow:
   name: "Watch Filesystem"
   type: traditional
   domain: ingestion
-  description: "Watches the filesystem for new files via IPC, reads file contents, routes by file extension to appropriate parsers (CSV or raw text), creates content records, and emits ContentIngested events."
+  description: "Triggered by IPC filesystem events (inotify/FSEvents). Monitors a configured directory for new or modified markdown/text files and ingests changes."
+  auth:
+    required: false
 
 trigger:
-  id: trigger-fW1a2B3c
+  id: trigger-fsWat2eN8
   type: trigger
-  position: { x: 100, y: 0 }
+  label: "ipc:spec-files-changed"
   spec:
-    event: "ipc:file_watch"
-    label: "File system change detected"
+    event: "ipc:spec-files-changed"
+    debounce_ms: 500
+  connections:
+    - targetNodeId: ipc_call-readFile3
 
 nodes:
-  - id: ipc_call-iR4d5E6f
+  - id: ipc_call-readFile3
     type: ipc_call
-    position: { x: 100, y: 130 }
+    label: "Read Changed File"
     spec:
-      command: readFile
+      command: read_file
       args:
-        path: "$.file_path"
+        path: "$.event.file_path"
+        encoding: utf8
       return_type: string
-      result_condition: "$.content.length > 0"
+      timeout_ms: 5000
+    connections:
+      - targetNodeId: decision-ext4
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: decision-dF7g8H9i
+  - id: decision-ext4
     type: decision
-    position: { x: 100, y: 260 }
+    label: "Supported Extension?"
     spec:
-      condition: "$.file_path.endsWith('.csv')"
+      condition: "$.event.file_path.match(/\\.(md|txt|html)$/)"
+    connections:
+      - targetNodeId: parse-md5
+        sourceHandle: "true"
+      - targetNodeId: terminal-ok-skip
+        sourceHandle: "false"
 
-  - id: parse-pC1j2K3l
+  - id: parse-md5
     type: parse
-    position: { x: 100, y: 390 }
+    label: "Parse Markdown/Text"
     spec:
-      format: csv
+      format: markdown
+      input: "$.result"
+      output: parsed_content
+    connections:
+      - targetNodeId: sub_flow-route6
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: data_store-dC4m5N6o
-    type: data_store
-    position: { x: 100, y: 520 }
+  - id: sub_flow-route6
+    type: sub_flow
+    label: "Route Content"
     spec:
-      operation: create
-      model: Content
+      flow_ref: ingestion/route-by-source-type
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
 
-  - id: event-eI7p8Q9r
-    type: event
-    position: { x: 100, y: 650 }
-    spec:
-      direction: emit
-      event_name: ContentIngested
-
-  - id: terminal-tS1s2T3u
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 100, y: 780 }
+    label: "File Ingested"
     spec:
+      outcome: success
       status: 200
-      label: "CSV file ingested"
+      body:
+        file: "$.event.file_path"
 
-  - id: process-pR4v5W6x
-    type: process
-    position: { x: 500, y: 390 }
-    spec:
-      category: business_logic
-      description: "Process raw text content"
-
-  - id: data_store-dT7y8Z9a
-    type: data_store
-    position: { x: 500, y: 520 }
-    spec:
-      operation: create
-      model: Content
-
-  - id: event-eT1b2C3d
-    type: event
-    position: { x: 500, y: 650 }
-    spec:
-      direction: emit
-      event_name: ContentIngested
-
-  - id: terminal-tS4e5F6g
+  - id: terminal-ok-skip
     type: terminal
-    position: { x: 500, y: 780 }
+    label: "Skipped"
     spec:
+      outcome: success
       status: 200
-      label: "Text file ingested"
+      body:
+        message: "Unsupported file type, skipped"
 
-  - id: terminal-tE7h8I9j
+  - id: terminal-err-pSz2wV3b
     type: terminal
-    position: { x: 400, y: 130 }
+    label: "Error"
     spec:
+      outcome: error
       status: 500
-      label: "IPC read error"
-      error_code: IPC_ERROR
-
-connections:
-  - source: trigger-fW1a2B3c
-    target: ipc_call-iR4d5E6f
-    sourceHandle: ""
-  - source: ipc_call-iR4d5E6f
-    target: decision-dF7g8H9i
-    sourceHandle: "success"
-  - source: ipc_call-iR4d5E6f
-    target: terminal-tE7h8I9j
-    sourceHandle: "error"
-  - source: decision-dF7g8H9i
-    target: parse-pC1j2K3l
-    sourceHandle: "true"
-  - source: decision-dF7g8H9i
-    target: process-pR4v5W6x
-    sourceHandle: "false"
-  - source: parse-pC1j2K3l
-    target: data_store-dC4m5N6o
-    sourceHandle: "success"
-  - source: data_store-dC4m5N6o
-    target: event-eI7p8Q9r
-    sourceHandle: "success"
-  - source: event-eI7p8Q9r
-    target: terminal-tS1s2T3u
-    sourceHandle: "success"
-  - source: process-pR4v5W6x
-    target: data_store-dT7y8Z9a
-    sourceHandle: "success"
-  - source: data_store-dT7y8Z9a
-    target: event-eT1b2C3d
-    sourceHandle: "success"
-  - source: event-eT1b2C3d
-    target: terminal-tS4e5F6g
-    sourceHandle: "success"
+      body:
+        error: "INGESTION_FAILED"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

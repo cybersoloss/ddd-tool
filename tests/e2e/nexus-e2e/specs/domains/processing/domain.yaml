@@ -1,190 +1,204 @@
-name: Processing
-description: "AI-powered analysis pipeline with multi-agent orchestration"
+name: "Processing"
+description: "AI-powered content analysis pipeline. Orchestrates multi-agent workflows for classification, fact-checking, bias detection, quality scoring, and summarization. Supports consensus review with configurable agent ensembles."
 role: orchestration
-
-depends_on:
-  - domain: content
-    reason: "Reads and updates content entities"
-    flows_affected:
-      - classify-content
-      - score-quality
-      - summarize-batch
-  - domain: settings
-    reason: "Reads AI model configuration and quality thresholds"
-    flows_affected:
-      - classify-content
-      - score-quality
+auth:
+  required: false
 
 owns_schemas: []
 
-sla_config:
-  max_latency_ms: 30000
-  max_error_rate: 0.05
-  alert_channel: monitoring
+depends_on:
+  - domain: content
+    reason: Reads and updates Content records with AI analysis results
+    flows_affected: [classify-content, score-quality, orchestrate-analysis]
+  - domain: ingestion
+    reason: Consumes ContentIngested events to trigger analysis pipeline
+    flows_affected: [handle-any-content-event, orchestrate-analysis]
 
 memory_stores:
-  - name: analysis-context
+  - name: analysis-cache
     type: key_value
-    description: "Shared context store for orchestrated analysis agents"
-  - name: bias-knowledge
-    type: vector_store
-    description: "Bias detection knowledge base with historical examples"
-  - name: fact-check-history
-    type: conversation_history
-    description: "Conversation history for fact-check agent sessions"
-
-event_groups:
-  - name: content_lifecycle
-    description: "All content lifecycle events for unified processing"
-    events:
-      - ContentIngested
-      - ContentUpdated
-      - ContentRestored
-    correlation_key: "content_id"
+    description: "Short-term cache for LLM analysis results keyed by content_id+model to avoid re-processing"
+  - name: agent-context
+    type: list
+    description: "Sliding window of recent agent decisions for consensus tracking"
 
 flows:
+  - id: orchestrate-analysis
+    name: "Orchestrate Analysis"
+    description: "Main entry point. Receives a ContentIngested event and fans out to classify, fact-check, bias-check, score-quality in parallel. Waits for all branches then emits ContentAnalyzed."
+    type: agent
+    tags: [internal]
+    criticality: critical
+    throughput: "~500 items/day"
+
   - id: classify-content
     name: "Classify Content"
-    description: "AI-powered content classification with confidence scoring"
+    description: "Uses LLM to assign category, topic tags, and language to a content item."
     type: traditional
-    tags:
-      - internal
+    tags: [internal]
+    criticality: high
+
+  - id: fact-check-agent
+    name: "Fact Check Agent"
+    description: "Autonomous agent that verifies key claims against Google CSE and curated knowledge base. Returns fact_score and flagged_claims."
+    type: agent
+    tags: [internal]
+    criticality: high
+
+  - id: bias-check-agent
+    name: "Bias Check Agent"
+    description: "Autonomous agent that detects political, gender, and cultural bias using multi-perspective analysis. Returns bias_score and bias_flags."
+    type: agent
+    tags: [internal]
+    criticality: high
+
+  - id: score-quality
+    name: "Score Quality"
+    description: "Computes a composite quality_score from readability, factual density, bias, and completeness signals."
+    type: traditional
+    tags: [internal]
     criticality: high
 
   - id: summarize-batch
     name: "Summarize Batch"
-    description: "Batch content summarization using LLM"
+    description: "Cron job that batches unprocessed content and generates summaries via LLM for the weekly digest."
     type: traditional
-    tags:
-      - internal
-
-  - id: fact-check-agent
-    name: "Fact Check Agent"
-    description: "Autonomous fact-checking agent with web search capabilities"
-    type: agentic
-    tags:
-      - internal
-
-  - id: bias-check-agent
-    name: "Bias Check Agent"
-    description: "Bias detection agent using vector knowledge base"
-    type: agentic
-    tags:
-      - internal
-
-  - id: resolve-conflict-agent
-    name: "Resolve Conflict Agent"
-    description: "Agent that resolves conflicting analysis results"
-    type: agentic
-    tags:
-      - internal
-
-  - id: score-quality
-    name: "Score Quality"
-    description: "Multi-dimensional content quality scoring"
-    type: traditional
-    tags:
-      - internal
-    criticality: high
-
-  - id: orchestrate-analysis
-    name: "Orchestrate Analysis"
-    description: "Orchestrates the full analysis pipeline across agents"
-    type: traditional
-    tags:
-      - internal
-
-  - id: analyze-with-agents
-    name: "Analyze With Agents"
-    description: "Dispatches content to specialized analysis agents"
-    type: agentic
-    tags:
-      - internal
-
-  - id: pipeline-agents
-    name: "Pipeline Agents"
-    description: "Sequential agent pipeline for deep content analysis"
-    type: agentic
-    tags:
-      - internal
-
-  - id: ai-consensus-review
-    name: "AI Consensus Review"
-    description: "Multi-agent consensus mechanism for quality decisions"
-    type: agentic
-    tags:
-      - internal
-
-  - id: route-to-specialist
-    name: "Route To Specialist"
-    description: "Smart routing to domain-specialist analysis agents"
-    type: traditional
-    tags:
-      - internal
-
-  - id: collaborative-review
-    name: "Collaborative Review"
-    description: "Multi-agent collaborative review with shared context"
-    type: agentic
-    tags:
-      - internal
+    tags: [cron, internal]
+    criticality: normal
 
   - id: handle-any-content-event
     name: "Handle Any Content Event"
-    description: "Unified handler for content lifecycle event group"
+    description: "Generic event handler that normalizes any ContentIngested or ContentUpdated event into a standard analysis request."
     type: traditional
-    tags:
-      - internal
+    tags: [internal]
+    criticality: high
+
+  - id: route-to-specialist
+    name: "Route to Specialist"
+    description: "Smart-routes content to domain-specific processing agents (financial, legal, medical, tech) based on category."
+    type: traditional
+    tags: [internal]
+    criticality: normal
+
+  - id: analyze-with-agents
+    name: "Analyze with Agents"
+    description: "Runs fact-check, bias-check, and quality agents in an agent group with shared memory and coordination."
+    type: agent
+    tags: [internal]
+    criticality: high
+
+  - id: collaborative-review
+    name: "Collaborative Review"
+    description: "Multi-agent collaborative review where multiple specialist agents cross-check each other's findings."
+    type: agent
+    tags: [internal]
+    criticality: normal
+
+  - id: ai-consensus-review
+    name: "AI Consensus Review"
+    description: "Runs multiple LLM models (GPT-4, Claude) on the same content and reaches consensus via resolve-conflict-agent."
+    type: agent
+    tags: [internal]
+    criticality: high
+
+  - id: resolve-conflict-agent
+    name: "Resolve Conflict Agent"
+    description: "Agent that resolves disagreements between AI assessors using an orchestrator strategy."
+    type: agent
+    tags: [internal]
+    criticality: normal
+
+  - id: pipeline-agents
+    name: "Pipeline Agents"
+    description: "Chains classify → fact-check → bias-check → score as a sequential agent pipeline with handoffs."
+    type: agent
+    tags: [internal]
+    criticality: normal
+
+groups:
+  - id: ai-analysis
+    name: "AI Analysis"
+    flows: [orchestrate-analysis, analyze-with-agents, ai-consensus-review, collaborative-review]
+  - id: specialist-agents
+    name: "Specialist Agents"
+    flows: [fact-check-agent, bias-check-agent, resolve-conflict-agent, route-to-specialist]
+  - id: scoring-classification
+    name: "Scoring & Classification"
+    flows: [classify-content, score-quality, pipeline-agents]
+  - id: batch
+    name: "Batch Jobs"
+    flows: [summarize-batch, handle-any-content-event]
 
 publishes_events:
-  - event: ContentClassified
+  - event: ContentAnalyzed
     schema: Content
-    from_flow: classify-content
-    description: "Content has been classified by AI"
+    from_flow: orchestrate-analysis
+    description: "Fired after AI analysis is complete — triggers editorial review routing"
     payload:
-      content_id: uuid
-      category: string
-      confidence: number
+      content_id: string
       quality_score: number
+      bias_score: number
+      category: string
+      fact_score: number
+      flagged_claims: array
+
+  - event: ContentScored
+    schema: Content
+    from_flow: score-quality
+    description: "Fired when quality score is computed — used by editorial for priority sorting"
+    payload:
+      content_id: string
+      quality_score: number
+      auto_approve_eligible: boolean
+
+  - event: BatchSummarized
+    schema: WeeklyDigest
+    from_flow: summarize-batch
+    description: "Fired when weekly batch summaries are ready"
+    payload:
+      digest_id: string
+      period_start: string
+      period_end: string
+      item_count: number
 
 consumes_events:
   - event: ContentIngested
-    handled_by_flow: classify-content
-    description: "Classify newly ingested content"
-    payload:
-      content_id: uuid
-      source_type: string
-      raw_url: string
-      ingested_at: datetime
+    from_domain: ingestion
+    description: "Triggers the analysis pipeline for new content"
+    handled_by: handle-any-content-event
 
   - event: ContentUpdated
-    handled_by_flow: handle-any-content-event
-    description: "Handle content updates via unified event group"
-    payload:
-      content_id: uuid
-      changed_fields: "string[]"
-      updated_by: uuid
+    from_domain: content
+    description: "Re-runs analysis when content is manually edited"
+    handled_by: handle-any-content-event
 
-  - event: ContentRestored
-    handled_by_flow: handle-any-content-event
-    description: "Handle content restoration via unified event group"
-    payload:
-      content_id: uuid
-      restored_by: uuid
+  - event: BulkApproveInitiated
+    from_domain: editorial
+    description: "Signals processing to re-score content that failed bulk approval threshold"
+    handled_by: score-quality
+
+sla_config:
+  max_latency_ms: 60000
+  max_error_rate: 0.10
+  alert_channel: monitoring
 
 layout:
   flows:
-    classify-content: { x: 100, y: 100 }
-    summarize-batch: { x: 100, y: 300 }
-    fact-check-agent: { x: 100, y: 500 }
-    bias-check-agent: { x: 100, y: 700 }
-    resolve-conflict-agent: { x: 100, y: 900 }
-    score-quality: { x: 100, y: 1100 }
-    orchestrate-analysis: { x: 100, y: 1300 }
-    analyze-with-agents: { x: 100, y: 1500 }
-    pipeline-agents: { x: 100, y: 1700 }
-    ai-consensus-review: { x: 100, y: 1900 }
-    route-to-specialist: { x: 100, y: 2100 }
-    collaborative-review: { x: 100, y: 2300 }
-    handle-any-content-event: { x: 100, y: 2500 }
+    orchestrate-analysis: { x: 400, y: 100 }
+    handle-any-content-event: { x: 100, y: 100 }
+    classify-content: { x: 100, y: 300 }
+    score-quality: { x: 100, y: 500 }
+    fact-check-agent: { x: 400, y: 300 }
+    bias-check-agent: { x: 400, y: 500 }
+    route-to-specialist: { x: 400, y: 700 }
+    analyze-with-agents: { x: 700, y: 300 }
+    collaborative-review: { x: 700, y: 500 }
+    ai-consensus-review: { x: 700, y: 700 }
+    resolve-conflict-agent: { x: 700, y: 900 }
+    pipeline-agents: { x: 1000, y: 300 }
+    summarize-batch: { x: 1000, y: 500 }
   portals: {}
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

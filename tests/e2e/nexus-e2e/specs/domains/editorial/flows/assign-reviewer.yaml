@@ -1,117 +1,173 @@
 flow:
   id: assign-reviewer
-  name: Assign Reviewer
-  description: Assigns a reviewer to content based on lowest workload
+  name: "Assign Reviewer"
   type: traditional
   domain: editorial
-  version: "1.0.0"
-  trigger:
-    type: http
-    method: POST
-    path: /api/v1/editorial/assign
+  description: "Assigns or reassigns a content item to a specific reviewer. Validates reviewer exists and has the correct role. Emits ReviewAssigned event."
   auth:
     required: true
+    roles: [admin, editor]
     strategy: jwt
-    roles:
-      - admin
-      - editor
+
+trigger:
+  id: trigger-assR2xN8
+  type: trigger
+  label: "POST /api/editorial/:id/assign"
+  spec:
+    event: "HTTP POST /api/editorial/:id/assign"
+  connections:
+    - targetNodeId: input-vAl3kP4r
 
 nodes:
-  - id: trigger-z5a6b7c8
-    type: trigger
-    name: HTTP POST Assign Reviewer
-    config:
-      method: POST
-      path: /api/v1/editorial/assign
-
-  - id: input-d9e0f1g2
+  - id: input-vAl3kP4r
     type: input
-    name: Validate Assignment Input
-    config:
+    label: "Validate"
+    spec:
       fields:
-        - name: content_id
+        - name: id
           type: string
           required: true
+          format: uuid
+          description: "Content ID"
+        - name: reviewer_id
+          type: string
+          required: true
+          format: uuid
+    connections:
+      - targetNodeId: parallel-check4
+        sourceHandle: valid
+      - targetNodeId: terminal-inv-aB7cD8eF
+        sourceHandle: invalid
 
-  - id: data_store-h3i4j5k6
+  - id: parallel-check4
+    type: parallel
+    label: "Validate Content + Reviewer"
+    spec:
+      branches:
+        - id: content
+          label: "Check Content"
+        - id: reviewer
+          label: "Check Reviewer"
+    connections:
+      - targetNodeId: data_store-rdCt5kQ7
+        sourceHandle: branch-0
+      - targetNodeId: data_store-rdUser6
+        sourceHandle: branch-1
+      - targetNodeId: decision-bothFound7
+        sourceHandle: done
+
+  - id: data_store-rdCt5kQ7
     type: data_store
-    name: Read Reviewers with Workload
-    config:
+    label: "Fetch Content"
+    spec:
       operation: read
-      model: Reviewer
+      model: Content
       query:
-        active: true
-      include:
-        - relation: "assigned_content"
-          as: "workload_stats"
+        where:
+          id: "$.id"
+          status: review
+      safety: strict
+      returning: true
+    connections:
+      - targetNodeId: parallel-check4
 
-  - id: decision-l7m8n9o0
-    type: decision
-    name: Find Lowest Workload
-    config:
-      condition: "$.reviewers.sort((a, b) => a.workload_stats.length - b.workload_stats.length)[0]"
-      label: find lowest workload
-
-  - id: data_store-p1q2r3s4
+  - id: data_store-rdUser6
     type: data_store
-    name: Update Content Reviewer
-    config:
+    label: "Fetch Reviewer"
+    spec:
+      operation: read
+      model: User
+      query:
+        where:
+          id: "$.reviewer_id"
+          deleted_at: null
+      safety: strict
+      returning: true
+    connections:
+      - targetNodeId: parallel-check4
+
+  - id: decision-bothFound7
+    type: decision
+    label: "Both Valid?"
+    spec:
+      condition: "$.branch_results.content !== null && $.branch_results.reviewer !== null"
+    connections:
+      - targetNodeId: data_store-upd3nR6s
+        sourceHandle: "true"
+      - targetNodeId: terminal-notfound-cD4e
+        sourceHandle: "false"
+
+  - id: data_store-upd3nR6s
+    type: data_store
+    label: "Update Reviewer Assignment"
+    spec:
       operation: update
       model: Content
       query:
-        id: "$.content_id"
-      set:
-        reviewer_id: "$.selected_reviewer.id"
+        where:
+          id: "$.id"
+      data:
+        metadata:
+          reviewer_id: "$.reviewer_id"
+          assigned_by: "$.auth.user_id"
+          assigned_at: "$.now()"
+      returning: true
+    connections:
+      - targetNodeId: event-emit-yF3g
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: terminal-t5u6v7w8
+  - id: event-emit-yF3g
+    type: event
+    label: "Emit ReviewAssigned"
+    spec:
+      direction: emit
+      event_name: ReviewAssigned
+      payload:
+        content_id: "$.id"
+        reviewer_id: "$.reviewer_id"
+        assigned_by: "$.auth.user_id"
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    name: Assignment Success
-    config:
+    label: "Assigned"
+    spec:
+      outcome: success
       status: 200
-      response_type: json
+      body:
+        content_id: "$.id"
+        reviewer_id: "$.reviewer_id"
 
-  - id: terminal-x9y0z1a2
+  - id: terminal-notfound-cD4e
     type: terminal
-    name: Validation Error
-    config:
-      status: 422
-      response_type: error
+    label: "Not Found"
+    spec:
+      outcome: error
+      status: 404
+      body:
+        error: "NOT_FOUND"
 
-  - id: terminal-b3c4d5e6
+  - id: terminal-inv-aB7cD8eF
     type: terminal
-    name: Data Store Error
-    config:
+    label: "Invalid"
+    spec:
+      outcome: error
+      status: 400
+      body:
+        error: "VALIDATION_ERROR"
+
+  - id: terminal-err-pSz2wV3b
+    type: terminal
+    label: "Error"
+    spec:
+      outcome: error
       status: 500
-      response_type: error
-
-connections:
-  - from: trigger-z5a6b7c8
-    to: input-d9e0f1g2
-
-  - from: input-d9e0f1g2
-    to: data_store-h3i4j5k6
-
-  - from: input-d9e0f1g2
-    to: terminal-x9y0z1a2
-    handle: invalid
-
-  - from: data_store-h3i4j5k6
-    to: decision-l7m8n9o0
-
-  - from: data_store-h3i4j5k6
-    to: terminal-b3c4d5e6
-    handle: error
-
-  - from: decision-l7m8n9o0
-    to: data_store-p1q2r3s4
-
-  - from: data_store-p1q2r3s4
-    to: terminal-t5u6v7w8
-
-  - from: data_store-p1q2r3s4
-    to: terminal-b3c4d5e6
-    handle: error
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
-  created_at: "2026-03-14T00:00:00Z"
-  updated_at: "2026-03-14T00:00:00Z"
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

@@ -1,120 +1,79 @@
 flow:
   id: analyze-with-agents
-  name: "Analyze With Agents"
+  name: "Analyze with Agents"
   type: agent
   domain: processing
-  description: "Broadcast orchestration with agent group for collaborative content analysis"
+  description: "Runs fact-check, bias-check, and quality score agents in an agent_group with shared memory and coordination. Used for high-priority content requiring comprehensive analysis."
+  auth:
+    required: false
 
 trigger:
-  id: trigger-aW1a2B3c
+  id: trigger-anAgts2eN8
   type: trigger
-  position: { x: 100, y: 0 }
+  label: "event:ContentIngested"
   spec:
     event: "event:ContentIngested"
-    label: "Content Ingested"
+    filter:
+      "payload.category": "technology"
+  connections:
+    - targetNodeId: data_store-rdCt3
 
 nodes:
-  - id: data_store-dR4d5E6f
+  - id: data_store-rdCt3
     type: data_store
-    position: { x: 100, y: 130 }
+    label: "Load Content"
     spec:
       operation: read
       model: Content
       query:
         where:
-          id: "$.content_id"
+          id: "$.payload.content_id"
+      safety: strict
+      returning: true
+    connections:
+      - targetNodeId: agent_group-analyze4
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: orchestrator-oB7g8H9i
-    type: orchestrator
-    position: { x: 100, y: 260 }
-    spec:
-      strategy: broadcast
-      model: "anthropic/claude-sonnet"
-      agents:
-        - flow: "processing/fact-check-agent"
-        - flow: "processing/bias-check-agent"
-        - flow: "processing/score-quality"
-      result_merge_strategy: combine
-
-  - id: agent_group-aG1j2K3l
+  - id: agent_group-analyze4
     type: agent_group
-    position: { x: 100, y: 390 }
+    label: "Analysis Agent Group"
     spec:
-      name: "analysis-group"
+      name: "ContentAnalysisGroup"
+      description: "Coordinated multi-agent analysis group"
       members:
-        - flow: "processing/fact-check-agent"
-        - flow: "processing/bias-check-agent"
-      coordination:
-        communication: broadcast
-        max_active_agents: 3
+        - flow: processing/fact-check-agent
+          domain: processing
+        - flow: processing/bias-check-agent
+          domain: processing
       shared_memory:
         type: key_value
-        store: "analysis-context"
+        store: analysis-cache
+      coordination:
+        communication: shared_context
+        max_active_agents: 2
+        selection_strategy: round_robin
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
 
-  - id: data_store-dU4m5N6o
-    type: data_store
-    position: { x: 100, y: 520 }
-    spec:
-      operation: update
-      model: Content
-      query:
-        where:
-          id: "$.content_id"
-      fields:
-        - name: analysis_result
-          value: "$.result"
-
-  - id: terminal-tS7p8Q9r
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 100, y: 650 }
+    label: "Analysis Complete"
     spec:
+      outcome: success
       status: 200
-      label: "Agent analysis complete"
+      body:
+        message: "Agent group analysis complete"
 
-  - id: terminal-tE1s2T3u
+  - id: terminal-err-pSz2wV3b
     type: terminal
-    position: { x: 400, y: 260 }
+    label: "Error"
     spec:
+      outcome: error
       status: 500
-      label: "Orchestrator error"
-      error_code: ORCHESTRATOR_ERROR
-
-  - id: terminal-tE4v5W6x
-    type: terminal
-    position: { x: 400, y: 130 }
-    spec:
-      status: 500
-      label: "Data store error"
-      error_code: DATA_STORE_ERROR
-
-connections:
-  - source: trigger-aW1a2B3c
-    target: data_store-dR4d5E6f
-    sourceHandle: ""
-  - source: data_store-dR4d5E6f
-    target: orchestrator-oB7g8H9i
-    sourceHandle: "success"
-  - source: data_store-dR4d5E6f
-    target: terminal-tE4v5W6x
-    sourceHandle: "error"
-  - source: orchestrator-oB7g8H9i
-    target: agent_group-aG1j2K3l
-    sourceHandle: "success"
-  - source: orchestrator-oB7g8H9i
-    target: terminal-tE1s2T3u
-    sourceHandle: "error"
-  - source: agent_group-aG1j2K3l
-    target: data_store-dU4m5N6o
-    sourceHandle: "done"
-  - source: agent_group-aG1j2K3l
-    target: terminal-tE1s2T3u
-    sourceHandle: "error"
-  - source: data_store-dU4m5N6o
-    target: terminal-tS7p8Q9r
-    sourceHandle: "success"
-  - source: data_store-dU4m5N6o
-    target: terminal-tE4v5W6x
-    sourceHandle: "error"
+      body:
+        error: "PROCESSING_FAILED"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

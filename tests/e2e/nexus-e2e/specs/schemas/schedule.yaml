@@ -1,48 +1,62 @@
 name: Schedule
-description: Scheduled content publication
 inherits: _base
+description: Scheduled publication job — queues content for future distribution to a specific channel
+owned_by: publishing
+
 fields:
   - name: content_id
     type: uuid
     required: true
+    description: Foreign key to the content to be published
+
   - name: publish_at
-    type: datetime
+    type: date
     required: true
+    description: Target publication datetime
+
   - name: channel_id
     type: uuid
     required: true
+    description: Foreign key to the target channel
+
   - name: created_by
     type: uuid
     required: true
+    description: Foreign key to the user who created this schedule
+
   - name: status
     type: enum
+    ref: ScheduleStatus
     required: true
-    ref: schedule_status
     default: pending
+    description: Current schedule execution status
 
 relationships:
-  - name: content
-    type: belongs_to
-    target: Content
+  - type: belongs_to
+    model: Content
     foreign_key: content_id
-  - name: channel
-    type: belongs_to
-    target: Channel
-    foreign_key: channel_id
+    description: The content to be published
 
-indexes:
-  - fields: [publish_at]
-    type: btree
-    description: "Find upcoming scheduled publications"
-  - fields: [status, publish_at]
-    description: "Query pending publications sorted by date"
+  - type: belongs_to
+    model: Channel
+    foreign_key: channel_id
+    description: The target channel
 
 transitions:
   field: status
   states:
     - from: pending
       to: [executed, cancelled]
-  on_invalid: reject
+  on_invalid: error
+
+indexes:
+  - fields: [publish_at]
+    type: btree
+    description: Find schedules due for execution (ORDER BY publish_at ASC)
+
+  - fields: [status, publish_at]
+    type: btree
+    description: Pending schedules ordered by publish time
 
 metadata:
   created: "2026-03-14T00:00:00Z"

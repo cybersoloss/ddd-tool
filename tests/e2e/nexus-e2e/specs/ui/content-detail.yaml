@@ -1,93 +1,186 @@
 page: content-detail
-route: /content/:id
+title: Content Detail
+layout: split
 
 sections:
+  - id: content-header
+    component: page-header
+    title: "$.title"
+    breadcrumbs:
+      - label: Content
+        path: /content
+      - label: "$.title"
+    actions:
+      buttons:
+        - label: Publish
+          flow: publishing/publish-content
+          variant: primary
+          icon: send
+          visible_when: "$.status === 'approved'"
+        - label: Approve
+          flow: editorial/quick-approve
+          variant: primary
+          icon: check
+          visible_when: "$.status === 'review'"
+        - label: Edit
+          flow: content/update-content
+          variant: secondary
+          icon: edit-2
+
   - id: content-body
     component: detail-card
-    position: main
-    label: "Content"
     data_source: content/get-content
-    tabs: [content, analysis, history]
     fields:
-      title:
+      - key: title
         value: "$.title"
+        label: Title
         editable: true
         update_flow: content/update-content
-      category:
+      - key: category
         value: "$.category"
+        label: Category
         editable: true
         update_flow: content/update-content
-      status:
+      - key: status
         value: "$.status"
-      quality_score:
+        label: Status
+      - key: quality_score
         value: "$.quality_score"
-      bias_score:
+        label: Quality Score
+      - key: bias_score
         value: "$.bias_score"
-      source_type:
+        label: Bias Score
+      - key: source_type
         value: "$.source_type"
-      created_at:
-        value: "$.created_at"
+        label: Source
+    tabs:
+      - id: content
+        label: Content
+        sections: [content-preview]
+      - id: analysis
+        label: AI Analysis
+        sections: [ai-analysis]
+      - id: history
+        label: Version History
+        sections: [version-history]
     actions:
-      - { label: Publish, icon: send, flow: publishing/publish-content, args: { content_id: "$.id" }, variant: primary }
-      - { label: Reject, icon: x-circle, flow: editorial/review-content, args: { content_id: "$.id", action: reject }, variant: danger, confirm: true, confirm_message: "Reject this content?" }
-
-  - id: version-history
-    component: timeline
-    position: sidebar
-    label: "Version History"
-    data_source: content/get-content
-    timestamp_field: "$.versions[].changed_at"
-    title_field: "$.versions[].change_summary"
-    status_field: "$.versions[].status"
-    color_when:
-      - { value: approved, color: green }
-      - { value: rejected, color: red }
-      - { value: draft, color: gray }
-      - { value: review, color: amber }
-    direction: vertical
+      - label: Delete
+        flow: content/delete-content
+        confirm: true
+        confirm_message: "Delete this content item? This action can be undone (soft delete)."
 
   - id: content-preview
     component: markdown-viewer
-    position: main
-    label: "Content Preview"
     data_source: content/get-content
     fields:
       content: "$.body"
     copy_button: true
     syntax_highlight: true
+    collapsible: false
+    empty_state:
+      message: "No content body"
+      icon: file-text
 
-  - id: content-actions
-    component: button-group
-    position: bottom
-    label: "Actions"
-    buttons:
-      - { label: Publish, icon: send, flow: publishing/publish-content, variant: primary }
-      - { label: Archive, icon: archive, flow: content/delete-content, variant: secondary, confirm: true, confirm_message: "Archive this content?" }
+  - id: ai-analysis
+    component: detail-card
+    data_source: content/get-content
+    fields:
+      - key: quality_score
+        value: "$.quality_score"
+        label: Quality Score
+      - key: bias_score
+        value: "$.bias_score"
+        label: Bias Score
+      - key: category
+        value: "$.category"
+        label: Category
+      - key: summary
+        value: "$.summary"
+        label: Summary
+    empty_state:
+      message: "AI analysis not yet complete"
+      icon: cpu
+
+  - id: version-history
+    component: timeline
+    data_source: content/get-content
+    timestamp_field: "$.changed_at"
+    title_field: "$.change_summary"
+    status_field: "$.status"
+    direction: vertical
+    color_when:
+      - condition: "$.status === 'approved'"
+        color: "#22c55e"
+      - condition: "$.status === 'rejected'"
+        color: "#ef4444"
+      - condition: "$.status === 'published'"
+        color: "#6366f1"
+    empty_state:
+      message: "No version history yet"
+      icon: clock
 
 forms:
-  - id: edit-content
-    label: "Edit Content"
-    position: main
+  - id: edit-form
     fields:
-      - { name: title, type: text, label: "Title", required: true, placeholder: "Content title" }
-      - { name: body, type: textarea, label: "Body", required: true }
-      - name: rich_body
+      - name: title
+        type: text
+        label: Title
+        placeholder: Enter content title
+        required: true
+        validation:
+          min_length: 3
+          max_length: 500
+      - name: body
         type: markdown
-        label: "Rich Body"
-        markdown_config: { mode: split, toolbar: true, min_height: 300 }
-      - { name: category, type: select, label: "Category", options: [news, opinion, research, other], required: true }
-      - { name: schedule_date, type: date, label: "Schedule Date" }
-      - { name: publish_at, type: datetime, label: "Publish At" }
-      - { name: media, type: file, label: "Attach Media" }
+        label: Body
+        required: true
+        markdown_config:
+          mode: split
+          toolbar: true
+          min_height: 400
+      - name: category
+        type: select
+        label: Category
+        options: [news, opinion, research, other]
+        required: false
+      - name: schedule_date
+        type: date
+        label: Schedule Date
+        required: false
+      - name: publish_at
+        type: datetime
+        label: Publish At
+        required: false
+      - name: media
+        type: file
+        label: Attach Media
+        required: false
+        accept: "image/*,video/*,application/pdf"
     submit:
       flow: content/update-content
-      label: "Save Changes"
-      loading_label: "Saving..."
-      success: { message: "Content updated successfully" }
-      error: { message: "Failed to update content", retry: true }
+      label: Save Changes
+      loading_label: Saving...
+      success:
+        message: "Content updated successfully"
+        action: refresh
+      error:
+        message: "Failed to save changes"
+        retry: true
 
 state:
-  initial_fetch: [content/get-content]
+  store: content-detail-store
+  initial_fetch:
+    - content/get-content
 
 loading: blur
 error: error-page
+refresh: manual
+
+interactions:
+  - pattern: inline-edit
+    update_flow: content/update-content
+    fields: [title, category]
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

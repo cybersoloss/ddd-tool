@@ -3,94 +3,166 @@ flow:
   name: "Orchestrate Analysis"
   type: agent
   domain: processing
-  description: "Supervisor orchestrator coordinating fact-check, bias, and quality agents"
+  description: "Main AI analysis entry point. Fans out in parallel to classify, fact-check, bias-check, and score-quality sub-flows. Waits for all results, then emits ContentAnalyzed."
+  auth:
+    required: false
 
 trigger:
-  id: trigger-oA1a2B3c
+  id: trigger-orchA2eN8
   type: trigger
-  position: { x: 100, y: 0 }
+  label: "event:ContentIngested"
   spec:
     event: "event:ContentIngested"
-    label: "Content Ingested"
+  connections:
+    - targetNodeId: data_store-rdCt3
 
 nodes:
-  - id: orchestrator-oS4d5E6f
-    type: orchestrator
-    position: { x: 100, y: 130 }
-    spec:
-      strategy: supervisor
-      model: "anthropic/claude-sonnet"
-      agents:
-        - flow: "processing/fact-check-agent"
-          role: "Fact Checker"
-        - flow: "processing/bias-check-agent"
-          role: "Bias Detector"
-        - flow: "processing/score-quality"
-          role: "Quality Scorer"
-      result_merge_strategy: supervisor_picks
-      fallback_chain:
-        - "score-quality"
-      memory:
-        - type: key_value
-          store: "analysis-context"
-
-  - id: data_store-dU7g8H9i
+  - id: data_store-rdCt3
     type: data_store
-    position: { x: 100, y: 260 }
+    label: "Load Content"
     spec:
-      operation: update
+      operation: read
       model: Content
       query:
         where:
-          id: "$.content_id"
-      fields:
-        - name: analysis_result
-          value: "$.result"
+          id: "$.payload.content_id"
+      safety: strict
+      returning: true
+    connections:
+      - targetNodeId: decision-nf8tV9w
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: event-eC1j2K3l
+  - id: decision-nf8tV9w
+    type: decision
+    label: "Content Found?"
+    spec:
+      condition: "$.result !== null"
+    connections:
+      - targetNodeId: parallel-analysis4
+        sourceHandle: "true"
+      - targetNodeId: terminal-notfound-cD4e
+        sourceHandle: "false"
+
+  - id: parallel-analysis4
+    type: parallel
+    label: "Run All Analyzers"
+    spec:
+      failure_policy: best_effort
+      branches:
+        - id: classify
+          label: "Classify"
+        - id: fact_check
+          label: "Fact Check"
+        - id: bias_check
+          label: "Bias Check"
+        - id: score
+          label: "Score Quality"
+    connections:
+      - targetNodeId: sub_flow-classify5
+        sourceHandle: branch-0
+      - targetNodeId: sub_flow-factCheck6
+        sourceHandle: branch-1
+      - targetNodeId: sub_flow-biasCheck7
+        sourceHandle: branch-2
+      - targetNodeId: sub_flow-score8
+        sourceHandle: branch-3
+      - targetNodeId: data_store-upd9nR6s
+        sourceHandle: done
+
+  - id: sub_flow-classify5
+    type: sub_flow
+    label: "Classify Content"
+    spec:
+      flow_ref: processing/classify-content
+    connections:
+      - targetNodeId: parallel-analysis4
+
+  - id: sub_flow-factCheck6
+    type: sub_flow
+    label: "Fact Check"
+    spec:
+      flow_ref: processing/fact-check-agent
+    connections:
+      - targetNodeId: parallel-analysis4
+
+  - id: sub_flow-biasCheck7
+    type: sub_flow
+    label: "Bias Check"
+    spec:
+      flow_ref: processing/bias-check-agent
+    connections:
+      - targetNodeId: parallel-analysis4
+
+  - id: sub_flow-score8
+    type: sub_flow
+    label: "Score Quality"
+    spec:
+      flow_ref: processing/score-quality
+    connections:
+      - targetNodeId: parallel-analysis4
+
+  - id: data_store-upd9nR6s
+    type: data_store
+    label: "Reload Final Content"
+    spec:
+      operation: read
+      model: Content
+      query:
+        where:
+          id: "$.payload.content_id"
+      safety: strict
+      returning: true
+    connections:
+      - targetNodeId: event-emit-yF3g
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
+
+  - id: event-emit-yF3g
     type: event
-    position: { x: 100, y: 390 }
+    label: "Emit ContentAnalyzed"
     spec:
       direction: emit
-      event_name: ContentClassified
+      event_name: ContentAnalyzed
       payload:
-        content_id: "$.content_id"
-        category: "$.category"
+        content_id: "$.payload.content_id"
+        quality_score: "$.result.quality_score"
+        bias_score: "$.result.bias_score"
+        category: "$.result.category"
+        fact_score: "$.result.metadata.fact_score"
+        flagged_claims: "$.result.metadata.flagged_claims"
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
 
-  - id: terminal-tS4m5N6o
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 100, y: 520 }
+    label: "Analysis Complete"
     spec:
+      outcome: success
       status: 200
-      label: "Analysis orchestration complete"
+      body:
+        content_id: "$.payload.content_id"
+        quality_score: "$.result.quality_score"
 
-  - id: terminal-tE7p8Q9r
+  - id: terminal-notfound-cD4e
     type: terminal
-    position: { x: 400, y: 130 }
+    label: "Not Found"
     spec:
-      status: 500
-      label: "Orchestrator error"
-      error_code: ORCHESTRATOR_ERROR
+      outcome: error
+      status: 404
+      body:
+        error: "CONTENT_NOT_FOUND"
 
-connections:
-  - source: trigger-oA1a2B3c
-    target: orchestrator-oS4d5E6f
-    sourceHandle: ""
-  - source: orchestrator-oS4d5E6f
-    target: data_store-dU7g8H9i
-    sourceHandle: "success"
-  - source: orchestrator-oS4d5E6f
-    target: terminal-tE7p8Q9r
-    sourceHandle: "error"
-  - source: data_store-dU7g8H9i
-    target: event-eC1j2K3l
-    sourceHandle: "success"
-  - source: data_store-dU7g8H9i
-    target: terminal-tE7p8Q9r
-    sourceHandle: "error"
-  - source: event-eC1j2K3l
-    target: terminal-tS4m5N6o
-    sourceHandle: "success"
+  - id: terminal-err-pSz2wV3b
+    type: terminal
+    label: "Error"
+    spec:
+      outcome: error
+      status: 500
+      body:
+        error: "PROCESSING_FAILED"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

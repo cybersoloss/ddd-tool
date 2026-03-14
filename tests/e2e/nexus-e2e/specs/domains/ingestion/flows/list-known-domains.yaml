@@ -1,0 +1,117 @@
+flow:
+  id: list-known-domains
+  name: "List Known Domains"
+  type: traditional
+  domain: ingestion
+  description: "Returns autocomplete suggestions for known source domains extracted from existing ContentSource records. Used by the source form's tag-input autocomplete."
+  auth:
+    required: true
+    strategy: jwt
+
+trigger:
+  id: trigger-lstKD2xN8
+  type: trigger
+  label: "GET /api/sources/known-domains"
+  spec:
+    event: "HTTP GET /api/sources/known-domains"
+    rate_limit:
+      window_ms: 60000
+      max_requests: 300
+  connections:
+    - targetNodeId: cache-chkDom5
+
+nodes:
+  - id: cache-chkDom5
+    type: cache
+    label: "Check Domain Cache"
+    spec:
+      operation: check
+      key: "known-domains"
+      store: redis
+      ttl_ms: 600000
+    connections:
+      - targetNodeId: terminal-cached-oRy9
+        sourceHandle: hit
+      - targetNodeId: data_store-rdDomains6
+        sourceHandle: miss
+
+  - id: data_store-rdDomains6
+    type: data_store
+    label: "Extract Known Domains"
+    spec:
+      operation: read
+      model: ContentSource
+      query:
+        where:
+          url:
+            not: null
+      returning: true
+    connections:
+      - targetNodeId: collection-extract7
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
+
+  - id: collection-extract7
+    type: collection
+    label: "Extract Domain Names"
+    spec:
+      operation: reduce
+      input: "$.result"
+      output: domains
+      reducer: "$.acc.includes(new URL($.item.url).hostname) ? $.acc : [...$.acc, new URL($.item.url).hostname]"
+      initial: "[]"
+    connections:
+      - targetNodeId: cache-setDom8
+        sourceHandle: result
+      - targetNodeId: terminal-ok-empty
+        sourceHandle: empty
+
+  - id: cache-setDom8
+    type: cache
+    label: "Cache Domains"
+    spec:
+      operation: set
+      key: "known-domains"
+      store: redis
+      ttl_ms: 600000
+      value: "$.domains"
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+
+  - id: terminal-cached-oRy9
+    type: terminal
+    label: "Cached Domains"
+    spec:
+      outcome: success
+      status: 200
+      body: "$.cached_value"
+
+  - id: terminal-ok-zQ7rS8tU
+    type: terminal
+    label: "Known Domains"
+    spec:
+      outcome: success
+      status: 200
+      body: "$.domains"
+
+  - id: terminal-ok-empty
+    type: terminal
+    label: "No Domains"
+    spec:
+      outcome: success
+      status: 200
+      body: []
+
+  - id: terminal-err-pSz2wV3b
+    type: terminal
+    label: "Error"
+    spec:
+      outcome: error
+      status: 500
+      body:
+        error: "INTERNAL_ERROR"
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

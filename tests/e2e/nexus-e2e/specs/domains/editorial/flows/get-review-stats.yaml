@@ -1,99 +1,133 @@
 flow:
   id: get-review-stats
-  name: Get Review Stats
-  description: Returns aggregated review statistics with Redis caching
+  name: "Get Review Stats"
   type: traditional
   domain: editorial
-  version: "1.0.0"
-  trigger:
-    type: http
-    method: GET
-    path: /api/v1/editorial/stats
+  description: "Returns reviewer performance stats: items reviewed, avg review time, approval rate, and rejection rate over a configurable time window."
   auth:
     required: true
+    roles: [admin, editor]
     strategy: jwt
 
+trigger:
+  id: trigger-grvSt2xN8
+  type: trigger
+  label: "GET /api/editorial/stats"
+  spec:
+    event: "HTTP GET /api/editorial/stats"
+  connections:
+    - targetNodeId: input-vAl3kP4r
+
 nodes:
-  - id: trigger-z9a0b1c2
-    type: trigger
-    name: HTTP GET Review Stats
-    config:
-      method: GET
-      path: /api/v1/editorial/stats
+  - id: input-vAl3kP4r
+    type: input
+    label: "Validate Params"
+    spec:
+      fields:
+        - name: reviewer_id
+          type: string
+          required: false
+        - name: date_from
+          type: string
+          required: false
+        - name: date_to
+          type: string
+          required: false
+    connections:
+      - targetNodeId: parallel-stats4
+        sourceHandle: valid
+      - targetNodeId: terminal-inv-aB7cD8eF
+        sourceHandle: invalid
 
-  - id: cache-d3e4f5g6
-    type: cache
-    name: Check Stats Cache
-    config:
-      operation: check
-      key: "review-stats"
-      store: redis
+  - id: parallel-stats4
+    type: parallel
+    label: "Compute Stats"
+    spec:
+      branches:
+        - id: approved
+          label: "Count Approved"
+        - id: rejected
+          label: "Count Rejected"
+    connections:
+      - targetNodeId: data_store-cntApp5
+        sourceHandle: branch-0
+      - targetNodeId: data_store-cntRej6
+        sourceHandle: branch-1
+      - targetNodeId: transform-agg7
+        sourceHandle: done
 
-  - id: data_store-h7i8j9k0
+  - id: data_store-cntApp5
     type: data_store
-    name: Aggregate Content Stats
-    config:
+    label: "Count Approvals"
+    spec:
       operation: aggregate
       model: Content
+      query:
+        where:
+          metadata:
+            reviewer_id: "$.reviewer_id"
+          status: approved
+          updated_at:
+            gte: "$.date_from"
+            lte: "$.date_to"
       aggregate_fields:
         - function: count
           field: id
-          alias: total
-      group_by:
-        - status
+          alias: count
+      returning: true
+    connections:
+      - targetNodeId: parallel-stats4
 
-  - id: cache-l1m2n3o4
-    type: cache
-    name: Set Stats Cache
-    config:
-      operation: set
-      key: "review-stats"
-      store: redis
-      ttl_ms: 300000
+  - id: data_store-cntRej6
+    type: data_store
+    label: "Count Rejections"
+    spec:
+      operation: aggregate
+      model: ContentRejection
+      query:
+        where:
+          rejected_by: "$.reviewer_id"
+          rejected_at:
+            gte: "$.date_from"
+            lte: "$.date_to"
+      aggregate_fields:
+        - function: count
+          field: id
+          alias: count
+      returning: true
+    connections:
+      - targetNodeId: parallel-stats4
 
-  - id: terminal-p5q6r7s8
+  - id: transform-agg7
+    type: transform
+    label: "Build Stats Response"
+    spec:
+      mode: expression
+      field_mappings:
+        approved: "$.branch_results.approved.count"
+        rejected: "$.branch_results.rejected.count"
+        total: "$.branch_results.approved.count + $.branch_results.rejected.count"
+        approval_rate: "$.branch_results.approved.count / ($.branch_results.approved.count + $.branch_results.rejected.count || 1)"
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    name: Cache Hit Response
-    config:
+    label: "Stats"
+    spec:
+      outcome: success
       status: 200
-      response_type: json
+      body: "$.result"
 
-  - id: terminal-t9u0v1w2
+  - id: terminal-inv-aB7cD8eF
     type: terminal
-    name: Stats Response
-    config:
-      status: 200
-      response_type: json
-
-  - id: terminal-x3y4z5a6
-    type: terminal
-    name: Data Store Error
-    config:
-      status: 500
-      response_type: error
-
-connections:
-  - from: trigger-z9a0b1c2
-    to: cache-d3e4f5g6
-
-  - from: cache-d3e4f5g6
-    to: terminal-p5q6r7s8
-    handle: hit
-
-  - from: cache-d3e4f5g6
-    to: data_store-h7i8j9k0
-    handle: miss
-
-  - from: data_store-h7i8j9k0
-    to: cache-l1m2n3o4
-
-  - from: data_store-h7i8j9k0
-    to: terminal-x3y4z5a6
-    handle: error
-
-  - from: cache-l1m2n3o4
-    to: terminal-t9u0v1w2
+    label: "Invalid"
+    spec:
+      outcome: error
+      status: 400
+      body:
+        error: "VALIDATION_ERROR"
 
 metadata:
-  created_at: "2026-03-14T00:00:00Z"
-  updated_at: "2026-03-14T00:00:00Z"
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

@@ -1,84 +1,164 @@
 page: sources
-route: /sources
+title: Content Sources
+layout: full
 
 sections:
+  - id: sources-header
+    component: page-header
+    title: Content Sources
+    subtitle: "$.total_count active sources"
+    actions:
+      buttons:
+        - label: Add Source
+          flow: ingestion/manual-content-entry
+          variant: primary
+          icon: plus
+        - label: Import CSV
+          flow: ingestion/import-csv-content
+          variant: secondary
+          icon: upload
+
   - id: source-filters
     component: filter-bar
-    position: top
-    label: "Filters"
-    fields:
-      - { key: type, type: select, label: "Type", options: [rss, web, csv, webhook, social, filesystem] }
-      - { key: enabled, type: toggle, label: "Enabled Only" }
     apply_flow: ingestion/list-sources
+    reset_label: Clear
+    fields:
+      - key: type
+        type: select
+        label: Type
+        options: [rss, web, csv, webhook, social, filesystem]
+      - key: enabled
+        type: toggle
+        label: Active only
 
   - id: source-grid
     component: card-grid
-    position: main
-    label: "Sources"
     data_source: ingestion/list-sources
-    columns: { desktop: 3, tablet: 2, mobile: 1 }
+    columns:
+      desktop: 3
+      tablet: 2
+      mobile: 1
     item_template:
       title: "$.name"
-      description: "$.type · Last synced: $.last_synced_at"
-      footer: "$.url"
+      description: "$.url"
+      footer: "Last synced: $.last_synced_at"
+      badge: "$.type"
     item_actions:
-      - { label: Edit, icon: edit, flow: ingestion/update-source }
-      - { label: Disable, icon: power, flow: ingestion/update-source, args: { enabled: false }, confirm: true, confirm_message: "Disable this source?" }
-      - { label: Delete, icon: trash, flow: ingestion/delete-source, confirm: true, confirm_message: "Delete this source?", variant: danger }
-    interactions:
-      - pattern: reorder
-        update_flow: ingestion/reorder-sources
-      - pattern: inline-edit
-        editable_fields: ["enabled"]
-        update_flow: ingestion/update-source
+      - label: Edit
+        action:
+          type: call_flow
+          flow: content/update-content
+      - label: Sync Now
+        action:
+          type: call_flow
+          flow: ingestion/fetch-rss-feeds
+      - label: Disable
+        action:
+          type: call_flow
+          flow: content/update-content
+        confirm: true
+        confirm_message: "Disable this source? It will stop fetching content."
+      - label: Delete
+        action:
+          type: call_flow
+          flow: content/delete-content
+        confirm: true
+        confirm_message: "Delete this source permanently?"
     empty_state:
       message: "No sources configured"
       icon: rss
-      action: { label: "Add a source" }
-
-  - id: source-actions
-    component: button-group
-    position: top
-    label: "Actions"
-    buttons:
-      - { label: "Add Source", icon: plus, variant: primary }
+      cta:
+        label: Add your first source
+        action:
+          type: call_flow
+          flow: ingestion/manual-content-entry
+    interactions:
+      - pattern: drag-drop
+        update_flow: content/drag-reorder
+        description: Drag cards to reorder fetch priority
 
 forms:
-  - id: add-source
-    label: "Add Source"
-    position: sidebar
+  - id: add-source-form
     fields:
-      - { name: name, type: text, label: "Name", required: true, placeholder: "Source name" }
-      - { name: url, type: text, label: "URL", placeholder: "https://..." }
+      - name: name
+        type: text
+        label: Source Name
+        placeholder: e.g. TechCrunch RSS
+        required: true
+        validation:
+          min_length: 2
+          max_length: 200
       - name: type
         type: select
-        label: "Type"
-        required: true
+        label: Source Type
         options: [rss, web, csv, webhook, social, filesystem]
-      - { name: enabled, type: toggle, label: "Enabled", default: true }
+        required: true
+        options_depends_on:
+          field: type
+          transform: set_options
+          source_field: credentials_fields
+      - name: url
+        type: text
+        label: URL
+        placeholder: https://example.com/feed.xml
+        required: false
+        visible_when:
+          field: type
+          value: [rss, web, webhook]
+      - name: enabled
+        type: toggle
+        label: Enable immediately
+        default: true
       - name: allowed_domains
         type: tag-input
-        label: "Allowed Domains"
+        label: Allowed Domains
+        placeholder: Add domain and press Enter
         autocomplete_source: ingestion/list-known-domains
-        autocomplete_field: domain
-      - { name: rate_limit, type: number, label: "Rate Limit (req/min)", default: 10 }
-      - { name: label_color, type: color, label: "Label Color", default: "#2563eb" }
+        required: false
+      - name: rate_limit
+        type: number
+        label: Rate Limit (req/min)
+        placeholder: 60
+        required: false
+        validation:
+          min: 1
+          max: 1000
+      - name: label_color
+        type: color
+        label: Label Color
+        default: "#6366f1"
       - name: credentials
         type: text
-        label: "Credentials"
-        visible_when: { field: type, value: [social, webhook] }
-        placeholder: "API key or secret"
-        options_depends_on: { field: type, transform: set_options, source_field: type }
-      - { name: start_date, type: date, label: "Fetch From Date" }
+        label: Credentials / Token
+        placeholder: API key or token
+        required: false
+        visible_when:
+          field: type
+          value: [social, webhook]
+      - name: start_date
+        type: date
+        label: Fetch Since Date
+        required: false
     submit:
-      flow: ingestion/create-source
-      label: "Create Source"
-      loading_label: "Creating..."
-      success: { message: "Source created successfully" }
-      error: { message: "Failed to create source", retry: true }
+      flow: ingestion/manual-content-entry
+      label: Add Source
+      loading_label: Adding source...
+      success:
+        message: "Source added successfully"
+        action: refresh
+      error:
+        message: "Failed to add source"
+        retry: true
 
 state:
-  initial_fetch: [ingestion/list-sources]
+  store: sources-store
+  initial_fetch:
+    - ingestion/list-sources
 
 loading: skeleton
 error: retry-banner
+refresh: manual
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

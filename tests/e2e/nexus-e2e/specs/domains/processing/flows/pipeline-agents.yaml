@@ -3,85 +3,134 @@ flow:
   name: "Pipeline Agents"
   type: agent
   domain: processing
-  description: "Sequential agent pipeline for deep content analysis with round-robin coordination"
+  description: "Chains classify → fact-check → bias-check → score as a sequential agent pipeline with handoffs. Each agent completes before the next begins, passing forward enriched context."
+  auth:
+    required: false
 
 trigger:
-  id: trigger-pA1a2B3c
+  id: trigger-pipAg2eN8
   type: trigger
-  position: { x: 100, y: 0 }
+  label: "event:ContentIngested"
   spec:
     event: "event:ContentIngested"
-    label: "Content Ingested"
+    filter:
+      "payload.pipeline": "sequential"
+  connections:
+    - targetNodeId: data_store-rdCt3
 
 nodes:
-  - id: agent_group-aG4d5E6f
-    type: agent_group
-    position: { x: 100, y: 130 }
-    spec:
-      name: "pipeline-group"
-      members:
-        - flow: "processing/classify-content"
-        - flow: "processing/fact-check-agent"
-        - flow: "processing/bias-check-agent"
-      coordination:
-        communication: sequential
-        selection_strategy: round_robin
-      shared_memory:
-        type: key_value
-        store: "analysis-context"
-
-  - id: data_store-dU7g8H9i
+  - id: data_store-rdCt3
     type: data_store
-    position: { x: 100, y: 260 }
+    label: "Load Content"
     spec:
-      operation: update
+      operation: read
       model: Content
       query:
         where:
-          id: "$.content_id"
-      fields:
-        - name: pipeline_result
-          value: "$.result"
+          id: "$.payload.content_id"
+      safety: strict
+      returning: true
+    connections:
+      - targetNodeId: handoff-classify4
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: terminal-tS1j2K3l
-    type: terminal
-    position: { x: 100, y: 390 }
+  - id: handoff-classify4
+    type: handoff
+    label: "Stage 1: Classify"
     spec:
+      mode: consult
+      target:
+        flow: processing/classify-content
+        domain: processing
+      context_transfer:
+        include_types: [data, state]
+        max_context_tokens: 2000
+      on_complete: continue
+      on_failure: terminal-err-pSz2wV3b
+      notify_customer: false
+    connections:
+      - targetNodeId: handoff-factcheck5
+
+  - id: handoff-factcheck5
+    type: handoff
+    label: "Stage 2: Fact Check"
+    spec:
+      mode: consult
+      target:
+        flow: processing/fact-check-agent
+        domain: processing
+      context_transfer:
+        include_types: [data, state, memory]
+        max_context_tokens: 4000
+      on_complete: continue
+      on_failure: terminal-err-pSz2wV3b
+      notify_customer: false
+    connections:
+      - targetNodeId: handoff-biascheck6
+
+  - id: handoff-biascheck6
+    type: handoff
+    label: "Stage 3: Bias Check"
+    spec:
+      mode: consult
+      target:
+        flow: processing/bias-check-agent
+        domain: processing
+      context_transfer:
+        include_types: [data, state, memory]
+        max_context_tokens: 4000
+      on_complete: continue
+      on_failure: terminal-err-pSz2wV3b
+      notify_customer: false
+    connections:
+      - targetNodeId: sub_flow-score7
+
+  - id: sub_flow-score7
+    type: sub_flow
+    label: "Stage 4: Score Quality"
+    spec:
+      flow_ref: processing/score-quality
+    connections:
+      - targetNodeId: event-emit8
+
+  - id: event-emit8
+    type: event
+    label: "Emit ContentAnalyzed"
+    spec:
+      direction: emit
+      event_name: ContentAnalyzed
+      payload:
+        content_id: "$.payload.content_id"
+        pipeline: "sequential"
+        stages_completed:
+          - classify
+          - fact-check
+          - bias-check
+          - score
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+
+  - id: terminal-ok-zQ7rS8tU
+    type: terminal
+    label: "Pipeline Complete"
+    spec:
+      outcome: success
       status: 200
-      label: "Pipeline complete"
+      body:
+        message: "Sequential agent pipeline complete"
+        content_id: "$.payload.content_id"
+        stages: [classify, fact-check, bias-check, score]
 
-  - id: terminal-tE4m5N6o
+  - id: terminal-err-pSz2wV3b
     type: terminal
-    position: { x: 400, y: 130 }
+    label: "Error"
     spec:
+      outcome: error
       status: 500
-      label: "Agent group error"
-      error_code: AGENT_GROUP_ERROR
-
-  - id: terminal-tE7p8Q9r
-    type: terminal
-    position: { x: 400, y: 260 }
-    spec:
-      status: 500
-      label: "Data store error"
-      error_code: DATA_STORE_ERROR
-
-connections:
-  - source: trigger-pA1a2B3c
-    target: agent_group-aG4d5E6f
-    sourceHandle: ""
-  - source: agent_group-aG4d5E6f
-    target: data_store-dU7g8H9i
-    sourceHandle: "done"
-  - source: agent_group-aG4d5E6f
-    target: terminal-tE4m5N6o
-    sourceHandle: "error"
-  - source: data_store-dU7g8H9i
-    target: terminal-tS1j2K3l
-    sourceHandle: "success"
-  - source: data_store-dU7g8H9i
-    target: terminal-tE7p8Q9r
-    sourceHandle: "error"
+      body:
+        error: "PROCESSING_FAILED"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

@@ -1,112 +1,116 @@
 flow:
   id: retry-failed-publish
-  name: Retry Failed Publish
-  description: Retries failed publish records with exponential backoff up to 3 attempts
+  name: "Retry Failed Publish"
   type: traditional
   domain: publishing
-  version: "1.0.0"
-  trigger:
-    type: event
-    event: PublishFailed
-  auth: null
+  description: "Cron job that finds failed publish records with attempts < 3 and re-enqueues them with exponential backoff delay."
+  auth:
+    required: false
+
+trigger:
+  id: trigger-retP2cN8
+  type: trigger
+  label: "cron */30 * * * *"
+  spec:
+    event: "cron */30 * * * *"
+    job_config:
+      queue: retry-publish
+      concurrency: 1
+      timeout: 60000
+      retry:
+        attempts: 1
+  connections:
+    - targetNodeId: data_store-rdFailed5
 
 nodes:
-  - id: trigger-m9n0o1p2
-    type: trigger
-    name: Publish Failed Event
-    config:
-      event: PublishFailed
-
-  - id: data_store-q3r4s5t6
+  - id: data_store-rdFailed5
     type: data_store
-    name: Read Publish Record
-    config:
+    label: "Find Failed Records"
+    spec:
       operation: read
       model: PublishRecord
       query:
-        content_id: "$.content_id"
-        status: failed
+        where:
+          status: failed
+          attempts:
+            lt: 3
+      returning: true
+    connections:
+      - targetNodeId: collection-filt6kQ7
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: loop-u7v8w9x0
+  - id: collection-filt6kQ7
+    type: collection
+    label: "Check Has Items"
+    spec:
+      operation: filter
+      input: "$.result"
+      output: retry_records
+      predicate: "$.item.attempts < 3"
+    connections:
+      - targetNodeId: loop-retry7nR6s
+        sourceHandle: result
+      - targetNodeId: terminal-ok-empty
+        sourceHandle: empty
+
+  - id: loop-retry7nR6s
     type: loop
-    name: Retry Each Failed Record
-    config:
-      collection: "$.failed_records"
-      iterator: "record"
-      break_condition: "$.record.attempts >= 3"
-      on_error: continue
-      accumulate:
-        field: results
-        strategy: push
+    label: "Retry Each"
+    spec:
+      collection: "$.retry_records"
+      iterator: record
+      body_start: event-enq8tV9w
+    connections:
+      - targetNodeId: event-enq8tV9w
+        sourceHandle: body
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: done
 
-  - id: delay-y1z2a3b4
-    type: delay
-    name: Exponential Backoff
-    config:
-      strategy: exponential
-      min_ms: "$.record.attempts * 2000"
+  - id: event-enq8tV9w
+    type: event
+    label: "Re-enqueue Publish"
+    spec:
+      direction: emit
+      event_name: ContentApproved
+      target_queue: publish-retry
+      async: true
+      delay_ms: "$.record.attempts * 60000"
+      payload:
+        content_id: "$.record.content_id"
+        channel_ids: ["$.record.channel_id"]
+        retry_attempt: "$.record.attempts + 1"
+    connections:
+      - targetNodeId: loop-retry7nR6s
 
-  - id: sub_flow-c5d6e7f8
-    type: sub_flow
-    name: Retry Publish Content
-    config:
-      flow_ref: "publishing/publish-content"
-
-  - id: data_store-g9h0i1j2
-    type: data_store
-    name: Update Publish Record
-    config:
-      operation: update
-      model: PublishRecord
-      query:
-        id: "$.record.id"
-      set:
-        attempts: "$.record.attempts + 1"
-        last_attempt_at: "$.now"
-
-  - id: terminal-k3l4m5n6
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    name: Retry Complete
-    config:
+    label: "Retries Queued"
+    spec:
+      outcome: success
       status: 200
-      response_type: success
+      body:
+        retried: "$.retry_records.length"
 
-  - id: terminal-o7p8q9r0
+  - id: terminal-ok-empty
     type: terminal
-    name: Data Store Error
-    config:
+    label: "No Failed Records"
+    spec:
+      outcome: success
+      status: 200
+      body:
+        message: "No failed records to retry"
+
+  - id: terminal-err-pSz2wV3b
+    type: terminal
+    label: "Error"
+    spec:
+      outcome: error
       status: 500
-      response_type: error
-
-connections:
-  - from: trigger-m9n0o1p2
-    to: data_store-q3r4s5t6
-
-  - from: data_store-q3r4s5t6
-    to: loop-u7v8w9x0
-
-  - from: data_store-q3r4s5t6
-    to: terminal-o7p8q9r0
-    handle: error
-
-  - from: loop-u7v8w9x0
-    to: delay-y1z2a3b4
-    handle: body
-
-  - from: delay-y1z2a3b4
-    to: sub_flow-c5d6e7f8
-
-  - from: sub_flow-c5d6e7f8
-    to: data_store-g9h0i1j2
-
-  - from: data_store-g9h0i1j2
-    to: loop-u7v8w9x0
-    label: next iteration
-
-  - from: loop-u7v8w9x0
-    to: terminal-k3l4m5n6
-    handle: done
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
-  created_at: "2026-03-14T00:00:00Z"
-  updated_at: "2026-03-14T00:00:00Z"
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

@@ -1,44 +1,102 @@
 enums:
-  content_category:
+  ContentCategory:
     values: [news, opinion, research, other]
-    description: Content classification categories
+    description: AI classification category for content items
 
-  content_status:
+  ContentStatus:
     values: [draft, review, approved, rejected, published, archived]
-    description: Content lifecycle status
+    description: Content lifecycle state — drives editorial workflow
 
-  source_type:
-    values: [rss, web, csv, webhook, social, filesystem]
-    description: Content ingestion source types
-
-  channel_type:
-    values: [website, twitter, linkedin, newsletter, webhook]
-    description: Publishing channel types
-
-  user_plan:
+  UserPlan:
     values: [free, pro, enterprise]
-    description: User subscription plan tiers
+    description: User subscription and feature tier
 
-  rule_type:
-    values: [ingestion, routing, publishing]
-    description: System rule categories
+  SourceType:
+    values: [rss, web, csv, webhook, social, filesystem]
+    description: Content acquisition source type
 
-  publish_status:
+  ChannelType:
+    values: [website, twitter, linkedin, newsletter, webhook]
+    description: Publishing destination channel type
+
+  PublishStatus:
     values: [pending, success, failed]
-    description: Publication attempt status
+    description: Status of a single publication attempt
 
-  schedule_status:
+  ScheduleStatus:
     values: [pending, executed, cancelled]
-    description: Scheduled publication status
+    description: Status of a scheduled publication job
 
-  notification_type:
-    values: [email, slack, push, in_app]
-    description: Notification delivery channels
+  RuleType:
+    values: [ingestion, routing, publishing]
+    description: Category of content routing/filtering rule
 
-  digest_frequency:
+  NotificationEventType:
+    values:
+      - content_approved
+      - content_rejected
+      - content_published
+      - alert_triggered
+      - user_registered
+      - settings_changed
+      - publish_failed
+    description: Events that can trigger user notifications
+
+  DigestFrequency:
     values: [realtime, hourly, daily, weekly]
-    description: Notification digest frequency options
+    description: How often notification digests are batched and sent
 
-  event_type_category:
-    values: [content, user, system, publishing, editorial]
-    description: Analytics event type categories
+  AnomalyType:
+    values: [spike, drop, flatline, error_rate]
+    description: Type of metric anomaly detected by the monitoring system
+
+  ReviewAction:
+    values: [approve, reject, escalate, defer]
+    description: Editorial reviewer action options in the human gate
+
+  ApiKeyScope:
+    values:
+      - "read:content"
+      - "write:content"
+      - "read:analytics"
+      - "admin:users"
+      - "admin:settings"
+    description: Permission scopes assignable to API keys
+
+value_objects:
+  Pagination:
+    description: Cursor-based pagination parameters
+    fields:
+      cursor: "string | null"
+      limit: number
+      direction: "asc | desc"
+    default:
+      limit: 20
+      direction: desc
+
+  DateRange:
+    description: Inclusive date interval for filtering
+    fields:
+      start: date
+      end: date
+
+  ContentMetrics:
+    description: Aggregated stats for a content item or batch
+    fields:
+      ingested_count: number
+      processed_count: number
+      approved_count: number
+      rejected_count: number
+      published_count: number
+
+  ServiceHealth:
+    description: Health status of a single infrastructure service
+    fields:
+      service_id: string
+      status: "healthy | degraded | down"
+      latency_ms: number
+      checked_at: date
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

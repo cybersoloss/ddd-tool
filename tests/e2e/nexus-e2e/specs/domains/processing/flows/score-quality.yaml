@@ -3,136 +3,122 @@ flow:
   name: "Score Quality"
   type: traditional
   domain: processing
-  description: "Multi-dimensional content quality scoring with guardrails"
-  contract:
-    inputs:
-      - content_id
-    outputs:
-      - quality_score
-      - confidence
+  description: "Computes a composite quality_score (0-100) from readability, factual density, bias score, and completeness. Updates Content record and emits ContentScored."
+  auth:
+    required: false
 
 trigger:
-  id: trigger-sQ1a2B3c
+  id: trigger-scrQ2eN8
   type: trigger
-  position: { x: 100, y: 0 }
+  label: "event:ContentIngested"
   spec:
-    event: "event:ContentClassified"
-    label: "Content Classified"
+    event: "event:ContentIngested"
+  connections:
+    - targetNodeId: data_store-rdCt3
 
 nodes:
-  - id: guardrail-gI4d5E6f
-    type: guardrail
-    position: { x: 100, y: 130 }
-    spec:
-      position: input
-      checks:
-        - type: required_fields
-          action: block
-          fields:
-            - content_id
-
-  - id: data_store-dR7g8H9i
+  - id: data_store-rdCt3
     type: data_store
-    position: { x: 100, y: 260 }
+    label: "Load Content"
     spec:
       operation: read
       model: Content
       query:
         where:
-          id: "$.content_id"
+          id: "$.payload.content_id"
+      safety: strict
+      returning: true
+    connections:
+      - targetNodeId: llm_call-score4
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: llm_call-lC1j2K3l
+  - id: llm_call-score4
     type: llm_call
-    position: { x: 100, y: 390 }
+    label: "Score Quality"
     spec:
-      model: "anthropic/claude-sonnet"
-      prompt: "Score this content quality from 0 to 100"
+      model: claude-opus-4-6
+      temperature: 0.1
+      max_tokens: 300
+      prompt: |
+        Score the quality of this content on a scale 0-100.
+        Consider: readability (25pts), factual density (25pts), neutrality/bias (25pts), completeness (25pts).
+
+        Title: $.result.title
+        Body: $.result.body.substring(0, 2000)
+        Known bias_score: $.result.metadata.bias_score || 0
+        Known fact_score: $.result.metadata.fact_score || 0
+
+        Return JSON: { "quality_score": 82, "readability": 90, "factual": 80, "neutrality": 75, "completeness": 85 }
       structured_output:
-        properties:
-          quality_score:
-            type: number
-          confidence:
-            type: number
-          factors:
-            type: array
+        quality_score:
+          type: number
+        readability:
+          type: number
+        factual:
+          type: number
+        neutrality:
+          type: number
+        completeness:
+          type: number
+    connections:
+      - targetNodeId: data_store-upd5nR6s
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: guardrail-gO4m5N6o
-    type: guardrail
-    position: { x: 100, y: 520 }
-    spec:
-      position: output
-      checks:
-        - type: business_rule
-          action: warn
-          rule: "$.quality_score < 10 || $.quality_score > 100"
-
-  - id: data_store-dU7p8Q9r
+  - id: data_store-upd5nR6s
     type: data_store
-    position: { x: 100, y: 650 }
+    label: "Update Quality Score"
     spec:
       operation: update
       model: Content
       query:
         where:
-          id: "$.content_id"
-      fields:
-        - name: quality_score
-          value: "$.quality_score"
+          id: "$.payload.content_id"
+      data:
+        quality_score: "$.llm_result.quality_score"
+        metadata:
+          readability_score: "$.llm_result.readability"
+          scored_at: "$.now()"
+      returning: true
+    connections:
+      - targetNodeId: event-emit-yF3g
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: terminal-tS1s2T3u
-    type: terminal
-    position: { x: 100, y: 780 }
+  - id: event-emit-yF3g
+    type: event
+    label: "Emit ContentScored"
     spec:
+      direction: emit
+      event_name: ContentScored
+      payload:
+        content_id: "$.payload.content_id"
+        quality_score: "$.llm_result.quality_score"
+        auto_approve_eligible: "$.llm_result.quality_score >= 75"
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+
+  - id: terminal-ok-zQ7rS8tU
+    type: terminal
+    label: "Scored"
+    spec:
+      outcome: success
       status: 200
-      label: "Quality scored"
+      body:
+        quality_score: "$.llm_result.quality_score"
 
-  - id: terminal-tE4v5W6x
+  - id: terminal-err-pSz2wV3b
     type: terminal
-    position: { x: 400, y: 130 }
+    label: "Error"
     spec:
-      status: 422
-      label: "Guardrail blocked"
-      error_code: REQUIRED_FIELDS_MISSING
-
-  - id: terminal-tE7y8Z9a
-    type: terminal
-    position: { x: 400, y: 390 }
-    spec:
+      outcome: error
       status: 500
-      label: "LLM call error"
-      error_code: LLM_CALL_ERROR
-
-connections:
-  - source: trigger-sQ1a2B3c
-    target: guardrail-gI4d5E6f
-    sourceHandle: ""
-  - source: guardrail-gI4d5E6f
-    target: data_store-dR7g8H9i
-    sourceHandle: "pass"
-  - source: guardrail-gI4d5E6f
-    target: terminal-tE4v5W6x
-    sourceHandle: "block"
-  - source: data_store-dR7g8H9i
-    target: llm_call-lC1j2K3l
-    sourceHandle: "success"
-  - source: data_store-dR7g8H9i
-    target: terminal-tE7y8Z9a
-    sourceHandle: "error"
-  - source: llm_call-lC1j2K3l
-    target: guardrail-gO4m5N6o
-    sourceHandle: "success"
-  - source: llm_call-lC1j2K3l
-    target: terminal-tE7y8Z9a
-    sourceHandle: "error"
-  - source: guardrail-gO4m5N6o
-    target: data_store-dU7p8Q9r
-    sourceHandle: "pass"
-  - source: data_store-dU7p8Q9r
-    target: terminal-tS1s2T3u
-    sourceHandle: "success"
-  - source: data_store-dU7p8Q9r
-    target: terminal-tE7y8Z9a
-    sourceHandle: "error"
+      body:
+        error: "PROCESSING_FAILED"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

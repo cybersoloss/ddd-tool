@@ -3,85 +3,97 @@ flow:
   name: "List Users"
   type: traditional
   domain: users
-  description: "Admin-only endpoint to list users with optional filters, sorting, and cursor pagination"
+  description: "Returns paginated user list with optional role and plan filters. Supports cursor-based pagination. Admin only."
   auth:
     required: true
+    roles: [admin]
     strategy: jwt
-    roles:
-      - admin
 
 trigger:
-  id: trigger-lU1a2B3c
+  id: trigger-lstU2xN8
   type: trigger
-  position: { x: 250, y: 0 }
+  label: "GET /api/users"
   spec:
-    event: "http GET /api/v1/users"
-    label: "List users endpoint"
+    event: "HTTP GET /api/users"
+  connections:
+    - targetNodeId: input-vAl3kP4r
 
 nodes:
-  - id: data_store-rU4d5E6f
+  - id: input-vAl3kP4r
+    type: input
+    label: "Validate Filters"
+    spec:
+      fields:
+        - name: role
+          type: string
+          required: false
+          enum: [admin, editor, reviewer, viewer]
+        - name: plan
+          type: string
+          required: false
+          enum: [free, pro, enterprise]
+        - name: cursor
+          type: string
+          required: false
+        - name: limit
+          type: number
+          required: false
+          default: 25
+    connections:
+      - targetNodeId: data_store-rdUsers5
+        sourceHandle: valid
+      - targetNodeId: terminal-inv-aB7cD8eF
+        sourceHandle: invalid
+
+  - id: data_store-rdUsers5
     type: data_store
-    position: { x: 250, y: 130 }
+    label: "Query Users"
     spec:
       operation: read
       model: User
-      filters:
-        - field: role_id
-          required: false
-        - field: plan
-          required: false
-      sort:
-        default: created_at
-      pagination:
-        type: cursor
+      query:
+        where:
+          role_id: "$.role"
+          plan: "$.plan"
+          deleted_at: null
+        cursor: "$.cursor"
+        limit: "$.limit"
+        order_by:
+          created_at: desc
+      include:
+        profile: true
+      returning: true
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: collection-fS7g8H9i
-    type: collection
-    position: { x: 250, y: 260 }
-    spec:
-      operation: filter
-      sort: "$.sort_field"
-      first:
-        count: 20
-
-  - id: terminal-sL1j2K3l
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 250, y: 390 }
+    label: "User List"
     spec:
+      outcome: success
       status: 200
-      label: "Users listed successfully"
+      body: "$.result"
 
-  - id: terminal-eL4m5N6o
+  - id: terminal-inv-aB7cD8eF
     type: terminal
-    position: { x: 550, y: 130 }
+    label: "Invalid"
     spec:
+      outcome: error
+      status: 400
+      body:
+        error: "VALIDATION_ERROR"
+
+  - id: terminal-err-pSz2wV3b
+    type: terminal
+    label: "Error"
+    spec:
+      outcome: error
       status: 500
-      label: "Data store error"
-      error_code: DATA_STORE_ERROR
-
-  - id: terminal-eE7p8Q9r
-    type: terminal
-    position: { x: 550, y: 260 }
-    spec:
-      status: 200
-      label: "No users found - empty list"
-
-connections:
-  - source: trigger-lU1a2B3c
-    target: data_store-rU4d5E6f
-    sourceHandle: ""
-  - source: data_store-rU4d5E6f
-    target: collection-fS7g8H9i
-    sourceHandle: "success"
-  - source: data_store-rU4d5E6f
-    target: terminal-eL4m5N6o
-    sourceHandle: "error"
-  - source: collection-fS7g8H9i
-    target: terminal-sL1j2K3l
-    sourceHandle: "result"
-  - source: collection-fS7g8H9i
-    target: terminal-eE7p8Q9r
-    sourceHandle: "empty"
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

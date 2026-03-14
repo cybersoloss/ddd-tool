@@ -3,129 +3,101 @@ flow:
   name: "Send Templated Notification"
   type: traditional
   domain: notifications
-  description: "Parameterized template-based notification delivery across multiple channels"
-  template: true
-  parameters:
-    channel:
-      type: string
-      values:
-        - email
-        - slack
-        - push
-    template_id:
-      type: string
-    recipient_id:
-      type: string
+  description: "Sends an email or Slack notification using a SendGrid dynamic template. Handles unsubscribe checks and bounce tracking."
+  auth:
+    required: false
 
 trigger:
-  id: trigger-tN1a2B3c
+  id: trigger-sTpl2eN8
   type: trigger
-  position: { x: 250, y: 0 }
+  label: "event:UserRegistered"
   spec:
     event: "event:UserRegistered"
-    label: "User registered"
+  connections:
+    - targetNodeId: data_store-rdUser5
 
 nodes:
-  - id: data_store-rT4d5E6f
+  - id: data_store-rdUser5
     type: data_store
-    position: { x: 250, y: 130 }
+    label: "Load User + Prefs"
     spec:
       operation: read
-      model: Notification
+      model: User
       query:
         where:
-          template_id: "$.template_id"
+          id: "$.payload.user_id"
+      safety: strict
+      returning: true
+    connections:
+      - targetNodeId: decision-nf8tV9w
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: transform-mT7g8H9i
-    type: transform
-    position: { x: 250, y: 260 }
+  - id: decision-nf8tV9w
+    type: decision
+    label: "User Found?"
     spec:
-      mode: expression
-      field_mappings:
-        subject: "$.template.subject"
-        body: "$.template.body"
-        recipient: "$.recipient_id"
-        channel: "$.channel"
+      condition: "$.result !== null"
+    connections:
+      - targetNodeId: guardrail-unsubCheck6
+        sourceHandle: "true"
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: "false"
 
-  - id: service_call-dN1j2K3l
+  - id: guardrail-unsubCheck6
+    type: guardrail
+    label: "Check Unsubscribed"
+    spec:
+      checks:
+        - type: business_rule
+          rule: "$.result.metadata.email_unsubscribed !== true"
+          message: "User has unsubscribed from emails"
+    connections:
+      - targetNodeId: service_call-sg7
+        sourceHandle: pass
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: block
+
+  - id: service_call-sg7
     type: service_call
-    position: { x: 250, y: 390 }
+    label: "Send via SendGrid"
     spec:
-      service: NotificationService
-      method: deliver
-      description: "Send notification through the appropriate channel"
-      params:
-        channel: "$.channel"
-        recipient: "$.recipient"
-        subject: "$.subject"
-        body: "$.body"
+      method: POST
+      integration: sendgrid
+      url: "https://api.sendgrid.com/v3/mail/send"
+      request_config:
+        body:
+          template_id: "$.template_id || 'd-default-template'"
+          personalizations:
+            - to: [{ email: "$.result.email" }]
+              dynamic_template_data: "$.payload"
+      error_mapping:
+        429: RATE_LIMITED
+        400: VALIDATION_ERROR
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: data_store-cN4m5N6o
-    type: data_store
-    position: { x: 250, y: 520 }
-    spec:
-      operation: create
-      model: Notification
-      fields:
-        - name: template_id
-          value: "$.template_id"
-        - name: recipient_id
-          value: "$.recipient_id"
-        - name: channel
-          value: "$.channel"
-        - name: status
-          value: "sent"
-        - name: sent_at
-          value: "$.now"
-
-  - id: terminal-sT7p8Q9r
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 250, y: 650 }
+    label: "Sent"
     spec:
+      outcome: success
       status: 200
-      label: "Templated notification sent"
+      body:
+        message: "Notification sent"
 
-  - id: terminal-eT1s2T3u
+  - id: terminal-err-pSz2wV3b
     type: terminal
-    position: { x: 550, y: 390 }
+    label: "Error"
     spec:
-      status: 500
-      label: "Service call error"
-      error_code: SERVICE_CALL_ERROR
-
-  - id: terminal-eD4v5W6x
-    type: terminal
-    position: { x: 550, y: 130 }
-    spec:
-      status: 500
-      label: "Data store error"
-      error_code: DATA_STORE_ERROR
-
-connections:
-  - source: trigger-tN1a2B3c
-    target: data_store-rT4d5E6f
-    sourceHandle: ""
-  - source: data_store-rT4d5E6f
-    target: transform-mT7g8H9i
-    sourceHandle: "success"
-  - source: data_store-rT4d5E6f
-    target: terminal-eD4v5W6x
-    sourceHandle: "error"
-  - source: transform-mT7g8H9i
-    target: service_call-dN1j2K3l
-    sourceHandle: "success"
-  - source: service_call-dN1j2K3l
-    target: data_store-cN4m5N6o
-    sourceHandle: "success"
-  - source: service_call-dN1j2K3l
-    target: terminal-eT1s2T3u
-    sourceHandle: "error"
-  - source: data_store-cN4m5N6o
-    target: terminal-sT7p8Q9r
-    sourceHandle: "success"
-  - source: data_store-cN4m5N6o
-    target: terminal-eD4v5W6x
-    sourceHandle: "error"
+      outcome: error
+      status: 502
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

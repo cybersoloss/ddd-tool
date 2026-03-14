@@ -3,107 +3,80 @@ flow:
   name: "Resolve Conflict Agent"
   type: agent
   domain: processing
-  description: "Agent that resolves conflicting analysis results with human confirmation"
+  description: "Agent that resolves disagreements between AI assessors. Uses an orchestrator to run a mediator LLM that reviews conflicting assessments and produces a final ruling."
+  auth:
+    required: false
 
 trigger:
-  id: trigger-rC1a2B3c
+  id: trigger-resConf2eN8
   type: trigger
-  position: { x: 100, y: 0 }
+  label: "manual"
   spec:
-    event: "event:ContentClassified"
-    label: "Content Classified"
+    event: "manual"
+  connections:
+    - targetNodeId: orchestrator-mediator3
 
 nodes:
-  - id: data_store-dR4d5E6f
-    type: data_store
-    position: { x: 100, y: 130 }
+  - id: orchestrator-mediator3
+    type: orchestrator
+    label: "Conflict Resolution Orchestrator"
     spec:
-      operation: read
-      model: Content
-      query:
-        where:
-          id: "$.content_id"
+      strategy: debate
+      model: claude-opus-4-6
+      agents:
+        - flow_ref: processing/fact-check-agent
+          role: assessor_a
+        - flow_ref: processing/bias-check-agent
+          role: assessor_b
+    connections:
+      - targetNodeId: llm_call-ruling4
 
-  - id: agent_loop-aL7g8H9i
-    type: agent_loop
-    position: { x: 100, y: 260 }
+  - id: llm_call-ruling4
+    type: llm_call
+    label: "Final Ruling LLM"
     spec:
-      model: "anthropic/claude-sonnet"
-      max_iterations: 5
-      tools:
-        - name: propose_resolution
-          description: "Propose a conflict resolution"
-          parameters:
-            resolution:
-              type: string
-            reasoning:
-              type: string
-          requires_confirmation: true
-        - name: finalize
-          description: "Finalize the resolution"
-          parameters:
-            final_decision:
-              type: string
-          is_terminal: true
+      model: claude-opus-4-6
+      temperature: 0.1
+      max_tokens: 600
+      prompt: |
+        Two AI assessors have produced conflicting results. Review both assessments and provide a final ruling.
 
-  - id: data_store-dU1j2K3l
-    type: data_store
-    position: { x: 100, y: 390 }
-    spec:
-      operation: update
-      model: Content
-      query:
-        where:
-          id: "$.content_id"
-      fields:
-        - name: conflict_resolution
-          value: "$.final_decision"
+        Assessor A (Fact Checker): $.orchestrator_results.assessor_a
+        Assessor B (Bias Detector): $.orchestrator_results.assessor_b
 
-  - id: terminal-tS4m5N6o
+        Provide: final_score, resolution_rationale, confidence_in_ruling (0-1)
+      structured_output:
+        final_score:
+          type: number
+        resolution_rationale:
+          type: string
+        confidence_in_ruling:
+          type: number
+        sided_with:
+          type: string
+          enum: [assessor_a, assessor_b, compromise, neither]
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
+
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 100, y: 520 }
+    label: "Conflict Resolved"
     spec:
+      outcome: success
       status: 200
-      label: "Conflict resolved"
+      body: "$.llm_result"
 
-  - id: terminal-tE7p8Q9r
+  - id: terminal-err-pSz2wV3b
     type: terminal
-    position: { x: 400, y: 260 }
+    label: "Error"
     spec:
+      outcome: error
       status: 500
-      label: "Agent loop error"
-      error_code: AGENT_LOOP_ERROR
-
-  - id: terminal-tE1s2T3u
-    type: terminal
-    position: { x: 400, y: 130 }
-    spec:
-      status: 500
-      label: "Data store error"
-      error_code: DATA_STORE_ERROR
-
-connections:
-  - source: trigger-rC1a2B3c
-    target: data_store-dR4d5E6f
-    sourceHandle: ""
-  - source: data_store-dR4d5E6f
-    target: agent_loop-aL7g8H9i
-    sourceHandle: "success"
-  - source: data_store-dR4d5E6f
-    target: terminal-tE1s2T3u
-    sourceHandle: "error"
-  - source: agent_loop-aL7g8H9i
-    target: data_store-dU1j2K3l
-    sourceHandle: "done"
-  - source: agent_loop-aL7g8H9i
-    target: terminal-tE7p8Q9r
-    sourceHandle: "error"
-  - source: data_store-dU1j2K3l
-    target: terminal-tS4m5N6o
-    sourceHandle: "success"
-  - source: data_store-dU1j2K3l
-    target: terminal-tE1s2T3u
-    sourceHandle: "error"
+      body:
+        error: "PROCESSING_FAILED"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

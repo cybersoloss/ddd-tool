@@ -3,180 +3,108 @@ flow:
   name: "Classify Content"
   type: traditional
   domain: processing
-  description: "AI-powered content classification with guardrails and fallback"
-  metrics:
-    - name: classification_duration_ms
-      type: histogram
-      labels: [category]
+  description: "Uses LLM to assign category, topic tags, and language to a content item. Updates the Content record with classification results."
+  auth:
+    required: false
 
 trigger:
-  id: trigger-cL1a2B3c
+  id: trigger-clsC2eN8
   type: trigger
-  position: { x: 100, y: 0 }
+  label: "event:ContentIngested"
   spec:
     event: "event:ContentIngested"
-    label: "Content Ingested"
-    filter:
-      source_type: { ne: null }
+  connections:
+    - targetNodeId: data_store-rdCt3
 
 nodes:
-  - id: guardrail-gI4d5E6f
-    type: guardrail
-    position: { x: 100, y: 130 }
-    spec:
-      position: input
-      checks:
-        - type: content_policy
-          action: block
-          description: "Block unsafe content"
-        - type: pii_detection
-          action: warn
-          description: "Flag PII"
-
-  - id: data_store-dR7g8H9i
+  - id: data_store-rdCt3
     type: data_store
-    position: { x: 100, y: 260 }
+    label: "Load Content"
     spec:
       operation: read
       model: Content
       query:
         where:
-          id: "$.content_id"
+          id: "$.payload.content_id"
+      safety: strict
+      returning: true
+    connections:
+      - targetNodeId: llm_call-classify4
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: llm_call-lC1j2K3l
+  - id: llm_call-classify4
     type: llm_call
-    position: { x: 100, y: 390 }
+    label: "Classify with LLM"
     spec:
-      model: "anthropic/claude-sonnet"
-      prompt: "Classify this content into categories"
-      temperature: 0.3
+      model: claude-opus-4-6
+      temperature: 0.2
       max_tokens: 500
+      prompt: |
+        Classify the following content item into one of these categories: technology, politics, business, science, health, sports, entertainment, world, environment, finance.
+        Also extract 3-5 topic tags and detect the language.
+
+        Title: $.result.title
+        Body (first 1000 chars): $.result.body.substring(0, 1000)
+
+        Respond in JSON format: { "category": "...", "tags": ["..."], "language": "en" }
       structured_output:
-        properties:
-          category:
+        category:
+          type: string
+          enum: [technology, politics, business, science, health, sports, entertainment, world, environment, finance]
+        tags:
+          type: array
+          items:
             type: string
-            ref: content_category
-          confidence:
-            type: number
-          reasoning:
-            type: string
-      context_sources:
-        - ref: "$.content.body"
-          transform: truncate
-          max_length: 4000
-        - ref: "$.content.metadata"
-          transform: json_stringify
+        language:
+          type: string
+    connections:
+      - targetNodeId: data_store-upd5nR6s
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: guardrail-gO4m5N6o
-    type: guardrail
-    position: { x: 100, y: 520 }
-    spec:
-      position: output
-      checks:
-        - type: business_rule
-          action: log
-          description: "Log low confidence"
-          rule: "$.confidence < 0.5"
-
-  - id: data_store-dU7p8Q9r
+  - id: data_store-upd5nR6s
     type: data_store
-    position: { x: 100, y: 650 }
+    label: "Update Classification"
     spec:
       operation: update
       model: Content
       query:
         where:
-          id: "$.content_id"
-      fields:
-        - name: category
-          value: "$.category"
-        - name: quality_score
-          value: "$.quality_score"
+          id: "$.payload.content_id"
+      data:
+        category: "$.llm_result.category"
+        metadata:
+          tags: "$.llm_result.tags"
+          language: "$.llm_result.language"
+          classified_at: "$.now()"
+      returning: true
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: event-eC1s2T3u
-    type: event
-    position: { x: 100, y: 780 }
-    spec:
-      direction: emit
-      event_name: ContentClassified
-      payload:
-        content_id: "$.content_id"
-        category: "$.category"
-        confidence: "$.confidence"
-
-  - id: terminal-tS4v5W6x
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 100, y: 910 }
+    label: "Classified"
     spec:
+      outcome: success
       status: 200
-      label: "Content classified"
+      body:
+        category: "$.llm_result.category"
+        tags: "$.llm_result.tags"
 
-  - id: terminal-tE7y8Z9a
+  - id: terminal-err-pSz2wV3b
     type: terminal
-    position: { x: 400, y: 130 }
+    label: "Error"
     spec:
-      status: 422
-      label: "Guardrail blocked"
-      error_code: CONTENT_POLICY_VIOLATION
-
-  - id: service_call-sF1b2C3d
-    type: service_call
-    position: { x: 400, y: 390 }
-    spec:
-      service: OpenAI
-      method: classify
-      description: "Fallback to OpenAI classifier"
-      fallback:
-        value:
-          category: "other"
-          confidence: 0.3
-        log: true
-
-  - id: terminal-tE4e5F6g
-    type: terminal
-    position: { x: 400, y: 650 }
-    spec:
+      outcome: error
       status: 500
-      label: "Data store error"
-      error_code: DATA_STORE_ERROR
-
-connections:
-  - source: trigger-cL1a2B3c
-    target: guardrail-gI4d5E6f
-    sourceHandle: ""
-  - source: guardrail-gI4d5E6f
-    target: data_store-dR7g8H9i
-    sourceHandle: "pass"
-  - source: guardrail-gI4d5E6f
-    target: terminal-tE7y8Z9a
-    sourceHandle: "block"
-  - source: data_store-dR7g8H9i
-    target: llm_call-lC1j2K3l
-    sourceHandle: "success"
-  - source: data_store-dR7g8H9i
-    target: terminal-tE4e5F6g
-    sourceHandle: "error"
-  - source: llm_call-lC1j2K3l
-    target: guardrail-gO4m5N6o
-    sourceHandle: "success"
-  - source: llm_call-lC1j2K3l
-    target: service_call-sF1b2C3d
-    sourceHandle: "error"
-  - source: service_call-sF1b2C3d
-    target: data_store-dU7p8Q9r
-    sourceHandle: "success"
-  - source: guardrail-gO4m5N6o
-    target: data_store-dU7p8Q9r
-    sourceHandle: "pass"
-  - source: data_store-dU7p8Q9r
-    target: event-eC1s2T3u
-    sourceHandle: "success"
-  - source: data_store-dU7p8Q9r
-    target: terminal-tE4e5F6g
-    sourceHandle: "error"
-  - source: event-eC1s2T3u
-    target: terminal-tS4v5W6x
-    sourceHandle: "success"
+      body:
+        error: "PROCESSING_FAILED"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

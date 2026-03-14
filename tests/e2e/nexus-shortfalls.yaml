@@ -1,0 +1,194 @@
+# DDD Shortfall Report
+# Generated during: /ddd-create nexus
+# Date: 2026-03-14T00:00:00Z
+# Purpose: Document DDD framework gaps encountered during spec design
+
+project: nexus
+generated: "2026-03-14T00:00:00Z"
+ddd_version: "1.0"
+
+# Sections below — omit sections with zero entries
+
+workarounds:
+  - flow: processing/handle-any-content-event
+    node_id: process-xxxxxxxx
+    description: "Route to appropriate handler based on event type"
+    reason: "smart_router requires static rules but this needs dynamic event-type routing"
+    suggestion: "Enhance smart_router to accept event metadata for dynamic routing"
+
+  - flow: users/login-user
+    node_id: process-xxxxxxxx
+    description: "Generate JWT token"
+    reason: "No dedicated jwt or token_issue node type exists. crypto.generate_key is close but JWT requires payload+signing."
+    suggestion: "Add jwt_sign operation to crypto node"
+
+  - flow: users/refresh-token
+    node_id: process-xxxxxxxx
+    description: "Validate expiry and generate new JWT"
+    reason: "Same as login-user — no JWT-specific node type or crypto operation"
+    suggestion: "Add jwt_sign and jwt_verify operations to crypto node"
+
+  - flow: analytics/stream-live-metrics
+    node_id: process-xxxxxxxx
+    description: "Push metrics to client every 5s"
+    reason: "No interval_push or stream_emit node type exists for continuous server push within a WebSocket connection"
+    suggestion: "Add interval or stream_emit node type for periodic push patterns"
+
+  - flow: ingestion/process-webhook
+    node_id: process-xxxxxxxx
+    description: "Transform webhook payload to content format"
+    reason: "Could potentially use transform node but webhook payloads vary by provider"
+    suggestion: "Add provider-aware transform mode or webhook_normalize node"
+
+missing_node_types:
+  - name: "jwt_operation"
+    severity: medium
+    description: "Generate, verify, decode JWT tokens with payload and signing options"
+    used_instead: "process node with category: security"
+    flows_affected:
+      - "users/login-user"
+      - "users/refresh-token"
+    example_use_case: "Issue JWT with user payload, expiry, and HS256 signing"
+
+inadequate_existing_nodes:
+  - node_type: "crypto"
+    severity: medium
+    limitation: "generate_key produces random bytes but cannot encode JWT claims. No operation for JWT-specific token generation with payload."
+    suggestion: "Add operation: 'jwt_sign' with fields: payload, secret_env, algorithm, expires_in"
+    flows_affected:
+      - "users/login-user"
+      - "users/refresh-token"
+
+  - node_type: "data_store"
+    severity: low
+    limitation: "No built-in pagination response formatting — cursor pagination is expressed as query config but the response envelope (data, cursor, has_more) must be assembled manually"
+    suggestion: "Add pagination_response: { data_field, cursor_field, has_more } to auto-format cursor pagination responses"
+    flows_affected:
+      - "content/list-content"
+      - "editorial/list-editorial-queue"
+      - "users/list-users"
+
+missing_spec_fields:
+  - location: trigger
+    target_type: "pattern"
+    field_name: "window_ms"
+    severity: low
+    description: "Pattern triggers need window_ms for time-windowed aggregation but current spec uses free-text pattern name"
+    workaround: "Included window_ms directly in trigger spec as custom field"
+
+connection_limitations:
+  - severity: low
+    limitation: "Cannot express 'fast-track' bypass of a human_gate when AI confidence is high — had to use connection.condition but semantically this is a conditional skip of a node, not a conditional edge"
+    context: "editorial/review-content — skip human review when quality_score > 0.9"
+    suggestion: "Add skip_when condition on nodes (not connections) for conditional node bypass"
+
+layer_gaps:
+  l3_flow:
+    elements_used:
+      - "all 29 node types"
+      - "all connection types"
+    missing_elements: []
+    invisible_information:
+      - description: "Flow execution metrics (p50/p99 latency, error rate) not representable as visual elements on the flow canvas"
+        should_be_visible: true
+        reason: "flow.metrics defines what to measure but there's no canvas visualization of actual metric values"
+
+cross_cutting_gaps:
+  - concern: "rate_limiting"
+    severity: medium
+    description: "Per-endpoint rate limiting is only expressible via trigger.rate_limit. No way to define rate limits as a cross-cutting pattern in architecture.yaml that auto-applies to all HTTP triggers."
+    current_expression: "Each flow must individually set trigger.rate_limit"
+    suggestion: "Allow cross_cutting_patterns to reference trigger fields, not just node fields"
+
+  - concern: "audit_logging"
+    severity: low
+    description: "No structured way to express 'log all state changes to audit table' as a cross-cutting concern"
+    current_expression: "Would need to add data_store create AuditLog to every mutating flow manually"
+    suggestion: "Add audit_log pattern type in cross_cutting_patterns that auto-generates audit entries for specified operations"
+
+ui_shortfalls:
+  missing_component_types: []
+
+  inadequate_components:
+    - component: "chat-interface"
+      severity: low
+      limitation: "No built-in support for message reactions, thread replies, or rich message attachments (images, cards) within the chat interface"
+      suggestion: "Add message_features: { reactions, threads, attachments } to chat-interface spec"
+      pages_affected:
+        - "editorial-queue"
+
+  form_limitations:
+    - severity: low
+      limitation: "No conditional field grouping — cannot express 'show group A fields when type=rss, show group B when type=webhook' beyond individual visible_when per field"
+      context: "sources page — credentials section should show/hide as a group based on source type"
+      suggestion: "Add field_groups with group-level visible_when to DDD form spec"
+
+  interaction_gaps: []
+
+pillar_balance:
+  logic_flows: 71
+  data_schemas: 17
+  ui_pages: 13
+  infrastructure_services: 6
+
+  product_described_pages:
+    - "dashboard: Section 'Interface Pillar — UI Pages' subsection 'dashboard'"
+    - "content-feed: Section 'Interface Pillar — UI Pages' subsection 'content-feed'"
+    - "content-detail: Section 'Interface Pillar — UI Pages' subsection 'content-detail'"
+    - "editorial-queue: Section 'Interface Pillar — UI Pages' subsection 'editorial-queue'"
+    - "review-panel: Section 'Interface Pillar — UI Pages' subsection 'review-panel'"
+    - "sources: Section 'Interface Pillar — UI Pages' subsection 'sources'"
+    - "publishing: Section 'Interface Pillar — UI Pages' subsection 'publishing'"
+    - "analytics: Section 'Interface Pillar — UI Pages' subsection 'analytics'"
+    - "users-admin: Section 'Interface Pillar — UI Pages' subsection 'users-admin'"
+    - "general-settings: Section 'Interface Pillar — UI Pages' subsection 'general-settings'"
+    - "notification-settings: Section 'Interface Pillar — UI Pages' subsection 'notification-settings'"
+    - "api-key-management: Section 'Interface Pillar — UI Pages' subsection 'api-key-management'"
+    - "rule-editor: Section 'Interface Pillar — UI Pages' subsection 'rule-editor'"
+
+  pages_without_specs: []
+  imbalance_warnings: []
+
+summary:
+  total_shortfalls: 11
+  by_severity:
+    critical: 0
+    high: 0
+    medium: 3
+    low: 8
+
+  feature_coverage:
+    node_types: "29/29"
+    trigger_types: "13/13"
+    collection_operations: "11/11"
+    crypto_operations: "5/6"
+    parse_formats: "6/7"
+    data_store_types: "3/3"
+    connection_behaviors: "4/4"
+    ui_component_types: "14/14"
+    form_field_types: "16/16"
+    schema_index_types: "2/4"
+    schema_seed_strategies: "3/3"
+    schema_relationship_types: "4/4"
+    infrastructure_service_types: "4/4"
+    orchestrator_strategies: "4/4"
+    handoff_modes: "3/3"
+
+    unused_but_applicable:
+      - feature: "crypto operation: sign/verify"
+        could_replace: "N/A — not needed by this project"
+        reason: "Project uses JWT (which is signing) but through process nodes rather than crypto.sign"
+
+      - feature: "parse format: atom"
+        could_replace: "N/A — no Atom feeds in this project"
+        reason: "All feeds are RSS or XML, not Atom"
+
+      - feature: "schema index type: hash"
+        could_replace: "Could use hash index on content.source_id for exact lookups"
+        reason: "btree works fine for these queries, hash would be a minor optimization"
+
+      - feature: "schema index type: gist"
+        could_replace: "N/A — no geometric/range data in this project"
+        reason: "gist indexes are for PostGIS or range types not used here"
+
+  top_recommendation: "Add a jwt_sign/jwt_verify operation to the crypto node — JWT is the most common auth mechanism and currently requires a free-text process node, which is the most frequently used workaround in this project."

@@ -1,46 +1,79 @@
 flow:
   id: broadcast-metric-update
-  name: Broadcast Metric Update
-  description: Broadcasts content published metrics to connected clients via WebSocket
+  name: "Broadcast Metric Update"
   type: traditional
   domain: publishing
-  version: "1.0.0"
-  trigger:
-    type: event
-    event: ContentPublished
-  auth: null
+  description: "Triggered by ContentPublished events. Fetches updated channel performance metrics and broadcasts to all connected dashboard WebSocket clients."
+  auth:
+    required: false
+
+trigger:
+  id: trigger-brdM2eN8
+  type: trigger
+  label: "event:ContentPublished"
+  spec:
+    event: "event:ContentPublished"
+  connections:
+    - targetNodeId: data_store-rdMetrics5
 
 nodes:
-  - id: trigger-s1t2u3v4
-    type: trigger
-    name: Content Published Event
-    config:
-      event: ContentPublished
+  - id: data_store-rdMetrics5
+    type: data_store
+    label: "Fetch Channel Metrics"
+    spec:
+      operation: aggregate
+      model: PublishRecord
+      query:
+        where:
+          channel_id: "$.payload.channel_ids[0]"
+          status: success
+          published_at:
+            gte: "$.today()"
+      aggregate_fields:
+        - function: count
+          field: id
+          alias: publish_count
+      group_by: [channel_id]
+      returning: true
+    connections:
+      - targetNodeId: websocket_broadcast-push6
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: websocket_broadcast-w5x6y7z8
+  - id: websocket_broadcast-push6
     type: websocket_broadcast
-    name: Broadcast to Publishing Channel
-    config:
-      channel: "publishing"
-      event_name: "content_published"
-      payload: "$.event_data"
+    label: "Broadcast to Dashboard"
+    spec:
+      channel: "dashboard-metrics"
+      event_name: metric_update
+      payload:
+        channel_id: "$.payload.channel_ids[0]"
+        publish_count: "$.result.publish_count"
+        content_id: "$.payload.content_id"
+        published_at: "$.payload.published_at"
       include_sender: false
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
 
-  - id: terminal-a9b0c1d2
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    name: Broadcast Success
-    config:
+    label: "Broadcast Sent"
+    spec:
+      outcome: success
       status: 200
-      response_type: success
+      body:
+        message: "Metric update broadcast"
 
-connections:
-  - from: trigger-s1t2u3v4
-    to: websocket_broadcast-w5x6y7z8
-
-  - from: websocket_broadcast-w5x6y7z8
-    to: terminal-a9b0c1d2
-    handle: done
+  - id: terminal-err-pSz2wV3b
+    type: terminal
+    label: "Error"
+    spec:
+      outcome: error
+      status: 500
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
-  created_at: "2026-03-14T00:00:00Z"
-  updated_at: "2026-03-14T00:00:00Z"
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

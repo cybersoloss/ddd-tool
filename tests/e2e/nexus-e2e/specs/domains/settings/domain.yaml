@@ -1,59 +1,70 @@
-name: Settings
-description: "System configuration"
+name: "Settings"
+description: "Platform-wide configuration management. Stores key-value settings in PostgreSQL, provides rule CRUD with tree hierarchy, and exposes typed get/update APIs consumed by all other domains."
 role: entity
-
 auth:
   required: true
   strategy: jwt
+  roles: [admin]
 
-owns_schemas:
-  - Setting
-  - Rule
+owns_schemas: ["Setting", "Rule"]
 
 flows:
   - id: get-settings
     name: "Get Settings"
-    description: "Get cached system settings"
+    description: "Returns all platform settings as a typed key-value map. Caches result in Redis."
     type: traditional
-    tags:
-      - public-api
+    tags: [public-api, internal]
+    criticality: normal
 
   - id: update-settings
     name: "Update Settings"
-    description: "Update settings with cache invalidation"
+    description: "Updates one or more platform settings. Invalidates cache. Emits SettingsUpdated event."
     type: traditional
-    tags:
-      - public-api
+    tags: [public-api]
+    criticality: high
+    auth:
+      required: true
+      roles: [admin]
+      strategy: jwt
 
   - id: reset-settings
     name: "Reset Settings"
-    description: "Reset settings to defaults within a transaction"
+    description: "Resets all settings to their seeded defaults. Requires admin + explicit confirmation."
     type: traditional
-    tags:
-      - public-api
+    tags: [public-api]
+    criticality: high
+    auth:
+      required: true
+      roles: [admin]
+      strategy: jwt
 
   - id: manage-rules
     name: "Manage Rules"
-    description: "CRUD operations for system rules"
+    description: "Full CRUD for routing/filtering/publishing rules with tree hierarchy. Supports create, update, toggle, delete with child cascade."
     type: traditional
-    tags:
-      - public-api
+    tags: [public-api]
+    criticality: high
+    auth:
+      required: true
+      roles: [admin]
+      strategy: jwt
+
+groups:
+  - id: settings
+    name: "Settings"
+    flows: [get-settings, update-settings, reset-settings]
+  - id: rules
+    name: "Rules"
+    flows: [manage-rules]
 
 publishes_events:
-  - event: SettingsChanged
+  - event: SettingsUpdated
+    schema: Setting
     from_flow: update-settings
-    description: "System settings changed"
+    description: "Fired when platform settings change — consuming domains can invalidate their caches"
     payload:
-      key: string
-      old_value: json
-      new_value: json
-
-  - event: SettingsReset
-    from_flow: reset-settings
-    description: "Settings reset to defaults"
-    payload:
-      reset_by: uuid
-      reset_at: datetime
+      changed_keys: array
+      updated_by: string
 
 consumes_events: []
 
@@ -62,5 +73,9 @@ layout:
     get-settings: { x: 100, y: 100 }
     update-settings: { x: 100, y: 300 }
     reset-settings: { x: 100, y: 500 }
-    manage-rules: { x: 100, y: 700 }
+    manage-rules: { x: 400, y: 100 }
   portals: {}
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

@@ -1,38 +1,51 @@
 name: ContentVersion
-description: Content version history snapshots
 inherits: _base
+description: Immutable snapshot of content body at a point in time — builds the version history
+owned_by: content
+
 fields:
   - name: content_id
     type: uuid
     required: true
+    description: Foreign key to the parent content item
+
   - name: body_snapshot
     type: text
     required: true
+    description: Full body text at the time of this version
+
   - name: changed_by
     type: uuid
     required: true
+    description: Foreign key to the user who made this change
+
   - name: change_summary
     type: string
     required: false
-    constraints:
-      max_length: 500
+    max_length: 500
+    description: Optional human-readable description of what changed
+
   - name: changed_at
-    type: datetime
+    type: date
     required: true
+    description: Exact timestamp when this version was captured
 
 relationships:
-  - name: content
-    type: belongs_to
-    target: Content
+  - type: belongs_to
+    model: Content
     foreign_key: content_id
-  - name: author
-    type: belongs_to
-    target: User
+    description: The content item this version belongs to
+
+  - type: belongs_to
+    model: User
     foreign_key: changed_by
+    as: editor
+    description: The user who created this version
 
 indexes:
   - fields: [content_id, changed_at]
-    description: "Version history for a content item"
+    type: btree
+    description: Chronological version history for a content item
 
 metadata:
   created: "2026-03-14T00:00:00Z"

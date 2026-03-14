@@ -3,149 +3,85 @@ flow:
   name: "Process XML Feed"
   type: traditional
   domain: ingestion
-  description: "Processes XML feeds triggered by SourceUpdated events, deduplicates entries by GUID, generates content hashes for upsert operations, and emits ContentIngested events."
+  description: "Parses a raw XML/Atom feed payload, extracts articles, and hands off each item to route-by-source-type. Called by fetch-rss-feeds for individual feed responses."
+  auth:
+    required: false
 
 trigger:
-  id: trigger-xF1a2B3c
+  id: trigger-xmlFd2eN8
   type: trigger
-  position: { x: 100, y: 0 }
+  label: "manual"
   spec:
-    event: "event:SourceUpdated"
-    label: "Source updated (XML type)"
-    filter:
-      source_type: xml
+    event: "manual"
+  connections:
+    - targetNodeId: parse-xml3
 
 nodes:
-  - id: data_store-dR4d5E6f
-    type: data_store
-    position: { x: 100, y: 130 }
-    spec:
-      operation: read
-      model: ContentSource
-      query:
-        where:
-          id: "$.source_id"
-
-  - id: service_call-sG7g8H9i
-    type: service_call
-    position: { x: 100, y: 260 }
-    spec:
-      method: GET
-      url: "$.source.url"
-
-  - id: parse-pX1j2K3l
+  - id: parse-xml3
     type: parse
-    position: { x: 100, y: 390 }
+    label: "Parse XML/Atom"
     spec:
       format: xml
+      input: "$.raw_xml"
+      output: articles
+    connections:
+      - targetNodeId: collection-filt5
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: collection-cD4m5N6o
+  - id: collection-filt5
     type: collection
-    position: { x: 100, y: 520 }
+    label: "Filter Valid Articles"
     spec:
-      operation: deduplicate
-      field: "guid"
+      operation: filter
+      input: "$.articles"
+      output: valid_articles
+      predicate: "$.item.title && ($.item.description || $.item.content)"
+    connections:
+      - targetNodeId: batch-route6
+        sourceHandle: result
+      - targetNodeId: terminal-ok-empty
+        sourceHandle: empty
 
-  - id: crypto-cH7p8Q9r
-    type: crypto
-    position: { x: 100, y: 650 }
+  - id: batch-route6
+    type: batch
+    label: "Route Each Article"
     spec:
-      operation: hash
-      algorithm: sha256
-      input: "$.source_id + $.source_type"
-      output_field: content_hash
+      input: "$.valid_articles"
+      sub_flow_ref: ingestion/route-by-source-type
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: done
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: data_store-dU1s2T3u
-    type: data_store
-    position: { x: 100, y: 780 }
-    spec:
-      operation: upsert
-      model: Content
-      upsert_key: content_hash
-
-  - id: event-eI4v5W6x
-    type: event
-    position: { x: 100, y: 910 }
-    spec:
-      direction: emit
-      event_name: ContentIngested
-
-  - id: terminal-tS7y8Z9a
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 100, y: 1040 }
+    label: "Processed"
     spec:
+      outcome: success
       status: 200
-      label: "XML feed processed"
+      body:
+        count: "$.valid_articles.length"
 
-  - id: terminal-tE1b2C3d
+  - id: terminal-ok-empty
     type: terminal
-    position: { x: 400, y: 260 }
+    label: "No Valid Articles"
     spec:
-      status: 500
-      label: "Service call error"
-      error_code: FETCH_ERROR
+      outcome: success
+      status: 200
+      body:
+        count: 0
 
-  - id: terminal-tE4e5F6g
+  - id: terminal-err-pSz2wV3b
     type: terminal
-    position: { x: 400, y: 780 }
+    label: "Parse Error"
     spec:
+      outcome: error
       status: 500
-      label: "Data store error"
-      error_code: DATA_STORE_ERROR
-
-  - id: terminal-tE7h8I9j
-    type: terminal
-    position: { x: 400, y: 390 }
-    spec:
-      status: 500
-      label: "Parse error"
-      error_code: PARSE_ERROR
-
-  - id: terminal-tE1k2L3m
-    type: terminal
-    position: { x: 400, y: 650 }
-    spec:
-      status: 500
-      label: "Crypto error"
-      error_code: CRYPTO_ERROR
-
-connections:
-  - source: trigger-xF1a2B3c
-    target: data_store-dR4d5E6f
-    sourceHandle: ""
-  - source: data_store-dR4d5E6f
-    target: service_call-sG7g8H9i
-    sourceHandle: "success"
-  - source: service_call-sG7g8H9i
-    target: parse-pX1j2K3l
-    sourceHandle: "success"
-  - source: service_call-sG7g8H9i
-    target: terminal-tE1b2C3d
-    sourceHandle: "error"
-  - source: parse-pX1j2K3l
-    target: collection-cD4m5N6o
-    sourceHandle: "success"
-  - source: parse-pX1j2K3l
-    target: terminal-tE7h8I9j
-    sourceHandle: "error"
-  - source: collection-cD4m5N6o
-    target: crypto-cH7p8Q9r
-    sourceHandle: "success"
-  - source: crypto-cH7p8Q9r
-    target: data_store-dU1s2T3u
-    sourceHandle: "success"
-  - source: crypto-cH7p8Q9r
-    target: terminal-tE1k2L3m
-    sourceHandle: "error"
-  - source: data_store-dU1s2T3u
-    target: event-eI4v5W6x
-    sourceHandle: "success"
-  - source: data_store-dU1s2T3u
-    target: terminal-tE4e5F6g
-    sourceHandle: "error"
-  - source: event-eI4v5W6x
-    target: terminal-tS7y8Z9a
-    sourceHandle: "success"
+      body:
+        error: "INGESTION_FAILED"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

@@ -1,18 +1,26 @@
-name: Base
-description: Common fields inherited by all models
+name: _base
+description: Base fields inherited by all models in the Nexus platform
+
 fields:
   - name: id
     type: uuid
+    primary_key: true
+    generated: true
     required: true
-    description: Primary key (auto-generated)
+    description: Unique identifier (UUID v4, auto-generated)
+
   - name: created_at
-    type: datetime
+    type: date
+    auto: true
     required: true
-    description: Creation timestamp (auto-set)
+    description: Record creation timestamp (auto-set on insert)
+
   - name: updated_at
-    type: datetime
+    type: date
+    auto: true
+    on_update: true
     required: true
-    description: Last update timestamp (auto-set)
+    description: Last modification timestamp (auto-updated on any change)
 
 metadata:
   created: "2026-03-14T00:00:00Z"

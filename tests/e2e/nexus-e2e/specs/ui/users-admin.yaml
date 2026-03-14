@@ -1,66 +1,115 @@
 page: users-admin
-route: /admin/users
+title: Users
+layout: full
 
 sections:
-  - id: user-header
+  - id: users-header
     component: page-header
-    position: top
-    label: "User Management"
-    fields:
-      title: "Users"
-      subtitle: "$.total_users total users"
+    title: User Management
+    subtitle: "$.total_count users · $.active_count active"
+    actions:
+      buttons:
+        - label: Invite User
+          flow: users/register-user
+          variant: primary
+          icon: user-plus
 
   - id: user-filters
     component: filter-bar
-    position: top
-    label: "Filters"
-    fields:
-      - { key: role, type: select, label: "Role", options: [admin, editor, reviewer, viewer] }
-      - { key: plan, type: select, label: "Plan", options: [free, pro, enterprise] }
     apply_flow: users/list-users
+    reset_label: Clear
+    fields:
+      - key: role
+        type: select
+        label: Role
+        options: [admin, editor, reviewer, viewer]
+      - key: plan
+        type: select
+        label: Plan
+        options: [free, pro, enterprise]
 
-  - id: user-list
+  - id: users-list
     component: item-list
-    position: main
-    label: "Users"
     data_source: users/list-users
     item_template:
-      title: "$.email"
-      subtitle: "$.role · $.plan"
-      badge: "$.plan"
+      title: "$.display_name || $.email"
+      subtitle: "$.email · $.plan"
+      badge: "$.role_name"
       timestamp: "$.created_at"
     item_actions:
-      - { label: "Change Role", icon: shield, flow: users/update-user-role }
-      - { label: Delete, icon: trash, flow: users/delete-user, args: { id: "$.id" }, confirm: true, confirm_message: "Delete this user? This action cannot be undone.", variant: danger }
-    interactions:
-      - pattern: bulk-select
-        actions:
-          - { label: "Bulk Change Role", flow: users/update-user-role }
-      - pattern: inline-edit
-        editable_fields: ["role"]
-        update_flow: users/update-user-role
+      - label: Edit Role
+        action:
+          type: call_flow
+          flow: users/update-user-role
+      - label: View API Keys
+        action:
+          type: navigate
+          path: "/settings/api-keys?user=$.id"
+      - label: Delete
+        action:
+          type: call_flow
+          flow: users/delete-user
+        confirm: true
+        confirm_message: "Delete this user account? This is a soft delete and can be reversed."
     empty_state:
       message: "No users found"
       icon: users
+    interactions:
+      - pattern: bulk-select
+        description: Select multiple users for bulk role change
+      - pattern: inline-edit
+        update_flow: users/update-user-role
+        fields: [role]
+    pagination:
+      limit: 25
+      strategy: cursor
 
 forms:
-  - id: invite-user
-    label: "Invite User"
-    position: sidebar
+  - id: invite-form
     fields:
-      - { name: email, type: text, label: "Email", required: true, placeholder: "user@example.com", validation: "email" }
-      - { name: role, type: select, label: "Role", required: true, options: [admin, editor, reviewer, viewer], default: viewer }
-      - { name: plan, type: select, label: "Plan", required: true, options: [free, pro, enterprise], default: free }
-      - { name: access_expires, type: date, label: "Access Expires" }
+      - name: email
+        type: text
+        label: Email Address
+        placeholder: user@example.com
+        required: true
+        validation:
+          format: email
+      - name: role
+        type: select
+        label: Role
+        options: [admin, editor, reviewer, viewer]
+        required: true
+        default: viewer
+      - name: plan
+        type: select
+        label: Plan
+        options: [free, pro, enterprise]
+        required: true
+        default: free
+      - name: access_expires
+        type: date
+        label: Access Expires (optional)
+        required: false
     submit:
       flow: users/register-user
-      label: "Send Invite"
+      label: Invite User
       loading_label: "Inviting..."
-      success: { message: "User invited", redirect: /admin/users }
-      error: { message: "Failed to invite", retry: true }
+      success:
+        message: "User invited successfully"
+        redirect: /admin/users
+      error:
+        message: "Failed to invite user"
+        retry: true
 
 state:
-  initial_fetch: [users/list-users]
+  store: users-admin-store
+  initial_fetch:
+    - users/list-users
 
 loading: skeleton
 error: error-page
+refresh: manual
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

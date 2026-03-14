@@ -3,92 +3,90 @@ flow:
   name: "Manual Content Entry"
   type: traditional
   domain: ingestion
-  description: "Allows authenticated users to manually create content entries via HTTP POST, validates required fields, persists to the data store, and emits a ContentIngested event."
+  description: "API endpoint for editors to manually submit content. Validates, optionally adds a source, and routes directly to create-content then route-by-source-type."
   auth:
     required: true
+    roles: [admin, editor]
     strategy: jwt
 
 trigger:
-  id: trigger-mC1a2B3c
+  id: trigger-manE2xN8
   type: trigger
-  position: { x: 100, y: 0 }
+  label: "POST /api/ingest/manual"
   spec:
-    event: "HTTP POST /api/v1/content"
-    label: "Manual content creation"
+    event: "HTTP POST /api/ingest/manual"
+  connections:
+    - targetNodeId: input-vAl3kP4r
 
 nodes:
-  - id: input-iV4d5E6f
+  - id: input-vAl3kP4r
     type: input
-    position: { x: 100, y: 130 }
+    label: "Validate Input"
     spec:
-      validate:
-        title:
-          required: true
+      fields:
+        - name: title
           type: string
-        body:
           required: true
+          min_length: 3
+          max_length: 500
+        - name: body
           type: string
-        category:
           required: true
+          min_length: 50
+        - name: category
           type: string
+          required: true
+        - name: source_url
+          type: string
+          required: false
+          format: url
+        - name: tags
+          type: array
+          required: false
+    connections:
+      - targetNodeId: sub_flow-create3
+        sourceHandle: valid
+      - targetNodeId: terminal-inv-aB7cD8eF
+        sourceHandle: invalid
 
-  - id: data_store-dC7g8H9i
-    type: data_store
-    position: { x: 100, y: 260 }
+  - id: sub_flow-create3
+    type: sub_flow
+    label: "Create Content"
     spec:
-      operation: create
-      model: Content
-      safety: strict
+      flow_ref: content/create-content
+    connections:
+      - targetNodeId: event-emit-srcAdded4
 
-  - id: event-eI1j2K3l
+  - id: event-emit-srcAdded4
     type: event
-    position: { x: 100, y: 390 }
+    label: "Emit SourceAdded"
     spec:
       direction: emit
-      event_name: ContentIngested
+      event_name: SourceAdded
+      payload:
+        source_id: manual
+        type: manual
+        name: "Manual Entry"
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
 
-  - id: terminal-tS4m5N6o
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 100, y: 520 }
+    label: "Submitted"
     spec:
+      outcome: success
       status: 201
-      label: "Content created"
+      body:
+        message: "Content submitted for review"
 
-  - id: terminal-tE7p8Q9r
+  - id: terminal-inv-aB7cD8eF
     type: terminal
-    position: { x: 400, y: 130 }
+    label: "Invalid"
     spec:
-      status: 422
-      label: "Validation failed"
-      error_code: VALIDATION_ERROR
-
-  - id: terminal-tE1s2T3u
-    type: terminal
-    position: { x: 400, y: 260 }
-    spec:
-      status: 409
-      label: "Duplicate entry"
-      error_code: DUPLICATE_ENTRY
-
-connections:
-  - source: trigger-mC1a2B3c
-    target: input-iV4d5E6f
-    sourceHandle: ""
-  - source: input-iV4d5E6f
-    target: data_store-dC7g8H9i
-    sourceHandle: "valid"
-  - source: input-iV4d5E6f
-    target: terminal-tE7p8Q9r
-    sourceHandle: "invalid"
-  - source: data_store-dC7g8H9i
-    target: event-eI1j2K3l
-    sourceHandle: "success"
-  - source: data_store-dC7g8H9i
-    target: terminal-tE1s2T3u
-    sourceHandle: "error"
-  - source: event-eI1j2K3l
-    target: terminal-tS4m5N6o
-    sourceHandle: "success"
+      outcome: error
+      status: 400
+      body:
+        error: "VALIDATION_ERROR"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

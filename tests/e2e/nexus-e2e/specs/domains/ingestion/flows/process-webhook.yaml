@@ -3,154 +3,105 @@ flow:
   name: "Process Webhook"
   type: traditional
   domain: ingestion
-  description: "Receives incoming webhook payloads with signature verification, routes them by event type to the appropriate handler for content creation, notification forwarding, or source status updates."
+  description: "Receives HMAC-signed webhook payloads from external publishers. Validates signature, normalizes payload, and routes to route-by-source-type."
   auth:
     required: false
 
 trigger:
-  id: trigger-wH1a2B3c
+  id: trigger-wbhk2xN8
   type: trigger
-  position: { x: 100, y: 0 }
+  label: "webhook /api/webhooks/ingest"
   spec:
-    event: "webhook /api/v1/webhooks/content"
-    label: "Incoming webhook"
+    event: "webhook /api/webhooks/ingest"
     signature:
       algorithm: sha256
       key_source:
         env: WEBHOOK_SECRET
-      header: X-Webhook-Signature
+      header: X-Nexus-Signature
+    rate_limit:
+      window_ms: 60000
+      max_requests: 100
+  connections:
+    - targetNodeId: input-vAl3kP4r
 
 nodes:
-  - id: input-iV4d5E6f
+  - id: input-vAl3kP4r
     type: input
-    position: { x: 100, y: 130 }
+    label: "Validate Payload"
     spec:
-      validate:
-        type:
-          required: true
+      fields:
+        - name: source_id
           type: string
-        payload:
           required: true
-          type: object
+        - name: title
+          type: string
+          required: true
+        - name: content
+          type: string
+          required: true
+        - name: url
+          type: string
+          required: false
+          format: url
+        - name: category
+          type: string
+          required: false
+    connections:
+      - targetNodeId: guardrail-content3
+        sourceHandle: valid
+      - targetNodeId: terminal-inv-aB7cD8eF
+        sourceHandle: invalid
 
-  - id: smart_router-sR7g8H9i
-    type: smart_router
-    position: { x: 100, y: 260 }
+  - id: guardrail-content3
+    type: guardrail
+    label: "Content Safety Check"
     spec:
-      rules:
-        - id: content-event
-          condition: "$.type === 'content'"
-          route: content-handler
-        - id: notification-event
-          condition: "$.type === 'notification'"
-          route: notification-handler
-        - id: status-update
-          condition: "$.type === 'status'"
-          route: status-handler
-      fallback_chain:
-        - content-event
+      checks:
+        - type: content_policy
+          rules: ["no_spam", "no_malicious_urls"]
+        - type: required_fields
+          fields: [title, content]
+    connections:
+      - targetNodeId: sub_flow-route5
+        sourceHandle: pass
+      - targetNodeId: terminal-blocked-xA1b
+        sourceHandle: block
 
-  - id: process-pC1j2K3l
-    type: process
-    position: { x: 100, y: 390 }
+  - id: sub_flow-route5
+    type: sub_flow
+    label: "Route Content"
     spec:
-      category: business_logic
-      description: "Transform webhook payload to content format"
-      route: content-handler
+      flow_ref: ingestion/route-by-source-type
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
 
-  - id: data_store-dC4m5N6o
-    type: data_store
-    position: { x: 100, y: 520 }
-    spec:
-      operation: create
-      model: Content
-
-  - id: event-eC7p8Q9r
-    type: event
-    position: { x: 100, y: 650 }
-    spec:
-      direction: emit
-      event_name: ContentIngested
-
-  - id: terminal-tC1s2T3u
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 100, y: 780 }
+    label: "Webhook Processed"
     spec:
+      outcome: success
       status: 200
-      label: "Content webhook processed"
+      body:
+        message: "Webhook processed"
 
-  - id: process-pN4v5W6x
-    type: process
-    position: { x: 500, y: 390 }
-    spec:
-      category: integration
-      description: "Forward notification"
-      route: notification-handler
-
-  - id: terminal-tN7y8Z9a
+  - id: terminal-blocked-xA1b
     type: terminal
-    position: { x: 500, y: 520 }
+    label: "Content Blocked"
     spec:
-      status: 200
-      label: "Notification forwarded"
+      outcome: error
+      status: 422
+      body:
+        error: "INGESTION_FAILED"
+        message: "Content failed safety check"
 
-  - id: data_store-dU1b2C3d
-    type: data_store
-    position: { x: 900, y: 390 }
-    spec:
-      operation: update
-      model: ContentSource
-      route: status-handler
-
-  - id: terminal-tU4e5F6g
+  - id: terminal-inv-aB7cD8eF
     type: terminal
-    position: { x: 900, y: 520 }
+    label: "Invalid"
     spec:
-      status: 200
-      label: "Status updated"
-
-  - id: terminal-tE7h8I9j
-    type: terminal
-    position: { x: 400, y: 130 }
-    spec:
-      status: 401
-      label: "Invalid webhook signature or payload"
-      error_code: WEBHOOK_SIGNATURE_INVALID
-
-connections:
-  - source: trigger-wH1a2B3c
-    target: input-iV4d5E6f
-    sourceHandle: ""
-  - source: input-iV4d5E6f
-    target: smart_router-sR7g8H9i
-    sourceHandle: "valid"
-  - source: input-iV4d5E6f
-    target: terminal-tE7h8I9j
-    sourceHandle: "invalid"
-  - source: smart_router-sR7g8H9i
-    target: process-pC1j2K3l
-    sourceHandle: "content-handler"
-  - source: smart_router-sR7g8H9i
-    target: process-pN4v5W6x
-    sourceHandle: "notification-handler"
-  - source: smart_router-sR7g8H9i
-    target: data_store-dU1b2C3d
-    sourceHandle: "status-handler"
-  - source: process-pC1j2K3l
-    target: data_store-dC4m5N6o
-    sourceHandle: "success"
-  - source: data_store-dC4m5N6o
-    target: event-eC7p8Q9r
-    sourceHandle: "success"
-  - source: event-eC7p8Q9r
-    target: terminal-tC1s2T3u
-    sourceHandle: "success"
-  - source: process-pN4v5W6x
-    target: terminal-tN7y8Z9a
-    sourceHandle: "success"
-  - source: data_store-dU1b2C3d
-    target: terminal-tU4e5F6g
-    sourceHandle: "success"
+      outcome: error
+      status: 400
+      body:
+        error: "VALIDATION_ERROR"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

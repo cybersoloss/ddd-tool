@@ -1,62 +1,73 @@
 name: User
-description: User account with authentication
 inherits: _base
+description: Platform user account with authentication credentials, role, and subscription plan
+owned_by: users
+
 fields:
   - name: email
     type: string
     required: true
+    unique: true
     format: email
-    constraints:
-      unique: true
-      max_length: 255
+    description: User email address — used for login and notifications
+
   - name: password_hash
     type: string
     required: true
-    encrypted: true
-    constraints:
-      max_length: 255
+    description: bcrypt hash of the user's password (rounds 12)
+
   - name: role_id
     type: uuid
     required: true
+    description: Foreign key to the user's assigned role
+
   - name: api_key_hash
     type: string
     required: false
-    encrypted: true
+    description: SHA-256 hash of the user's primary API key (for fast lookup)
+
   - name: plan
     type: enum
+    ref: UserPlan
     required: true
-    ref: user_plan
     default: free
+    description: User subscription tier
+
   - name: deleted_at
-    type: datetime
+    type: date
     required: false
-    description: Soft delete timestamp
+    description: Soft delete timestamp — null means active account
 
 relationships:
-  - name: role
-    type: belongs_to
-    target: Role
+  - type: belongs_to
+    model: Role
     foreign_key: role_id
-  - name: api_keys
-    type: has_many
-    target: ApiKey
+    description: The role controlling this user's permissions
+
+  - type: has_many
+    model: ApiKey
     foreign_key: user_id
-  - name: notifications
-    type: has_many
-    target: Notification
+    description: All API keys issued to this user
+
+  - type: has_many
+    model: Notification
     foreign_key: user_id
-  - name: profile
-    type: has_one
-    target: UserProfile
+    description: In-app notifications for this user
+
+  - type: has_one
+    model: UserProfile
     foreign_key: user_id
+    description: Extended profile information
 
 indexes:
   - fields: [email]
     unique: true
+    type: btree
+    description: Login lookup and uniqueness enforcement
+
   - fields: [role_id]
     type: btree
-  - fields: [deleted_at]
-    description: "Soft delete filtering"
+    description: List users by role
 
 metadata:
   created: "2026-03-14T00:00:00Z"

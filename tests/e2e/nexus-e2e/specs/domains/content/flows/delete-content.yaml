@@ -1,85 +1,134 @@
 flow:
   id: delete-content
-  name: Delete Content
-  description: Soft-deletes content by setting deleted_at, invalidates cache, and emits ContentDeleted event
+  name: "Delete Content"
   type: traditional
   domain: content
-  version: "1.0.0"
-  trigger:
-    type: http
-    method: DELETE
-    path: /api/v1/content/:id
+  description: "Soft-deletes a content item by setting deleted_at. Does not delete publish records. Emits ContentDeleted event."
   auth:
     required: true
+    roles: [admin, editor]
     strategy: jwt
 
-nodes:
-  - id: trigger-a3b4c5d6
-    type: trigger
-    name: HTTP DELETE Content
-    config:
-      method: DELETE
-      path: /api/v1/content/:id
+trigger:
+  id: trigger-dlCt2xN8
+  type: trigger
+  label: "DELETE /api/content/:id"
+  spec:
+    event: "HTTP DELETE /api/content/:id"
+  connections:
+    - targetNodeId: input-vAl3kP4r
 
-  - id: data_store-e7f8g9h0
+nodes:
+  - id: input-vAl3kP4r
+    type: input
+    label: "Validate ID"
+    spec:
+      fields:
+        - name: id
+          type: string
+          required: true
+          format: uuid
+    connections:
+      - targetNodeId: data_store-rdCt5kQ7
+        sourceHandle: valid
+      - targetNodeId: terminal-inv-aB7cD8eF
+        sourceHandle: invalid
+
+  - id: data_store-rdCt5kQ7
     type: data_store
-    name: Soft Delete Content
-    config:
+    label: "Check Exists"
+    spec:
+      operation: read
+      model: Content
+      query:
+        where:
+          id: "$.id"
+          deleted_at: null
+      safety: strict
+      returning: true
+    connections:
+      - targetNodeId: decision-nf8tV9w
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
+
+  - id: decision-nf8tV9w
+    type: decision
+    label: "Found?"
+    spec:
+      condition: "$.result !== null"
+    connections:
+      - targetNodeId: data_store-del7kO3p
+        sourceHandle: "true"
+      - targetNodeId: terminal-notfound-cD4e
+        sourceHandle: "false"
+
+  - id: data_store-del7kO3p
+    type: data_store
+    label: "Soft Delete"
+    spec:
       operation: update
       model: Content
       query:
-        id: "$.id"
-      set:
-        deleted_at: "$.now"
-      pattern_governed: soft_delete
+        where:
+          id: "$.id"
+      data:
+        deleted_at: "$.now()"
+      returning: true
+    connections:
+      - targetNodeId: event-emit-yF3g
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: cache-i1j2k3l4
-    type: cache
-    name: Invalidate Content Cache
-    config:
-      operation: invalidate
-      key: "content:$.id"
-      store: redis
-
-  - id: event-m5n6o7p8
+  - id: event-emit-yF3g
     type: event
-    name: Emit ContentDeleted
-    config:
+    label: "Emit ContentDeleted"
+    spec:
+      direction: emit
       event_name: ContentDeleted
       payload:
         content_id: "$.id"
+        deleted_at: "$.result.deleted_at"
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
 
-  - id: terminal-q9r0s1t2
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    name: Delete Success
-    config:
-      status: 204
-      response_type: empty
+    label: "Deleted"
+    spec:
+      outcome: success
+      status: 200
+      body:
+        message: "Content deleted"
 
-  - id: terminal-u3v4w5x6
+  - id: terminal-notfound-cD4e
     type: terminal
-    name: Data Store Error
-    config:
+    label: "Not Found"
+    spec:
+      outcome: error
+      status: 404
+      body:
+        error: "CONTENT_NOT_FOUND"
+
+  - id: terminal-inv-aB7cD8eF
+    type: terminal
+    label: "Invalid"
+    spec:
+      outcome: error
+      status: 400
+      body:
+        error: "VALIDATION_ERROR"
+
+  - id: terminal-err-pSz2wV3b
+    type: terminal
+    label: "Error"
+    spec:
+      outcome: error
       status: 500
-      response_type: error
-
-connections:
-  - from: trigger-a3b4c5d6
-    to: data_store-e7f8g9h0
-
-  - from: data_store-e7f8g9h0
-    to: cache-i1j2k3l4
-
-  - from: data_store-e7f8g9h0
-    to: terminal-u3v4w5x6
-    handle: error
-
-  - from: cache-i1j2k3l4
-    to: event-m5n6o7p8
-
-  - from: event-m5n6o7p8
-    to: terminal-q9r0s1t2
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
-  created_at: "2026-03-14T00:00:00Z"
-  updated_at: "2026-03-14T00:00:00Z"
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

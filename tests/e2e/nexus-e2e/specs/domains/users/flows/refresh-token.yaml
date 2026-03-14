@@ -3,122 +3,104 @@ flow:
   name: "Refresh Token"
   type: traditional
   domain: users
-  description: "Refreshes a JWT access token using an encrypted refresh token"
+  description: "Validates an opaque refresh token from Redis, verifies it hasn't expired, and issues a new JWT access token with sliding expiry."
   auth:
     required: false
 
 trigger:
-  id: trigger-rT1a2B3c
+  id: trigger-rfTk2xN8
   type: trigger
-  position: { x: 250, y: 0 }
+  label: "POST /api/auth/refresh"
   spec:
-    event: "http POST /api/v1/auth/refresh"
-    label: "Refresh token endpoint"
+    event: "HTTP POST /api/auth/refresh"
+  connections:
+    - targetNodeId: input-vAl3kP4r
 
 nodes:
-  - id: input-vT4d5E6f
+  - id: input-vAl3kP4r
     type: input
-    position: { x: 250, y: 130 }
+    label: "Validate Input"
     spec:
-      validate:
-        refresh_token:
-          required: true
+      fields:
+        - name: refresh_token
           type: string
+          required: true
+    connections:
+      - targetNodeId: cache-chkTok5
+        sourceHandle: valid
+      - targetNodeId: terminal-inv-aB7cD8eF
+        sourceHandle: invalid
 
-  - id: crypto-dR7g8H9i
+  - id: cache-chkTok5
+    type: cache
+    label: "Lookup Refresh Token"
+    spec:
+      operation: check
+      key: "refresh:$.refresh_token"
+      store: redis
+    connections:
+      - targetNodeId: crypto-jwt1
+        sourceHandle: hit
+      - targetNodeId: terminal-expired-cD4e
+        sourceHandle: miss
+
+  - id: crypto-jwt1
     type: crypto
-    position: { x: 250, y: 260 }
+    label: "Issue New JWT"
     spec:
-      operation: decrypt
-      algorithm: "aes-256-gcm"
-      input: "$.refresh_token"
+      operation: sign
+      algorithm: HS256
+      key_source:
+        env: JWT_SECRET
+      payload:
+        user_id: "$.cached_value.user_id"
+        email: "$.cached_value.email"
+        role: "$.cached_value.role"
+        plan: "$.cached_value.plan"
+      expires_in: "15m"
+      output: access_token
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: decision-vT1j2K3l
-    type: decision
-    position: { x: 250, y: 390 }
-    spec:
-      condition: "$.decrypted_token != null"
-      description: "Check if decrypted refresh token is valid"
-
-  - id: terminal-iT4m5N6o
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 550, y: 390 }
+    label: "New Access Token"
     spec:
-      status: 401
-      label: "Invalid refresh token"
-      error_code: UNAUTHORIZED
-
-  - id: process-vE7p8Q9r
-    type: process
-    position: { x: 250, y: 520 }
-    spec:
-      category: security
-      description: "Validate expiry and generate new JWT"
-
-  - id: crypto-nJ1s2T3u
-    type: crypto
-    position: { x: 250, y: 650 }
-    spec:
-      operation: generate_key
-      algorithm: jwt
-      claims:
-        sub: "$.user_id"
-      expires_in: 3600
-
-  - id: terminal-sT4v5W6x
-    type: terminal
-    position: { x: 250, y: 780 }
-    spec:
+      outcome: success
       status: 200
-      label: "Token refreshed successfully"
+      body:
+        access_token: "$.access_token"
+        expires_in: 900
 
-  - id: terminal-eI7y8Z9a
+  - id: terminal-expired-cD4e
     type: terminal
-    position: { x: 550, y: 130 }
+    label: "Token Expired"
     spec:
-      status: 422
-      label: "Invalid request data"
-      error_code: VALIDATION_ERROR
-
-  - id: terminal-eC1b2C3d
-    type: terminal
-    position: { x: 550, y: 260 }
-    spec:
+      outcome: error
       status: 401
-      label: "Crypto decryption error"
-      error_code: CRYPTO_ERROR
+      body:
+        error: "TOKEN_EXPIRED"
 
-connections:
-  - source: trigger-rT1a2B3c
-    target: input-vT4d5E6f
-    sourceHandle: ""
-  - source: input-vT4d5E6f
-    target: crypto-dR7g8H9i
-    sourceHandle: "valid"
-  - source: input-vT4d5E6f
-    target: terminal-eI7y8Z9a
-    sourceHandle: "invalid"
-  - source: crypto-dR7g8H9i
-    target: decision-vT1j2K3l
-    sourceHandle: "success"
-  - source: crypto-dR7g8H9i
-    target: terminal-eC1b2C3d
-    sourceHandle: "error"
-  - source: decision-vT1j2K3l
-    target: terminal-iT4m5N6o
-    sourceHandle: "false"
-  - source: decision-vT1j2K3l
-    target: process-vE7p8Q9r
-    sourceHandle: "true"
-  - source: process-vE7p8Q9r
-    target: crypto-nJ1s2T3u
-    sourceHandle: "success"
-  - source: crypto-nJ1s2T3u
-    target: terminal-sT4v5W6x
-    sourceHandle: "success"
-  - source: crypto-nJ1s2T3u
-    target: terminal-eC1b2C3d
-    sourceHandle: "error"
+  - id: terminal-inv-aB7cD8eF
+    type: terminal
+    label: "Invalid"
+    spec:
+      outcome: error
+      status: 400
+      body:
+        error: "VALIDATION_ERROR"
+
+  - id: terminal-err-pSz2wV3b
+    type: terminal
+    label: "Error"
+    spec:
+      outcome: error
+      status: 500
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

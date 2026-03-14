@@ -3,115 +3,96 @@ flow:
   name: "Generate Weekly Digest"
   type: traditional
   domain: analytics
-  description: "Generates a weekly analytics digest every Monday at 6 AM and sends it via email"
+  description: "Cron job that generates a weekly digest with top content, channel performance, and AI analysis trends. Stores in WeeklyDigest and emits WeeklyDigestReady."
+  auth:
+    required: false
 
 trigger:
-  id: trigger-gW1a2B3c
+  id: trigger-genWd2cN8
   type: trigger
-  position: { x: 250, y: 0 }
+  label: "cron 0 7 * * 1"
   spec:
-    event: "cron 0 6 * * 1"
-    label: "Weekly on Monday at 6:00 AM"
+    event: "cron 0 7 * * 1"
+    job_config:
+      queue: weekly-digest
+      concurrency: 1
+      timeout: 120000
+  connections:
+    - targetNodeId: sub_flow-topContent3
 
 nodes:
-  - id: data_store-rW4d5E6f
-    type: data_store
-    position: { x: 250, y: 130 }
+  - id: sub_flow-topContent3
+    type: sub_flow
+    label: "Query Top Content"
     spec:
-      operation: read
-      model: AnalyticsEvent
-      query:
-        where:
-          occurred_at:
-            gte: "$.week_start"
-            lt: "$.week_end"
+      flow_ref: analytics/query-analytics
+    connections:
+      - targetNodeId: transform-digest5
 
-  - id: collection-aW7g8H9i
-    type: collection
-    position: { x: 250, y: 260 }
+  - id: transform-digest5
+    type: transform
+    label: "Build Digest Stats"
     spec:
-      operation: aggregate
-      functions:
-        - function: count
-          field: id
-          alias: total
+      mode: expression
+      field_mappings:
+        period_start: "$.lastMonday()"
+        period_end: "$.today()"
+        stats:
+          top_content: "$.result.data.slice(0,10)"
+          total_ingested: "$.result.totals.ingested"
+          total_published: "$.result.totals.published"
+          avg_quality_score: "$.result.totals.avg_quality"
+    connections:
+      - targetNodeId: data_store-crtDigest6
 
-  - id: data_store-cW1j2K3l
+  - id: data_store-crtDigest6
     type: data_store
-    position: { x: 250, y: 390 }
+    label: "Store Weekly Digest"
     spec:
       operation: create
       model: WeeklyDigest
-      fields:
-        - name: week_start
-          value: "$.week_start"
-        - name: week_end
-          value: "$.week_end"
-        - name: total_events
-          value: "$.total"
-        - name: generated_at
-          value: "$.now"
+      data:
+        period_start: "$.result.period_start"
+        period_end: "$.result.period_end"
+        stats: "$.result.stats"
+        generated_at: "$.now()"
+      returning: true
+    connections:
+      - targetNodeId: event-emit-yF3g
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: service_call-sW4m5N6o
-    type: service_call
-    position: { x: 250, y: 520 }
+  - id: event-emit-yF3g
+    type: event
+    label: "Emit WeeklyDigestReady"
     spec:
-      service: SendGrid
-      method: send
-      integration: sendgrid
-      description: "Send weekly digest email"
-      params:
-        template: weekly_digest
-        data: "$.digest"
+      direction: emit
+      event_name: WeeklyDigestReady
+      payload:
+        digest_id: "$.result.id"
+        period_start: "$.result.period_start"
+        period_end: "$.result.period_end"
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
 
-  - id: terminal-sW7p8Q9r
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 250, y: 650 }
+    label: "Digest Created"
     spec:
+      outcome: success
       status: 200
-      label: "Weekly digest generated and sent"
+      body:
+        digest_id: "$.result.id"
 
-  - id: terminal-eW1s2T3u
+  - id: terminal-err-pSz2wV3b
     type: terminal
-    position: { x: 550, y: 520 }
+    label: "Error"
     spec:
+      outcome: error
       status: 500
-      label: "SendGrid delivery error"
-      error_code: SERVICE_CALL_ERROR
-
-  - id: terminal-eW4v5W6x
-    type: terminal
-    position: { x: 550, y: 130 }
-    spec:
-      status: 500
-      label: "Data store error"
-      error_code: DATA_STORE_ERROR
-
-connections:
-  - source: trigger-gW1a2B3c
-    target: data_store-rW4d5E6f
-    sourceHandle: ""
-  - source: data_store-rW4d5E6f
-    target: collection-aW7g8H9i
-    sourceHandle: "success"
-  - source: data_store-rW4d5E6f
-    target: terminal-eW4v5W6x
-    sourceHandle: "error"
-  - source: collection-aW7g8H9i
-    target: data_store-cW1j2K3l
-    sourceHandle: "result"
-  - source: data_store-cW1j2K3l
-    target: service_call-sW4m5N6o
-    sourceHandle: "success"
-  - source: data_store-cW1j2K3l
-    target: terminal-eW4v5W6x
-    sourceHandle: "error"
-  - source: service_call-sW4m5N6o
-    target: terminal-sW7p8Q9r
-    sourceHandle: "success"
-  - source: service_call-sW4m5N6o
-    target: terminal-eW1s2T3u
-    sourceHandle: "error"
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

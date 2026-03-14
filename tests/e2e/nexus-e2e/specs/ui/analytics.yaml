@@ -1,84 +1,132 @@
 page: analytics
-route: /analytics
+title: Analytics
+layout: sidebar
 
 sections:
-  - id: analytics-totals
-    component: stat-card
-    position: top
-    label: "Total Events"
-    data_source: analytics/query-analytics
-    fields:
-      value: "$.total_events"
-      subtitle: "all-time events"
-    trend:
-      value: "$.events_last_period"
-      direction: auto
-      format: delta
+  - id: analytics-header
+    component: page-header
+    title: Analytics
+    subtitle: Content pipeline metrics and performance insights
 
   - id: analytics-filters
     component: filter-bar
-    position: top
-    label: "Filters"
-    fields:
-      - { key: period, type: date-range, label: "Period" }
-      - { key: event_types, type: multi-select, label: "Event Types", options: [content, user, system, publishing, editorial] }
-      - { key: granularity, type: select, label: "Granularity", options: [hour, day, week] }
     apply_flow: analytics/query-analytics
-
-  - id: time-series
-    component: chart
-    position: main
-    label: "Activity Over Time"
-    data_source: analytics/query-analytics
-    chart_type: line
+    reset_label: Reset
     fields:
-      labels: "$.time_labels"
-      series:
-        - { name: "Ingested", values: "$.ingested_series" }
-        - { name: "Processed", values: "$.processed_series" }
-        - { name: "Published", values: "$.published_series" }
+      - key: date_range
+        type: date-range
+        label: Period
+      - key: event_types
+        type: select
+        label: Event Types
+        options: [content_ingested, content_processed, content_approved, content_published, content_rejected]
+      - key: granularity
+        type: select
+        label: Granularity
+        options: [hour, day, week]
+        default: day
+
+  - id: totals
+    component: stat-card
+    data_source: analytics/query-analytics
+    fields:
+      - key: total_ingested
+        value: "$.total_ingested"
+        subtitle: Total ingested
+        trend:
+          value: "$.prev_total_ingested"
+          direction: auto
+          format: percent
+      - key: total_processed
+        value: "$.total_processed"
+        subtitle: Processed
+      - key: approval_rate
+        value: "$.approval_rate"
+        subtitle: Approval rate
+        trend:
+          value: "$.prev_approval_rate"
+          direction: up
+          format: percent
+      - key: publish_success_rate
+        value: "$.publish_success_rate"
+        subtitle: Publish success
+    empty_state:
+      message: "No analytics data for this period"
+      icon: bar-chart-2
+
+  - id: time-series-chart
+    component: chart
+    chart_type: line
+    data_source: analytics/query-analytics
+    fields:
+      series: "$.time_series"
+      labels: "$.date_labels"
+      values: "$.daily_counts"
+    description: Ingestion, processing, and publishing over time
+    empty_state:
+      message: "No time-series data available"
+      icon: trending-up
 
   - id: category-breakdown
     component: chart
-    position: sidebar
-    label: "Content by Category"
-    data_source: analytics/query-analytics
     chart_type: donut
+    data_source: analytics/query-analytics
     fields:
-      labels: "$.category_labels"
+      series: "$.category_distribution"
+      labels: "$.categories"
       values: "$.category_counts"
+    description: Content distribution by category
+    empty_state:
+      message: "No category data available"
+      icon: pie-chart
 
   - id: anomaly-alerts
     component: item-list
-    position: sidebar
-    label: "Anomaly Alerts"
     data_source: analytics/query-analytics
     item_template:
       title: "$.alert_type"
       subtitle: "$.metric: $.current_value (threshold: $.threshold)"
-      timestamp: "$.occurred_at"
+      badge: "$.severity"
+      timestamp: "$.triggered_at"
     empty_state:
       message: "No anomalies detected"
-      icon: shield-check
+      icon: activity
+    pagination:
+      limit: 10
 
   - id: geo-distribution
     component: map-view
-    position: main
-    label: "Content Source Distribution"
     data_source: analytics/query-analytics
-    center_lat: 40.0
-    center_lng: -95.0
-    zoom: 4
+    center_lat: 20.0
+    center_lng: 0.0
+    zoom: 2
     markers:
-      - { lat_field: "$.sources[].lat", lng_field: "$.sources[].lng", label_field: "$.sources[].name", color_field: "$.sources[].type" }
+      lat_field: "$.lat"
+      lng_field: "$.lng"
+      label_field: "$.source_name"
+      color_field: "$.source_type"
     realtime: true
-
-forms: []
+    empty_state:
+      message: "No geographic data available"
+      icon: map
 
 state:
-  initial_fetch: [analytics/query-analytics]
-  realtime: analytics/broadcast-dashboard-update
+  store: analytics-store
+  initial_fetch:
+    - analytics/query-analytics
+  realtime:
+    enabled: true
+    subscription: ws/metrics
+    events: [live_metrics, metric_update]
+
+realtime_behavior:
+  on_update: update_in_place
+  highlight_duration_ms: 1500
 
 loading: skeleton
 error: retry-banner
 refresh: manual
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

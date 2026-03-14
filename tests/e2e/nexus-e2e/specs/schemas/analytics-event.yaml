@@ -1,39 +1,51 @@
 name: AnalyticsEvent
-description: Analytics event records for reporting
 inherits: _base
+description: Immutable analytics event record — captures every significant platform action for reporting
+owned_by: analytics
+
 fields:
   - name: event_type
     type: string
     required: true
-    constraints:
-      max_length: 100
+    description: Event category identifier (e.g. content_ingested, content_approved, user_login)
+
   - name: entity_id
     type: uuid
     required: false
+    description: ID of the primary entity this event relates to (content, user, etc.)
+
   - name: entity_type
     type: string
     required: false
-    constraints:
-      max_length: 50
+    description: Type of the entity (content, user, channel, source)
+
   - name: actor_id
     type: uuid
     required: false
+    description: ID of the user or system that triggered this event
+
   - name: metadata
     type: json
     required: false
+    description: Additional event-specific data (counts, scores, channel names, etc.)
+
   - name: occurred_at
-    type: datetime
+    type: date
     required: true
+    description: When the event actually occurred (may differ from created_at for batched events)
 
 indexes:
   - fields: [event_type, occurred_at]
     type: btree
-    description: "Query events by type and time"
+    description: Primary query pattern — filter by type, ordered by time
+
   - fields: [entity_id]
     type: btree
+    description: Find all events for a specific entity
+
   - fields: [metadata]
     type: gin
-    description: "JSONB queries on event metadata"
+    description: JSONB index for querying specific metadata fields
 
 metadata:
   created: "2026-03-14T00:00:00Z"

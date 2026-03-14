@@ -1,110 +1,108 @@
 flow:
   id: get-content
-  name: Get Content
-  description: Retrieves a single content item by ID with Redis caching and related data
+  name: "Get Content"
   type: traditional
   domain: content
-  version: "1.0.0"
-  trigger:
-    type: http
-    method: GET
-    path: /api/v1/content/:id
+  description: "Retrieves a single content item with its latest version, AI analysis scores, and publishing history."
   auth:
     required: true
     strategy: jwt
 
+trigger:
+  id: trigger-gtCt2xN8
+  type: trigger
+  label: "GET /api/content/:id"
+  spec:
+    event: "HTTP GET /api/content/:id"
+  connections:
+    - targetNodeId: input-vAl3kP4r
+
 nodes:
-  - id: trigger-g1h2i3j4
-    type: trigger
-    name: HTTP GET Content by ID
-    config:
-      method: GET
-      path: /api/v1/content/:id
+  - id: input-vAl3kP4r
+    type: input
+    label: "Validate ID"
+    spec:
+      fields:
+        - name: id
+          type: string
+          required: true
+          format: uuid
+    connections:
+      - targetNodeId: data_store-rdCt5kQ7
+        sourceHandle: valid
+      - targetNodeId: terminal-inv-aB7cD8eF
+        sourceHandle: invalid
 
-  - id: cache-k5l6m7n8
-    type: cache
-    name: Check Content Cache
-    config:
-      operation: check
-      key: "content:$.id"
-      store: redis
-
-  - id: data_store-o9p0q1r2
+  - id: data_store-rdCt5kQ7
     type: data_store
-    name: Read Content with Relations
-    config:
+    label: "Fetch Content"
+    spec:
       operation: read
       model: Content
       query:
-        id: "$.id"
+        where:
+          id: "$.id"
       include:
-        - relation: "content-version"
-          as: "versions"
-        - relation: "content-source"
-          as: "source"
+        versions:
+          order_by: { changed_at: desc }
+          limit: 1
+        rejections: true
+        source: true
+        publish_records: true
+      safety: strict
+      returning: true
+    connections:
+      - targetNodeId: decision-nf8tV9w
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: transform-s3t4u5v6
-    type: transform
-    name: Transform Content Response
-    config:
-      mode: schema
+  - id: decision-nf8tV9w
+    type: decision
+    label: "Found?"
+    spec:
+      condition: "$.result !== null"
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: "true"
+      - targetNodeId: terminal-notfound-cD4e
+        sourceHandle: "false"
 
-  - id: cache-w7x8y9z0
-    type: cache
-    name: Set Content Cache
-    config:
-      operation: set
-      key: "content:$.id"
-      store: redis
-      ttl_ms: 60000
-
-  - id: terminal-a1b2c3d4
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    name: Cache Hit Response
-    config:
+    label: "Return Content"
+    spec:
+      outcome: success
       status: 200
-      response_type: json
+      body: "$.result"
 
-  - id: terminal-e5f6g7h8
+  - id: terminal-notfound-cD4e
     type: terminal
-    name: Content Response
-    config:
-      status: 200
-      response_type: json
-
-  - id: terminal-i9j0k1l2
-    type: terminal
-    name: Content Not Found
-    config:
+    label: "Not Found"
+    spec:
+      outcome: error
       status: 404
-      response_type: error
-      error_code: CONTENT_NOT_FOUND
+      body:
+        error: "CONTENT_NOT_FOUND"
 
-connections:
-  - from: trigger-g1h2i3j4
-    to: cache-k5l6m7n8
+  - id: terminal-inv-aB7cD8eF
+    type: terminal
+    label: "Invalid Input"
+    spec:
+      outcome: error
+      status: 400
+      body:
+        error: "VALIDATION_ERROR"
 
-  - from: cache-k5l6m7n8
-    to: terminal-a1b2c3d4
-    handle: hit
-
-  - from: cache-k5l6m7n8
-    to: data_store-o9p0q1r2
-    handle: miss
-
-  - from: data_store-o9p0q1r2
-    to: transform-s3t4u5v6
-
-  - from: data_store-o9p0q1r2
-    to: terminal-i9j0k1l2
-    handle: error
-
-  - from: transform-s3t4u5v6
-    to: cache-w7x8y9z0
-
-  - from: cache-w7x8y9z0
-    to: terminal-e5f6g7h8
+  - id: terminal-err-pSz2wV3b
+    type: terminal
+    label: "DB Error"
+    spec:
+      outcome: error
+      status: 500
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
-  created_at: "2026-03-14T00:00:00Z"
-  updated_at: "2026-03-14T00:00:00Z"
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

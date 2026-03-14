@@ -3,121 +3,116 @@ flow:
   name: "Summarize Batch"
   type: traditional
   domain: processing
-  description: "Batch content summarization using LLM on an hourly schedule"
+  description: "Weekly cron job that fetches unprocessed content and generates LLM summaries for the weekly digest. Processes in batches of 50."
+  auth:
+    required: false
 
 trigger:
-  id: trigger-sB1a2B3c
+  id: trigger-sumBat2cN8
   type: trigger
-  position: { x: 100, y: 0 }
+  label: "cron 0 2 * * 1"
   spec:
-    event: "cron 0 * * * *"
-    label: "Every hour"
+    event: "cron 0 2 * * 1"
+    job_config:
+      queue: content-summarization
+      concurrency: 5
+      timeout: 300000
+  connections:
+    - targetNodeId: data_store-rdContent3
 
 nodes:
-  - id: data_store-dR4d5E6f
+  - id: data_store-rdContent3
     type: data_store
-    position: { x: 100, y: 130 }
+    label: "Load Unsummarized Content"
     spec:
       operation: read
       model: Content
       query:
         where:
-          status: draft
-          summary: null
-        limit: 50
+          status: approved
+          metadata:
+            summarized_at: null
+          created_at:
+            gte: "$.lastMonday()"
+        limit: 200
+      returning: true
+    connections:
+      - targetNodeId: collection-chk4
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: collection-cK7g8H9i
+  - id: collection-chk4
     type: collection
-    position: { x: 100, y: 260 }
+    label: "Has Items?"
     spec:
-      operation: reduce
-      expression: "chunk into batches of 10"
-      output_field: batches
+      operation: filter
+      input: "$.result"
+      output: to_summarize
+      predicate: "!$.item.metadata?.summarized_at"
+    connections:
+      - targetNodeId: batch-summ5
+        sourceHandle: result
+      - targetNodeId: terminal-ok-empty
+        sourceHandle: empty
 
-  - id: batch-bP1j2K3l
+  - id: batch-summ5
     type: batch
-    position: { x: 100, y: 390 }
+    label: "Summarize Each"
     spec:
-      sub_flow_ref: "processing/score-quality"
-      concurrency: 3
+      input: "$.to_summarize"
+      operation_template:
+        type: llm_call
+        model: claude-opus-4-6
+        temperature: 0.3
+        max_tokens: 200
+        prompt: "Summarize this article in 2-3 sentences for a weekly digest newsletter: $.item.title - $.item.body.substring(0, 1500)"
+    connections:
+      - targetNodeId: event-emit-yF3g
+        sourceHandle: done
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: collection-cF4m5N6o
-    type: collection
-    position: { x: 100, y: 520 }
+  - id: event-emit-yF3g
+    type: event
+    label: "Emit BatchSummarized"
     spec:
-      operation: flatten
+      direction: emit
+      event_name: BatchSummarized
+      payload:
+        digest_id: "$.now()"
+        period_start: "$.lastMonday()"
+        period_end: "$.now()"
+        item_count: "$.to_summarize.length"
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
 
-  - id: data_store-dU7p8Q9r
-    type: data_store
-    position: { x: 100, y: 650 }
-    spec:
-      operation: update_many
-      model: Content
-      fields:
-        - name: summary
-          value: "$.summary"
-
-  - id: terminal-tS1s2T3u
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 100, y: 780 }
+    label: "Batch Complete"
     spec:
+      outcome: success
       status: 200
-      label: "Batch summarization complete"
+      body:
+        summarized: "$.to_summarize.length"
 
-  - id: terminal-tE4v5W6x
+  - id: terminal-ok-empty
     type: terminal
-    position: { x: 400, y: 130 }
+    label: "Nothing to Summarize"
     spec:
-      status: 500
-      label: "Data store error"
-      error_code: DATA_STORE_ERROR
-
-  - id: terminal-tN7y8Z9a
-    type: terminal
-    position: { x: 100, y: 300 }
-    spec:
+      outcome: success
       status: 200
-      label: "Nothing to process"
+      body:
+        summarized: 0
 
-  - id: terminal-tE1b2C3d
+  - id: terminal-err-pSz2wV3b
     type: terminal
-    position: { x: 400, y: 390 }
+    label: "Error"
     spec:
+      outcome: error
       status: 500
-      label: "Batch processing error"
-      error_code: BATCH_ERROR
-
-connections:
-  - source: trigger-sB1a2B3c
-    target: data_store-dR4d5E6f
-    sourceHandle: ""
-  - source: data_store-dR4d5E6f
-    target: collection-cK7g8H9i
-    sourceHandle: "success"
-  - source: data_store-dR4d5E6f
-    target: terminal-tE4v5W6x
-    sourceHandle: "error"
-  - source: collection-cK7g8H9i
-    target: batch-bP1j2K3l
-    sourceHandle: "result"
-  - source: collection-cK7g8H9i
-    target: terminal-tN7y8Z9a
-    sourceHandle: "empty"
-  - source: batch-bP1j2K3l
-    target: collection-cF4m5N6o
-    sourceHandle: "done"
-  - source: batch-bP1j2K3l
-    target: terminal-tE1b2C3d
-    sourceHandle: "error"
-  - source: collection-cF4m5N6o
-    target: data_store-dU7p8Q9r
-    sourceHandle: "result"
-  - source: data_store-dU7p8Q9r
-    target: terminal-tS1s2T3u
-    sourceHandle: "success"
-  - source: data_store-dU7p8Q9r
-    target: terminal-tE4v5W6x
-    sourceHandle: "error"
+      body:
+        error: "PROCESSING_FAILED"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

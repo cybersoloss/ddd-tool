@@ -1,72 +1,145 @@
 page: publishing
-route: /publishing
+title: Publishing Queue
+layout: full
 
 sections:
+  - id: publishing-header
+    component: page-header
+    title: Publishing Queue
+    subtitle: "$.pending_count items pending publication"
+    actions:
+      buttons:
+        - label: Retry Failed
+          flow: publishing/retry-failed-publish
+          variant: secondary
+          icon: refresh-cw
+          visible_when: "$.failed_count > 0"
+          confirm: true
+          confirm_message: "Retry all failed publications?"
+
   - id: channel-health
     component: status-bar
-    position: top
-    label: "Channel Health"
     data_source: publishing/list-queue
-    fields:
-      items:
-        - { label: "Website", value: "$.channels.website", color_when: [{ value: "online", color: green }, { value: "offline", color: red }] }
-        - { label: "Twitter", value: "$.channels.twitter", color_when: [{ value: "online", color: green }, { value: "rate_limited", color: amber }, { value: "offline", color: red }] }
-        - { label: "Newsletter", value: "$.channels.newsletter", color_when: [{ value: "online", color: green }, { value: "offline", color: red }] }
+    items:
+      - label: Website
+        value: "$.channels.website.status"
+        color_when:
+          - condition: "$.channels.website.status === 'healthy'"
+            color: "#22c55e"
+          - condition: "$.channels.website.status === 'degraded'"
+            color: "#f59e0b"
+      - label: Twitter
+        value: "$.channels.twitter.status"
+        color_when:
+          - condition: "$.channels.twitter.status === 'healthy'"
+            color: "#22c55e"
+          - condition: "$.channels.twitter.status === 'error'"
+            color: "#ef4444"
+      - label: LinkedIn
+        value: "$.channels.linkedin.status"
+        color_when:
+          - condition: "$.channels.linkedin.status === 'healthy'"
+            color: "#22c55e"
+      - label: Newsletter
+        value: "$.channels.newsletter.status"
+        color_when:
+          - condition: "$.channels.newsletter.status === 'healthy'"
+            color: "#22c55e"
 
-  - id: pub-filters
+  - id: queue-filters
     component: filter-bar
-    position: top
-    label: "Filters"
-    fields:
-      - { key: channel, type: select, label: "Channel", options: [website, twitter, linkedin, newsletter] }
-      - { key: status, type: select, label: "Status", options: [pending, success, failed] }
     apply_flow: publishing/list-queue
+    reset_label: Clear
+    fields:
+      - key: channel
+        type: select
+        label: Channel
+        options: [website, twitter, linkedin, newsletter, webhook]
+      - key: status
+        type: select
+        label: Status
+        options: [pending, success, failed]
 
-  - id: pub-queue
+  - id: publishing-queue
     component: item-list
-    position: main
-    label: "Publishing Queue"
     data_source: publishing/list-queue
     item_template:
-      title: "$.content_title"
-      subtitle: "$.channel · Attempts: $.attempts"
+      title: "$.title"
+      subtitle: "$.channel_name · $.attempts attempts"
       badge: "$.status"
-      timestamp: "$.scheduled_at"
+      timestamp: "$.created_at"
     item_actions:
-      - { label: Retry, icon: refresh-cw, flow: publishing/retry-failed-publish, args: { id: "$.id" }, visible_when: "$.status === 'failed'" }
-      - { label: Cancel, icon: x, flow: publishing/cancel-publish, args: { id: "$.id" }, confirm: true, confirm_message: "Cancel this publication?", visible_when: "$.status === 'pending'" }
+      - label: View Content
+        action:
+          type: navigate
+          path: "/content/$.content_id"
+      - label: Retry
+        action:
+          type: call_flow
+          flow: publishing/retry-failed-publish
+        visible_when: "$.status === 'failed'"
+        confirm: true
+        confirm_message: "Retry publishing this item?"
+      - label: Schedule
+        action:
+          type: call_flow
+          flow: publishing/schedule-publication
+    empty_state:
+      message: "No items in the publishing queue"
+      icon: send
     interactions:
       - pattern: reorder
-        update_flow: publishing/reorder-queue
+        update_flow: publishing/schedule-publication
+        description: Drag to reprioritize publication order
       - pattern: bulk-select
-        actions:
-          - { label: "Retry Failed", flow: publishing/retry-failed-publish, confirm: true }
-    empty_state:
-      message: "Publishing queue is empty"
-      icon: send
-    realtime_behavior:
-      on_new_item: prepend
-      on_update: highlight
-      highlight_duration_ms: 2000
+        description: Select multiple items to retry in bulk
+    pagination:
+      limit: 25
+      strategy: cursor
 
 forms:
-  - id: schedule-publish
-    label: "Schedule Publication"
-    position: sidebar
+  - id: schedule-form
     fields:
-      - { name: publish_at, type: datetime, label: "Publish At", required: true }
-      - { name: channels, type: multi-select, label: "Channels", options: [website, twitter, linkedin, newsletter], required: true }
+      - name: publish_at
+        type: datetime
+        label: Publish At
+        required: true
+        validation:
+          min: now
+      - name: channels
+        type: multi-select
+        label: Channels
+        options: [website, twitter, linkedin, newsletter]
+        required: true
     submit:
       flow: publishing/schedule-publication
-      label: "Schedule"
-      loading_label: "Scheduling..."
-      success: { message: "Publication scheduled" }
-      error: { message: "Failed to schedule", retry: true }
+      label: Schedule Publication
+      loading_label: Scheduling...
+      success:
+        message: "Publication scheduled"
+        action: refresh
+      error:
+        message: "Failed to schedule publication"
+        retry: true
 
 state:
-  initial_fetch: [publishing/list-queue]
-  realtime: publishing/broadcast-metric-update
+  store: publishing-store
+  initial_fetch:
+    - publishing/list-queue
+  realtime:
+    enabled: true
+    subscription: ws/publishing
+    events: [content_published, publish_failed]
+
+realtime_behavior:
+  on_new_item: append
+  on_update: update_in_place
+  highlight_duration_ms: 2000
 
 loading: skeleton
 error: toast
 refresh: auto-30s
+
+metadata:
+  created: "2026-03-14T00:00:00Z"
+  modified: "2026-03-14T00:00:00Z"

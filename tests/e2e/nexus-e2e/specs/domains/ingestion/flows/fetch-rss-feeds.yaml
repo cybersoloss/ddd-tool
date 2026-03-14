@@ -3,158 +3,163 @@ flow:
   name: "Fetch RSS Feeds"
   type: traditional
   domain: ingestion
-  description: "Periodically fetches RSS feeds from enabled content sources, deduplicates items, and emits ContentIngested events for each new item."
-  auth: null
-  metrics:
-    - name: ingestion_items_total
-      type: counter
-      labels: [source_type]
+  description: "Cron job that polls all active RSS/Atom sources. Fetches new items, parses XML, deduplicates by URL hash, and routes each item to route-by-source-type."
+  auth:
+    required: false
 
 trigger:
-  id: trigger-rF1a2B3c
+  id: trigger-rss2cN8
   type: trigger
-  position: { x: 100, y: 0 }
+  label: "cron 0 */4 * * *"
   spec:
-    event: "cron */15 * * * *"
-    label: "Every 15 minutes"
+    event: "cron 0 */4 * * *"
     job_config:
-      queue: ingestion
-      concurrency: 2
-      timeout: 60000
+      queue: rss-ingestion
+      concurrency: 10
+      timeout: 120000
       retry:
-        max_attempts: 3
+        attempts: 2
         backoff: exponential
+  connections:
+    - targetNodeId: data_store-rdSources3
 
 nodes:
-  - id: data_store-dS4e5F6g
+  - id: data_store-rdSources3
     type: data_store
-    position: { x: 100, y: 130 }
+    label: "Load Active RSS Sources"
     spec:
       operation: read
       model: ContentSource
       query:
         where:
-          type: rss
+          type:
+            in: [rss, atom]
           enabled: true
+      returning: true
+    connections:
+      - targetNodeId: collection-check4
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: loop-oL7h8I9j
-    type: loop
-    position: { x: 100, y: 260 }
+  - id: collection-check4
+    type: collection
+    label: "Has Active Sources?"
     spec:
-      collection: "$.sources"
-      iterator: "source"
+      operation: filter
+      input: "$.result"
+      output: active_sources
+      predicate: "$.item.enabled === true"
+    connections:
+      - targetNodeId: loop-fetch5nR6s
+        sourceHandle: result
+      - targetNodeId: terminal-ok-empty
+        sourceHandle: empty
 
-  - id: service_call-sC1k2L3m
+  - id: loop-fetch5nR6s
+    type: loop
+    label: "Fetch Each Source"
+    spec:
+      collection: "$.active_sources"
+      iterator: source
+      body_start: service_call-fetch6
+    connections:
+      - targetNodeId: service_call-fetch6
+        sourceHandle: body
+      - targetNodeId: terminal-ok-zQ7rS8tU
+        sourceHandle: done
+
+  - id: service_call-fetch6
     type: service_call
-    position: { x: 100, y: 390 }
+    label: "Fetch RSS Feed"
     spec:
       method: GET
       url: "$.source.url"
-      capture_headers:
-        - ETag
-        - Last-Modified
+      request_config:
+        headers:
+          User-Agent: "Mozilla/5.0 (compatible; NewsBot/1.0)"
+        timeout: 15000
+      error_mapping:
+        429: RATE_LIMITED
+        404: SOURCE_NOT_FOUND
+      fallback:
+        value: { items: [] }
+        log: true
+    connections:
+      - targetNodeId: parse-xml7
+        sourceHandle: success
+      - targetNodeId: loop-fetch5nR6s
+        sourceHandle: error
 
-  - id: parse-pA4n5O6p
+  - id: parse-xml7
     type: parse
-    position: { x: 100, y: 520 }
+    label: "Parse RSS XML"
     spec:
       format: rss
+      input: "$.response_body"
+      output: feed_items
+    connections:
+      - targetNodeId: batch-route8
+        sourceHandle: success
+      - targetNodeId: loop-fetch5nR6s
+        sourceHandle: error
 
-  - id: collection-cO7q8R9s
-    type: collection
-    position: { x: 100, y: 650 }
+  - id: batch-route8
+    type: batch
+    label: "Route Each Item"
     spec:
-      operation: deduplicate
-      field: "link"
+      input: "$.feed_items"
+      sub_flow_ref: ingestion/route-by-source-type
+    connections:
+      - targetNodeId: data_store-updSync9
+        sourceHandle: done
+      - targetNodeId: loop-fetch5nR6s
+        sourceHandle: error
 
-  - id: loop-iL1t2U3v
-    type: loop
-    position: { x: 100, y: 780 }
-    spec:
-      collection: "$.items"
-      iterator: "item"
-
-  - id: data_store-dS4w5X6y
+  - id: data_store-updSync9
     type: data_store
-    position: { x: 100, y: 910 }
+    label: "Update Last Synced"
     spec:
-      operation: create
-      model: Content
+      operation: update
+      model: ContentSource
+      query:
+        where:
+          id: "$.source.id"
+      data:
+        last_synced_at: "$.now()"
+      returning: true
+    connections:
+      - targetNodeId: loop-fetch5nR6s
+        sourceHandle: success
+      - targetNodeId: loop-fetch5nR6s
+        sourceHandle: error
 
-  - id: event-eV7z8A9b
-    type: event
-    position: { x: 100, y: 1040 }
-    spec:
-      direction: emit
-      event_name: ContentIngested
-      dedup_key: "$.link"
-      target_queue: processing
-
-  - id: terminal-tS1c2D3e
+  - id: terminal-ok-zQ7rS8tU
     type: terminal
-    position: { x: 100, y: 1170 }
+    label: "RSS Sync Complete"
     spec:
+      outcome: success
       status: 200
-      label: "All feeds processed"
+      body:
+        message: "RSS feeds fetched"
 
-  - id: terminal-tE4f5G6h
+  - id: terminal-ok-empty
     type: terminal
-    position: { x: 400, y: 390 }
+    label: "No Active Sources"
     spec:
-      status: 500
-      label: "Service call error"
-      error_code: FETCH_ERROR
+      outcome: success
+      status: 200
+      body:
+        message: "No active RSS sources"
 
-  - id: terminal-tE7i8J9k
+  - id: terminal-err-pSz2wV3b
     type: terminal
-    position: { x: 400, y: 910 }
+    label: "Error"
     spec:
+      outcome: error
       status: 500
-      label: "Data store error"
-      error_code: DATA_STORE_ERROR
-
-connections:
-  - source: trigger-rF1a2B3c
-    target: data_store-dS4e5F6g
-    sourceHandle: ""
-  - source: data_store-dS4e5F6g
-    target: loop-oL7h8I9j
-    sourceHandle: "success"
-  - source: loop-oL7h8I9j
-    target: service_call-sC1k2L3m
-    sourceHandle: "body"
-  - source: service_call-sC1k2L3m
-    target: parse-pA4n5O6p
-    sourceHandle: "success"
-  - source: service_call-sC1k2L3m
-    target: terminal-tE4f5G6h
-    sourceHandle: "error"
-  - source: parse-pA4n5O6p
-    target: collection-cO7q8R9s
-    sourceHandle: "success"
-  - source: collection-cO7q8R9s
-    target: loop-iL1t2U3v
-    sourceHandle: "success"
-  - source: loop-iL1t2U3v
-    target: data_store-dS4w5X6y
-    sourceHandle: "body"
-  - source: data_store-dS4w5X6y
-    target: event-eV7z8A9b
-    sourceHandle: "success"
-  - source: data_store-dS4w5X6y
-    target: terminal-tE7i8J9k
-    sourceHandle: "error"
-  - source: event-eV7z8A9b
-    target: loop-iL1t2U3v
-    sourceHandle: "success"
-    label: "Continue inner loop"
-  - source: loop-iL1t2U3v
-    target: loop-oL7h8I9j
-    sourceHandle: "done"
-    label: "Inner loop done"
-  - source: loop-oL7h8I9j
-    target: terminal-tS1c2D3e
-    sourceHandle: "done"
+      body:
+        error: "INGESTION_FAILED"
 
 metadata:
   created: "2026-03-14T00:00:00Z"

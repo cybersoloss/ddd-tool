@@ -1,38 +1,67 @@
 name: Channel
-description: Publishing channel configuration
 inherits: _base
+description: Publishing destination — defines where approved content gets distributed
+owned_by: publishing
+
 fields:
   - name: name
     type: string
     required: true
-    constraints:
-      unique: true
-      max_length: 100
+    unique: true
+    max_length: 100
+    description: Channel display name
+
   - name: type
     type: enum
+    ref: ChannelType
     required: true
-    ref: channel_type
+    description: Channel type determines the publishing adapter used
+
   - name: config
     type: json
     required: true
-    default: {}
+    description: Channel-specific configuration (API keys, URLs, templates, credentials)
+
   - name: enabled
     type: boolean
     required: true
     default: true
+    description: Whether this channel is active for publishing
 
 indexes:
   - fields: [name]
     unique: true
+    type: btree
+    description: Channel name uniqueness and lookup
+
+  - fields: [type, enabled]
+    type: btree
+    description: Find active channels by type
 
 seed:
-  - name: default-channels
-    description: "Default publishing channels"
-    strategy: migration
-    data:
-      - { name: "Website", type: website, config: { cms_url: "https://cms.example.com/api" }, enabled: true }
-      - { name: "Newsletter", type: newsletter, config: { sendgrid_list_id: "default" }, enabled: true }
-      - { name: "Twitter", type: twitter, config: { account: "@nexus" }, enabled: true }
+  strategy: migration
+  data:
+    - id: "00000000-0000-0000-0000-000000000030"
+      name: Website
+      type: website
+      config:
+        cms_endpoint: "${CMS_WEBHOOK_URL}"
+        format: markdown
+      enabled: true
+    - id: "00000000-0000-0000-0000-000000000031"
+      name: Newsletter
+      type: newsletter
+      config:
+        sendgrid_list_id: "${SENDGRID_LIST_ID}"
+        template_id: "d-newsletter-template"
+      enabled: true
+    - id: "00000000-0000-0000-0000-000000000032"
+      name: Twitter
+      type: twitter
+      config:
+        max_tweet_length: 280
+        thread_on_overflow: true
+      enabled: false
 
 metadata:
   created: "2026-03-14T00:00:00Z"

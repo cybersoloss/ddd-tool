@@ -3,53 +3,138 @@ flow:
   name: "Route Notification"
   type: traditional
   domain: notifications
-  description: "Round-robin orchestrator for routing notifications across channels"
+  description: "Receives a notification event, reads user preferences, and routes to the correct delivery channel(s): realtime WebSocket, email, Slack, or digest queue."
+  auth:
+    required: false
 
 trigger:
-  id: trigger-rN1a2B3c
+  id: trigger-rNot2eN8
   type: trigger
-  position: { x: 250, y: 0 }
+  label: "event:* (any notification event)"
   spec:
-    event: "event:AlertTriggered"
-    label: "Alert triggered for routing"
+    event: "event:ContentApproved"
+  connections:
+    - targetNodeId: data_store-rdPref5
 
 nodes:
-  - id: orchestrator-oR4d5E6f
-    type: orchestrator
-    position: { x: 250, y: 130 }
+  - id: data_store-rdPref5
+    type: data_store
+    label: "Load User Preferences"
     spec:
-      strategy: round_robin
-      agents:
-        - flow: "notifications/send-realtime-alert"
-          role: "Email Channel"
-        - flow: "notifications/send-batch-digest"
-          role: "Digest Channel"
+      operation: read
+      model: Setting
+      query:
+        where:
+          key:
+            in: [email_enabled, slack_enabled, digest_frequency]
+      returning: true
+    connections:
+      - targetNodeId: data_store-crtNotif6
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
 
-  - id: terminal-sR7g8H9i
-    type: terminal
-    position: { x: 250, y: 260 }
+  - id: data_store-crtNotif6
+    type: data_store
+    label: "Create Notification Record"
     spec:
+      operation: create
+      model: Notification
+      data:
+        user_id: "$.payload.reviewer_id || $.payload.user_id"
+        type: "$.event_name"
+        title: "$.payload.title || $.event_name"
+        body: "$.payload.message"
+        action_url: "$.payload.action_url"
+        metadata: "$.payload"
+      returning: true
+    connections:
+      - targetNodeId: smart_router-chan7
+        sourceHandle: success
+      - targetNodeId: terminal-err-pSz2wV3b
+        sourceHandle: error
+
+  - id: smart_router-chan7
+    type: smart_router
+    label: "Route by Channel"
+    spec:
+      rules:
+        - id: realtime
+          condition: "$.prefs.email_enabled === false && $.prefs.digest_frequency === 'realtime'"
+          route: sub_flow-realtime8
+          priority: 1
+        - id: slack
+          condition: "$.prefs.slack_enabled === true"
+          route: sub_flow-slack9
+          priority: 2
+        - id: email
+          condition: "$.prefs.email_enabled === true && $.prefs.digest_frequency !== 'realtime'"
+          route: sub_flow-email0
+          priority: 3
+      fallback_chain: [terminal-ok-zQ7rS8tU]
+    connections:
+      - targetNodeId: sub_flow-realtime8
+        sourceHandle: realtime
+      - targetNodeId: sub_flow-slack9
+        sourceHandle: slack
+      - targetNodeId: sub_flow-email0
+        sourceHandle: email
+
+  - id: sub_flow-realtime8
+    type: sub_flow
+    label: "Send Realtime Alert"
+    spec:
+      flow_ref: notifications/send-realtime-alert
+    connections:
+      - targetNodeId: event-emit-yF3g
+
+  - id: sub_flow-slack9
+    type: sub_flow
+    label: "Send Templated (Slack)"
+    spec:
+      flow_ref: notifications/send-templated-notification
+    connections:
+      - targetNodeId: event-emit-yF3g
+
+  - id: sub_flow-email0
+    type: sub_flow
+    label: "Send Templated (Email)"
+    spec:
+      flow_ref: notifications/send-templated-notification
+    connections:
+      - targetNodeId: event-emit-yF3g
+
+  - id: event-emit-yF3g
+    type: event
+    label: "Emit NotificationSent"
+    spec:
+      direction: emit
+      event_name: NotificationSent
+      payload:
+        notification_id: "$.created_notification_id"
+        user_id: "$.result.user_id"
+        channel: "$.route"
+        event_type: "$.event_name"
+    connections:
+      - targetNodeId: terminal-ok-zQ7rS8tU
+
+  - id: terminal-ok-zQ7rS8tU
+    type: terminal
+    label: "Routed"
+    spec:
+      outcome: success
       status: 200
-      label: "Notification routed successfully"
+      body:
+        message: "Notification routed"
 
-  - id: terminal-eR1j2K3l
+  - id: terminal-err-pSz2wV3b
     type: terminal
-    position: { x: 550, y: 130 }
+    label: "Error"
     spec:
+      outcome: error
       status: 500
-      label: "Routing error"
-      error_code: ROUTING_ERROR
-
-connections:
-  - source: trigger-rN1a2B3c
-    target: orchestrator-oR4d5E6f
-    sourceHandle: ""
-  - source: orchestrator-oR4d5E6f
-    target: terminal-sR7g8H9i
-    sourceHandle: "success"
-  - source: orchestrator-oR4d5E6f
-    target: terminal-eR1j2K3l
-    sourceHandle: "error"
+      body:
+        error: "INTERNAL_ERROR"
 
 metadata:
   created: "2026-03-14T00:00:00Z"
