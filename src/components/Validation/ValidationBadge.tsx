@@ -7,14 +7,12 @@ export function ValidationBadge() {
   const panelOpen = useValidationStore((s) => s.panelOpen);
   const togglePanel = useValidationStore((s) => s.togglePanel);
   const getCurrentFlowResult = useValidationStore((s) => s.getCurrentFlowResult);
-  const flowResults = useValidationStore((s) => s.flowResults);
-  const domainResults = useValidationStore((s) => s.domainResults);
-  const systemResult = useValidationStore((s) => s.systemResult);
+  const getProjectValidationSummary = useValidationStore((s) => s.getProjectValidationSummary);
   const validateProject = useValidationStore((s) => s.validateProject);
   const level = useSheetStore((s) => s.current.level);
 
   // At L3 (flow): show current flow result only
-  // At L1/L2: show aggregated counts from ALL results
+  // At L1/L2: use getProjectValidationSummary which correctly computes totals
   let errorCount = 0;
   let warningCount = 0;
 
@@ -23,21 +21,9 @@ export function ValidationBadge() {
     errorCount = result?.errorCount ?? 0;
     warningCount = result?.warningCount ?? 0;
   } else {
-    // Aggregate all flow results
-    for (const fr of Object.values(flowResults)) {
-      errorCount += fr.errorCount;
-      warningCount += fr.warningCount;
-    }
-    // Aggregate all domain results
-    for (const dr of Object.values(domainResults)) {
-      errorCount += dr.errorCount;
-      warningCount += dr.warningCount;
-    }
-    // Add system results
-    if (systemResult) {
-      errorCount += systemResult.errorCount;
-      warningCount += systemResult.warningCount;
-    }
+    const summary = getProjectValidationSummary();
+    errorCount = summary.totalErrors;
+    warningCount = summary.totalWarnings;
   }
 
   const totalIssues = errorCount + warningCount;
@@ -45,7 +31,6 @@ export function ValidationBadge() {
 
   const handleClick = useCallback(() => {
     if (level !== 'flow') {
-      // At L1/L2: if no results exist yet, run project validation
       const hasResults =
         Object.keys(useValidationStore.getState().flowResults).length > 0 ||
         Object.keys(useValidationStore.getState().domainResults).length > 0 ||
