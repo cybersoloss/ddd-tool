@@ -625,16 +625,16 @@ export function normalizeFlowDocument(raw: Record<string, unknown>, domainId: st
   if (Array.isArray(topLevelConns) && topLevelConns.length > 0) {
     const connsBySource = new Map<string, Array<{ targetNodeId: string; sourceHandle?: string; targetHandle?: string; label?: string }>>();
     for (const conn of topLevelConns as Array<Record<string, unknown>>) {
-      const from = conn.from as string;
-      const to = conn.to as string;
+      const from = (conn.from ?? conn.source) as string;
+      const to = (conn.to ?? conn.target) as string;
       if (!from || !to) continue;
       if (!connsBySource.has(from)) connsBySource.set(from, []);
       const sh = conn.sourceHandle as string | undefined;
       const th = conn.targetHandle as string | undefined;
       connsBySource.get(from)!.push({
         targetNodeId: to,
-        sourceHandle: sh === 'default' ? undefined : sh,
-        targetHandle: th === 'default' ? undefined : th,
+        sourceHandle: !sh || sh === 'default' ? undefined : sh,
+        targetHandle: !th || th === 'default' ? undefined : th,
         label: conn.label as string | undefined,
       });
     }
