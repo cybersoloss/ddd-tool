@@ -46,7 +46,17 @@
       "Bash(mkdir:*)",
       "Bash(rm:*)",
       "Bash(git pull:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(gh api:*)",
+      "Bash(do echo:*)",
+      "Bash(claude:*)",
+      "Bash(.ddd/change-history.yaml:*)",
+      "Bash(wc:*)",
+      "Bash(file:*)",
+      "Bash(du:*)",
+      "Bash(npx playwright:*)",
+      "Bash(ffmpeg:*)",
+      "Bash(find /Users/mhcandan/dev/GOSTA -type f -name *.md)"
     ]
   }
 }
