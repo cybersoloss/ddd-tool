@@ -46,7 +46,27 @@
       "Bash(mkdir:*)",
       "Bash(rm:*)",
       "Bash(git pull:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(echo === ddd-tool ===:*)",
+      "Bash(/tmp/node_count.txt:*)",
+      "Read(//tmp/**)",
+      "Bash(sed:*)",
+      "Bash(chmod +x:*)",
+      "Bash(find ~/dev/contentcurator/specs/domains -name \"*.yaml\" 2>/dev/null | head -20)",
+      "Bash(find ~/dev/contentcurator -path \"*autosave*\" -name \"*action*\" -o -path \"*orchestrat*\" -name \"*.yaml\" 2>/dev/null | head -10)",
+      "Bash(find ~/dev/contentcurator -name \"run-action*\" 2>/dev/null; grep -rl \"Run Action Cycle\" ~/dev/contentcurator/specs/ 2>/dev/null | head -5)",
+      "Bash(find ~/dev/contentcurator/.ddd -name \"*.yaml\" 2>/dev/null | head -10; cat ~/dev/contentcurator/ddd-project.json 2>/dev/null | python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(x\\) for x in d.get\\('domains',[]\\)]\" 2>/dev/null)",
+      "Bash(find ~/dev/contentcurator/.ddd -name \"*.yaml\" -path \"*autosave*\" 2>/dev/null | head -10; find ~/dev/contentcurator/.ddd/autosave -type f 2>/dev/null | head -10)",
+      "Bash(cd ~/dev/www.cybersol.nl && grep -rL \"auth:\" specs/domains/*/flows/*.yaml 2>/dev/null | wc -l | tr -d ' ' && echo \"===TOTAL===\" && find specs/domains -name \"*.yaml\" -path \"*/flows/*\" 2>/dev/null | wc -l | tr -d ' ')",
+      "Bash(cd ~/dev/cc-light && grep -rL \"auth:\" specs/domains/*/flows/*.yaml 2>/dev/null | wc -l | tr -d ' ' && echo \"===TOTAL===\" && find specs/domains -name \"*.yaml\" -path \"*/flows/*\" 2>/dev/null | wc -l | tr -d ' ' && echo \"===FORMAT===\" && grep -rl \"^connections:\" specs/domains/*/flows/*.yaml 2>/dev/null | wc -l | tr -d ' ' && echo \"top-level format\")",
+      "Bash(cd /Users/mhc/dev/cc-light && node -e \"\nconst fs = require\\('fs'\\);\nconst yaml = require\\('js-yaml'\\) || \\(\\(\\) => { try { return require\\('yaml'\\); } catch\\(e\\) { return null; } }\\)\\(\\);\n\n// Try a simple approach - just check YAML parsing\nconst files = [\n    'specs/domains/publishing/flows/publish-to-twitter.yaml',\n    'specs/domains/publishing/flows/publish-to-linkedin.yaml',\n    'specs/domains/publishing/flows/publish-to-blog.yaml',\n    'specs/domains/publishing/flows/unpublish-post.yaml',\n    'specs/domains/publishing/flows/execute-due-posts.yaml',\n    'specs/domains/analytics/flows/pull-twitter-analytics.yaml',\n    'specs/domains/analytics/flows/pull-linkedin-analytics.yaml',\n    'specs/domains/analytics/flows/trigger-pull.yaml',\n    'specs/domains/destinations/flows/add-destination.yaml',\n    'specs/domains/destinations/flows/update-destination.yaml',\n    'specs/domains/webhooks/flows/register-webhook.yaml',\n    'specs/domains/webhooks/flows/dispatch-event.yaml',\n    'specs/domains/auth/flows/validate-key.yaml',\n    'specs/domains/discovery/flows/scheduled-discovery.yaml',\n    'specs/domains/discovery/flows/keyword-search.yaml',\n];\n\nlet allOk = true;\nfor \\(const f of files\\) {\n    try {\n        const content = fs.readFileSync\\(f, 'utf8'\\);\n        const doc = yaml.load\\(content\\);\n        console.log\\('OK:', f\\);\n    } catch \\(e\\) {\n        console.log\\('ERROR:', f, '-', e.message\\);\n        allOk = false;\n    }\n}\nconsole.log\\(allOk ? '\\\\nAll 15 YAML files parse successfully.' : '\\\\nSome files have parse errors!'\\);\n\")",
+      "Bash(cp -r /tmp/nexus-e2e ~/dev/ddd-tool/tests/e2e/nexus-e2e && echo \"Done\")",
+      "Bash(rsync -av --exclude='node_modules' --exclude='.ddd/change-history.yaml' /tmp/nexus-e2e/ ~/dev/ddd-tool/tests/e2e/nexus-e2e/ 2>&1 | tail -20)",
+      "Bash(gh api:*)",
+      "Bash(defaults read:*)",
+      "Read(//Applications/DDD Tool.app/**)",
+      "Bash(find /Users/mhc/dev/ddd-tool/tests/e2e -name \"*shortfall*\" -o -name \"*shortfalls*\" 2>/dev/null | xargs ls -lt 2>/dev/null)",
+      "Bash(sed -i '' 's/\"version\": \"0\\\\.2\\\\.0\"/\"version\": \"0.2.64\"/' /Users/mhc/dev/ddd-tool/package.json /Users/mhc/dev/ddd-tool/src-tauri/tauri.conf.json && sed -i '' 's/^version = \"0\\\\.2\\\\.0\"/version = \"0.2.64\"/' /Users/mhc/dev/ddd-tool/src-tauri/Cargo.toml && grep '\"version\"' /Users/mhc/dev/ddd-tool/package.json && grep '\"version\"' /Users/mhc/dev/ddd-tool/src-tauri/tauri.conf.json && grep '^version' /Users/mhc/dev/ddd-tool/src-tauri/Cargo.toml)"
     ]
   }
 }
