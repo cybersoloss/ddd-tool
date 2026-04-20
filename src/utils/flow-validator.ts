@@ -634,17 +634,21 @@ function checkExtendedNodes(flow: FlowDocument): ValidationIssue[] {
       }
       case 'event': {
         const spec = (node.spec ?? {}) as EventNodeSpec;
-        if (!spec.direction) {
-          issues.push(issue('flow', 'error', 'spec_completeness',
-            `Event "${node.label}" must have a direction set`,
-            { nodeId: node.id, suggestion: 'Set the direction (emit or consume)' }
-          ));
-        }
-        if (isBlank(spec.event_name)) {
-          issues.push(issue('flow', 'error', 'spec_completeness',
-            `Event "${node.label}" must have an event name defined`,
-            { nodeId: node.id, suggestion: 'Set the event name' }
-          ));
+        // queue_operation is mutually exclusive with direction/event_name (Usage Guide §6)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if (!(spec as any).queue_operation) {
+          if (!spec.direction) {
+            issues.push(issue('flow', 'error', 'spec_completeness',
+              `Event "${node.label}" must have a direction set`,
+              { nodeId: node.id, suggestion: 'Set the direction (emit or consume)' }
+            ));
+          }
+          if (isBlank(spec.event_name)) {
+            issues.push(issue('flow', 'error', 'spec_completeness',
+              `Event "${node.label}" must have an event name defined`,
+              { nodeId: node.id, suggestion: 'Set the event name' }
+            ));
+          }
         }
         break;
       }
