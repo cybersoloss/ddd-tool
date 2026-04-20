@@ -3,6 +3,10 @@
 ## Before Editing
 **Before editing node types, validators, spec editors, or YAML parsing**, read `~/dev/DDD/DDD-USAGE-GUIDE.md` — it is the source of truth for all YAML formats, node types, spec fields, sourceHandle values, and validation rules. The tool must stay in sync with it.
 
+## DDD-PCCA (Post-Change Consistency Audit)
+
+After editing validator, normalizer, spec editors, node components, or types, follow the DDD-PCCA protocol in `~/dev/DDD/CLAUDE.md`. It defines the full cross-repo dependency map and audit checklist covering guide, commands, and tool.
+
 ## Reference Docs
 - Architecture notes: `ddd-tool-architecture.md` (this repo) — UI/UX, canvas behavior, stores, validation rules, design decisions
 - Future plan: `ddd-tool-future-plan.md` (this repo) — unimplemented features, planned sessions
