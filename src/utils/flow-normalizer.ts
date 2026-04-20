@@ -591,6 +591,7 @@ export function normalizeFlowDocument(raw: Record<string, unknown>, domainId: st
 
     // Transform: external YAML uses mode:expression + output:{} instead of
     // input_schema/output_schema. Set placeholder schema names so the validator passes.
+    // ddd-create uses `operations` array pattern without setting mode — treat as expression mode.
     if (nodeType === 'transform') {
       if (spec.mode && !spec.input_schema) spec.input_schema = 'Expression';
       if (spec.mode && !spec.output_schema) spec.output_schema = 'Expression';
