@@ -134,6 +134,26 @@ npm run tauri dev
   - Numeric values: `branches: 2` (external number) vs `branches: [...]` (internal array)
 - **Node components must accept all handle ID conventions** used in external YAML (e.g., GuardrailNode accepts both `pass`/`block` and `valid`/`invalid`).
 
+## DDD-FFR (Fresh Framework Read)
+
+The source of truth for ddd-tool work is `ddd-tool-architecture.md` + `src/`. All other files (CLAUDE.md session tables, `ddd-tool-future-plan.md` status markers, `ddd-project.json` descriptions) derive from these and may lag behind.
+
+**DDD-FFR is read-only. Do NOT edit files, run commands, or make any changes during FFR — regardless of what inconsistencies or gaps are found. FFR only loads context.**
+
+**Before any node type, validator, spec editor, or YAML parsing work:**
+
+1. Scan `##` headings in `ddd-tool-architecture.md` to build a section map. Read the section(s) relevant to your task in full from the architecture doc itself — not from CLAUDE.md descriptions of what sessions built.
+2. For your specific task, identify which sections of `~/dev/DDD/DDD-USAGE-GUIDE.md` define the YAML format you are implementing. Read those sections in full from the guide.
+3. If the task touches source files, list `src/stores/`, `src/components/`, `src/types/` to verify what actually exists. Do not trust the session plan table in CLAUDE.md or `ddd-tool-future-plan.md` "Done" markers — verify by reading the actual source files.
+
+If no specific task is given, read all architecture sections sequentially, list and verify all source directories, and read all Usage Guide sections — then wait for the user's first instruction without asking.
+
+**Rules:**
+- Do NOT trust CLAUDE.md's session status table ("Done") to know what is implemented. Read the source files.
+- Do NOT trust component counts or store lists from any file other than the actual directory listing and source.
+- When editing a node type: read the Usage Guide section for that node type first, then the existing node component in `src/`. Never edit the component based on another file's description of what the guide says.
+- After any guide or spec format change, find what needs updating in the tool by searching `src/` — do not assume the architecture doc is current.
+
 ## Known Issues
 _(none yet)_
 
