@@ -28,6 +28,7 @@ import { BatchNode } from './BatchNode';
 import { TransactionNode } from './TransactionNode';
 import { IpcCallNode } from './IpcCallNode';
 import { WebSocketBroadcastNode } from './WebSocketBroadcastNode';
+import { TextSplitNode } from './TextSplitNode';
 
 export const nodeTypes: NodeTypes = {
   trigger: TriggerNode,
@@ -59,4 +60,5 @@ export const nodeTypes: NodeTypes = {
   transaction: TransactionNode,
   ipc_call: IpcCallNode,
   websocket_broadcast: WebSocketBroadcastNode,
+  text_split: TextSplitNode,
 };
