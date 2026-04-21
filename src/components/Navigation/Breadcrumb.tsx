@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronRight, ArrowLeft, GitBranch, Map, Lock, Unlock, Search, MessageSquare, BookOpen } from 'lucide-react';
+import { ChevronRight, ArrowLeft, GitBranch, Map, Lock, Unlock, Search, MessageSquare, BookOpen, PenTool } from 'lucide-react';
 import { useSheetStore } from '../../stores/sheet-store';
 import { useProjectStore } from '../../stores/project-store';
 import { useAppStore } from '../../stores/app-store';
@@ -69,6 +69,13 @@ export function Breadcrumb() {
       result.push({
         label: flowName,
         location: { level: 'flow', domainId, flowId },
+      });
+    }
+
+    if (current.level === 'diagram') {
+      result.push({
+        label: 'Diagrams',
+        location: { level: 'diagram' },
       });
     }
 
@@ -246,6 +253,19 @@ export function Breadcrumb() {
       </button>
 
       <ValidationBadge />
+
+      <button
+        className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors ${
+          current.level === 'diagram'
+            ? 'bg-accent/20 text-accent'
+            : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+        }`}
+        onClick={() => navigateTo({ level: 'diagram' })}
+        title="Diagrams"
+      >
+        <PenTool className="w-3.5 h-3.5" />
+        <span className="hidden sm:inline">Diagrams</span>
+      </button>
 
       <button
         className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors ${

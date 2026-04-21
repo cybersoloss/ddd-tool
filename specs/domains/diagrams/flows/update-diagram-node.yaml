@@ -1,0 +1,43 @@
+flow:
+  id: update-diagram-node
+  name: Update Diagram Node
+  type: traditional
+  domain: diagrams
+  description: Edit node properties — label, description, shape, color, icon, children, link
+
+trigger:
+  id: trigger-lZ6nT3bD
+  position: { x: 250, y: 0 }
+  connections:
+    - targetNodeId: process-mA7pU4cE
+  spec:
+    event: "ui:diagram-node-edited"
+    description: >
+      User modifies node properties via: (a) double-click node to inline-edit label,
+      or (b) side panel fields for all properties
+  label: "Node Edited"
+
+nodes:
+  - id: process-mA7pU4cE
+    type: process
+    position: { x: 250, y: 130 }
+    label: "Update Node in Store"
+    spec:
+      action: >
+        Find node by ID in diagram-store.currentDiagram.nodes. Update changed properties:
+        label, description, notes, shape, style (border_color, fill_color, fill_opacity,
+        border_thickness, size, shadow), icon, children, status, link.
+        Set isDirty=true.
+    connections:
+      - targetNodeId: terminal-nB8qV5dF
+
+  - id: terminal-nB8qV5dF
+    type: terminal
+    position: { x: 250, y: 260 }
+    label: "Node Updated"
+    spec:
+      outcome: success
+
+metadata:
+  created: "2026-04-20T00:00:00Z"
+  modified: "2026-04-21T00:00:00Z"

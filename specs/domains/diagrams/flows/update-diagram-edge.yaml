@@ -1,0 +1,41 @@
+flow:
+  id: update-diagram-edge
+  name: Update Diagram Edge
+  type: traditional
+  domain: diagrams
+  description: Edit edge properties — direction, style, labels, weight
+
+trigger:
+  id: trigger-pC9rW6eG
+  position: { x: 250, y: 0 }
+  connections:
+    - targetNodeId: process-qD1sX7fH
+  spec:
+    event: "ui:diagram-edge-edited"
+    description: User modifies edge properties in the side panel
+  label: "Edge Edited"
+
+nodes:
+  - id: process-qD1sX7fH
+    type: process
+    position: { x: 250, y: 130 }
+    label: "Update Edge in Store"
+    spec:
+      action: >
+        Find edge by from+to in diagram-store.currentDiagram.edges. Update changed properties:
+        direction (one-way/two-way/conditional), style (solid/dashed/dotted),
+        labels (string array), weight (primary/secondary).
+        Set isDirty=true.
+    connections:
+      - targetNodeId: terminal-rE2tY8gI
+
+  - id: terminal-rE2tY8gI
+    type: terminal
+    position: { x: 250, y: 260 }
+    label: "Edge Updated"
+    spec:
+      outcome: success
+
+metadata:
+  created: "2026-04-20T00:00:00Z"
+  modified: "2026-04-20T00:00:00Z"

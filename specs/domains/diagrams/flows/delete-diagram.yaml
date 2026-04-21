@@ -1,0 +1,58 @@
+flow:
+  id: delete-diagram
+  name: Delete Diagram
+  type: traditional
+  domain: diagrams
+  description: Delete a diagram YAML file and remove from sidebar list
+
+trigger:
+  id: trigger-uH7wB4jL
+  position: { x: 250, y: 0 }
+  connections:
+    - targetNodeId: ipc_call-vI8xC5kM
+  spec:
+    event: "ui:delete-diagram-confirmed"
+    description: User confirms deletion in dialog
+  label: "Delete Confirmed"
+
+nodes:
+  - id: ipc_call-vI8xC5kM
+    type: ipc_call
+    position: { x: 250, y: 130 }
+    label: "Delete Diagram File"
+    spec:
+      command: delete_file
+      args:
+        path: "{projectPath}/specs/diagrams/{diagramId}.yaml"
+    connections:
+      - targetNodeId: process-wJ9yD6lN
+        sourceHandle: success
+      - targetNodeId: terminal-yL2aF8nP
+        sourceHandle: error
+
+  - id: process-wJ9yD6lN
+    type: process
+    position: { x: 250, y: 260 }
+    label: "Remove from Store"
+    spec:
+      action: "Remove diagram from diagram-store.diagrams; if currentDiagram was deleted, clear canvas"
+    connections:
+      - targetNodeId: terminal-xK1zE7mQ
+
+  - id: terminal-xK1zE7mQ
+    type: terminal
+    position: { x: 250, y: 390 }
+    label: "Diagram Deleted"
+    spec:
+      outcome: success
+
+  - id: terminal-yL2aF8nP
+    type: terminal
+    position: { x: 550, y: 130 }
+    label: "Delete Error"
+    spec:
+      outcome: error
+
+metadata:
+  created: "2026-04-20T00:00:00Z"
+  modified: "2026-04-20T00:00:00Z"

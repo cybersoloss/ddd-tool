@@ -1,0 +1,87 @@
+flow:
+  id: create-diagram
+  name: Create Diagram
+  type: traditional
+  domain: diagrams
+  description: Create a new empty diagram with name and description
+
+trigger:
+  id: trigger-mZ8nT6bD
+  position: { x: 250, y: 0 }
+  connections:
+    - targetNodeId: input-nA9pU7cE
+  spec:
+    event: "ui:create-diagram-clicked"
+    description: User clicks New Diagram button in sidebar
+  label: "Create Clicked"
+
+nodes:
+  - id: input-nA9pU7cE
+    type: input
+    position: { x: 250, y: 130 }
+    label: "Diagram Details"
+    spec:
+      fields:
+        - name: name
+          type: string
+          required: true
+        - name: description
+          type: string
+          required: false
+    connections:
+      - targetNodeId: process-pC2rW9eG
+        sourceHandle: valid
+      - targetNodeId: terminal-rE4tY1gI
+        sourceHandle: invalid
+
+  - id: process-pC2rW9eG
+    type: process
+    position: { x: 250, y: 260 }
+    label: "Build Empty Diagram"
+    spec:
+      action: "Create DiagramDocument with name, description, empty nodes/edges/text_boxes arrays, generated ID, timestamps"
+    connections:
+      - targetNodeId: ipc_call-qD3sX8fH
+
+  - id: ipc_call-qD3sX8fH
+    type: ipc_call
+    position: { x: 250, y: 390 }
+    label: "Write New Diagram File"
+    spec:
+      command: write_file
+      args:
+        path: "{projectPath}/specs/diagrams/{newId}.yaml"
+        content: "$.yamlContent"
+        create_parents: true
+    connections:
+      - targetNodeId: process-sF5uZ2hJ
+        sourceHandle: success
+      - targetNodeId: terminal-rE4tY1gI
+        sourceHandle: error
+
+  - id: process-sF5uZ2hJ
+    type: process
+    position: { x: 250, y: 520 }
+    label: "Add to Sidebar & Open"
+    spec:
+      action: "Append new diagram to diagram-store.diagrams list; set as currentDiagram; open canvas"
+    connections:
+      - targetNodeId: terminal-tG6vA3iK
+
+  - id: terminal-tG6vA3iK
+    type: terminal
+    position: { x: 250, y: 650 }
+    label: "Diagram Created"
+    spec:
+      outcome: success
+
+  - id: terminal-rE4tY1gI
+    type: terminal
+    position: { x: 550, y: 260 }
+    label: "Creation Error"
+    spec:
+      outcome: error
+
+metadata:
+  created: "2026-04-20T00:00:00Z"
+  modified: "2026-04-20T00:00:00Z"

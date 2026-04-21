@@ -1,0 +1,40 @@
+flow:
+  id: add-text-box
+  name: Add Text Box
+  type: traditional
+  domain: diagrams
+  description: Place a freeform text box on the canvas (title, annotation, callout)
+
+trigger:
+  id: trigger-iW3kQ9yA
+  position: { x: 250, y: 0 }
+  connections:
+    - targetNodeId: process-jX4lR1zB
+  spec:
+    event: "ui:add-text-box-clicked"
+    description: User clicks Add Text Box from toolbar and clicks canvas position
+  label: "Text Box Placed"
+
+nodes:
+  - id: process-jX4lR1zB
+    type: process
+    position: { x: 250, y: 130 }
+    label: "Create Text Box"
+    spec:
+      action: >
+        Create TextBox with: generated ID, click position, default text placeholder,
+        default style (size: medium, no border). Add to diagram-store.currentDiagram.text_boxes.
+        Set isDirty=true. Focus text for immediate editing.
+    connections:
+      - targetNodeId: terminal-kY5mS2aC
+
+  - id: terminal-kY5mS2aC
+    type: terminal
+    position: { x: 250, y: 260 }
+    label: "Text Box Added"
+    spec:
+      outcome: success
+
+metadata:
+  created: "2026-04-20T00:00:00Z"
+  modified: "2026-04-20T00:00:00Z"

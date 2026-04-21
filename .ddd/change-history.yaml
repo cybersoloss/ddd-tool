@@ -980,3 +980,53 @@
   status: "implemented"
   implemented_at: "2026-02-28T16:47:00.000Z"
   code_files: []
+
+- id: "chg-0093"
+  timestamp: "2026-04-21T00:00:00.000Z"
+  source: "ddd-update"
+  scope: { level: L3, domain: diagrams, flow: add-diagram-node, pillar: logic }
+  spec_file: "specs/domains/diagrams/flows/add-diagram-node.yaml"
+  spec_checksum: "f65b3c05535a"
+  status: "pending_implement"
+  implemented_at: null
+  code_files: []
+
+- id: "chg-0094"
+  timestamp: "2026-04-21T00:00:00.000Z"
+  source: "ddd-update"
+  scope: { level: L3, domain: diagrams, flow: add-diagram-edge, pillar: logic }
+  spec_file: "specs/domains/diagrams/flows/add-diagram-edge.yaml"
+  spec_checksum: "0e7604fee135"
+  status: "pending_implement"
+  implemented_at: null
+  code_files: []
+
+- id: "chg-0095"
+  timestamp: "2026-04-21T00:00:00.000Z"
+  source: "ddd-update"
+  scope: { level: L3, domain: diagrams, flow: update-diagram-node, pillar: logic }
+  spec_file: "specs/domains/diagrams/flows/update-diagram-node.yaml"
+  spec_checksum: "4ebdeaa46b6f"
+  status: "pending_implement"
+  implemented_at: null
+  code_files: []
+
+- id: "chg-0096"
+  timestamp: "2026-04-21T00:00:00.000Z"
+  source: "ddd-update"
+  scope: { level: L3, domain: diagrams, flow: add-diagram-edge, pillar: logic }
+  spec_file: "specs/domains/diagrams/flows/add-diagram-edge.yaml"
+  spec_checksum: "743e4f8c04b1"
+  status: "pending_implement"
+  implemented_at: null
+  code_files: []
+
+- id: "chg-0097"
+  timestamp: "2026-04-21T00:00:00.000Z"
+  source: "ddd-update"
+  scope: { level: L1, domain: null, flow: null, pillar: data }
+  spec_file: "specs/schemas/diagram.yaml"
+  spec_checksum: "9a61140e890d"
+  status: "pending_implement"
+  implemented_at: null
+  code_files: []

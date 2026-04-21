@@ -1,0 +1,93 @@
+name: Diagrams
+description: >
+  Freeform visual design canvas for architecture diagrams, mind maps, and conceptual design.
+  Not tied to DDD node types or validation — purely visual thinking tool. Supports Visio-like
+  predefined shapes, hierarchical nodes, rich edges (one-way, two-way, conditional), freeform
+  text boxes, and cross-linking between diagrams or to DDD flows.
+role: interface
+
+owns_schemas:
+  - Diagram
+
+stores:
+  - name: diagram-store
+    shape:
+      diagrams: "DiagramMeta[]"
+      currentDiagram: "DiagramDocument | null"
+      isDirty: boolean
+      isSaving: boolean
+    access_pattern: read_write
+
+flows:
+  - id: load-diagram-list
+    name: Load Diagram List
+    description: Scan specs/diagrams/*.yaml and populate sidebar with diagram names, descriptions, and tags
+    type: traditional
+
+  - id: load-diagram
+    name: Load Diagram
+    description: Load a single diagram YAML from disk, parse nodes/edges/text-boxes, set diagram-store
+    type: traditional
+
+  - id: save-diagram
+    name: Save Diagram
+    description: Serialize current diagram state to YAML and write to specs/diagrams/{id}.yaml
+    type: traditional
+
+  - id: create-diagram
+    name: Create Diagram
+    description: Create a new empty diagram with name, description, and initial canvas
+    type: traditional
+
+  - id: delete-diagram
+    name: Delete Diagram
+    description: Delete a diagram YAML file and remove from sidebar list
+    type: traditional
+
+  - id: rename-diagram
+    name: Rename Diagram
+    description: Update diagram name and description metadata
+    type: traditional
+
+  - id: add-diagram-node
+    name: Add Diagram Node
+    description: Add a freeform node (predefined shape or custom) to the canvas at click position
+    type: traditional
+
+  - id: add-diagram-edge
+    name: Add Diagram Edge
+    description: Connect two nodes with a styled edge (direction, style, labels)
+    type: traditional
+
+  - id: add-text-box
+    name: Add Text Box
+    description: Place a freeform text box on the canvas (title, annotation, callout)
+    type: traditional
+
+  - id: update-diagram-node
+    name: Update Diagram Node
+    description: Edit node properties — label, description, shape, color, icon, children, link
+    type: traditional
+
+  - id: update-diagram-edge
+    name: Update Diagram Edge
+    description: Edit edge properties — direction, style, labels, weight
+    type: traditional
+
+publishes_events: []
+consumes_events: []
+
+layout:
+  flows:
+    load-diagram-list: { x: 100, y: 100 }
+    load-diagram: { x: 100, y: 200 }
+    save-diagram: { x: 100, y: 300 }
+    create-diagram: { x: 300, y: 100 }
+    delete-diagram: { x: 300, y: 200 }
+    rename-diagram: { x: 300, y: 300 }
+    add-diagram-node: { x: 500, y: 100 }
+    add-diagram-edge: { x: 500, y: 200 }
+    add-text-box: { x: 500, y: 300 }
+    update-diagram-node: { x: 700, y: 100 }
+    update-diagram-edge: { x: 700, y: 200 }
+  portals: {}
