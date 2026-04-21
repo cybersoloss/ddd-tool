@@ -1,0 +1,37 @@
+flow:
+  id: rename-diagram
+  name: Rename Diagram
+  type: traditional
+  domain: diagrams
+  description: Update diagram name and description metadata
+
+trigger:
+  id: trigger-zM3bG9pR
+  position: { x: 250, y: 0 }
+  connections:
+    - targetNodeId: process-aN4cH1qS
+  spec:
+    event: "ui:diagram-renamed"
+    description: User edits name or description in diagram panel
+  label: "Name Changed"
+
+nodes:
+  - id: process-aN4cH1qS
+    type: process
+    position: { x: 250, y: 130 }
+    label: "Update Store Metadata"
+    spec:
+      action: "Update diagram-store.currentDiagram name/description; update diagrams list entry; set isDirty=true"
+    connections:
+      - targetNodeId: terminal-bP5dI2rT
+
+  - id: terminal-bP5dI2rT
+    type: terminal
+    position: { x: 250, y: 260 }
+    label: "Renamed"
+    spec:
+      outcome: success
+
+metadata:
+  created: "2026-04-20T00:00:00Z"
+  modified: "2026-04-20T00:00:00Z"

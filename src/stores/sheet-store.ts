@@ -1,9 +1,10 @@
 import { create } from 'zustand';
 import type { SheetLocation, BreadcrumbSegment } from '../types/sheet';
 import { useProjectStore } from './project-store';
+import { useDiagramStore } from './diagram-store';
 
 function locationEquals(a: SheetLocation, b: SheetLocation): boolean {
-  return a.level === b.level && a.domainId === b.domainId && a.flowId === b.flowId;
+  return a.level === b.level && a.domainId === b.domainId && a.flowId === b.flowId && a.diagramId === b.diagramId;
 }
 
 interface SheetState {
@@ -16,6 +17,7 @@ interface SheetState {
   navigateToSystem: () => void;
   navigateToDomain: (domainId: string) => void;
   navigateToFlow: (domainId: string, flowId: string) => void;
+  navigateToDiagram: (diagramId: string) => void;
   addTab: (location: SheetLocation) => void;
   removeTab: (index: number) => void;
   switchTab: (index: number) => void;
@@ -43,7 +45,7 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     const { current } = get();
     if (current.level === 'flow' && current.domainId) {
       get().navigateTo({ level: 'domain', domainId: current.domainId });
-    } else if (current.level === 'domain') {
+    } else if (current.level === 'domain' || current.level === 'diagram') {
       get().navigateTo({ level: 'system' });
     }
   },
@@ -58,6 +60,10 @@ export const useSheetStore = create<SheetState>((set, get) => ({
 
   navigateToFlow: (domainId, flowId) => {
     get().navigateTo({ level: 'flow', domainId, flowId });
+  },
+
+  navigateToDiagram: (diagramId) => {
+    get().navigateTo({ level: 'diagram', diagramId });
   },
 
   addTab: (location) => {
@@ -112,6 +118,16 @@ export const useSheetStore = create<SheetState>((set, get) => ({
       segments.push({
         label: flowName,
         location: { level: 'flow', domainId, flowId },
+      });
+    }
+
+    if (current.level === 'diagram') {
+      const diagramId = current.diagramId!;
+      const diagrams = useDiagramStore.getState().diagrams;
+      const diagramName = diagrams.find((d) => d.id === diagramId)?.name ?? diagramId;
+      segments.push({
+        label: diagramName,
+        location: { level: 'diagram', diagramId },
       });
     }
 

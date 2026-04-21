@@ -1,0 +1,69 @@
+flow:
+  id: save-diagram
+  name: Save Diagram
+  type: traditional
+  domain: diagrams
+  description: Serialize current diagram state to YAML and write to specs/diagrams/{id}.yaml
+
+trigger:
+  id: trigger-gT2hM9vX
+  position: { x: 250, y: 0 }
+  connections:
+    - targetNodeId: process-hU3iN1wY
+  spec:
+    event: "ui:save-diagram"
+    description: User clicks Save or Cmd+S while diagram canvas is active
+  label: "Save Triggered"
+
+nodes:
+  - id: process-hU3iN1wY
+    type: process
+    position: { x: 250, y: 130 }
+    label: "Serialize to YAML"
+    spec:
+      action: "Convert diagram-store.currentDiagram to YAML string — preserve node positions, edge properties, text box positions, metadata"
+    connections:
+      - targetNodeId: ipc_call-iV4jP2xZ
+
+  - id: ipc_call-iV4jP2xZ
+    type: ipc_call
+    position: { x: 250, y: 260 }
+    label: "Write Diagram File"
+    spec:
+      command: write_file
+      args:
+        path: "{projectPath}/specs/diagrams/{diagramId}.yaml"
+        content: "$.yamlContent"
+    connections:
+      - targetNodeId: process-jW5kQ3yA
+        sourceHandle: success
+      - targetNodeId: terminal-lY7mS5aC
+        sourceHandle: error
+
+  - id: process-jW5kQ3yA
+    type: process
+    position: { x: 250, y: 390 }
+    label: "Update Store State"
+    spec:
+      action: "Set diagram-store.isDirty=false; update metadata.modified to current timestamp"
+    connections:
+      - targetNodeId: terminal-kX6lR4zB
+
+  - id: terminal-kX6lR4zB
+    type: terminal
+    position: { x: 250, y: 520 }
+    label: "Diagram Saved"
+    spec:
+      outcome: success
+
+  - id: terminal-lY7mS5aC
+    type: terminal
+    position: { x: 550, y: 260 }
+    label: "Save Error"
+    spec:
+      outcome: error
+      description: "Failed to write diagram YAML to disk"
+
+metadata:
+  created: "2026-04-20T00:00:00Z"
+  modified: "2026-04-20T00:00:00Z"

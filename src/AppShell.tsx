@@ -9,6 +9,7 @@ import { useGitStore } from './stores/git-store';
 import { useImplementationStore } from './stores/implementation-store';
 import { useUiStore } from './stores/ui-store';
 import { useValidationStore } from './stores/validation-store';
+import { useDiagramStore } from './stores/diagram-store';
 import { isOwnWrite } from './stores/write-guard';
 import { useSpecsStore } from './stores/specs-store';
 import { Breadcrumb } from './components/Navigation/Breadcrumb';
@@ -16,6 +17,8 @@ import { SheetTabs } from './components/Navigation/SheetTabs';
 import { SystemMap } from './components/SystemMap/SystemMap';
 import { DomainMap } from './components/DomainMap/DomainMap';
 import { FlowCanvas } from './components/FlowCanvas/FlowCanvas';
+import { DiagramCanvas } from './components/DiagramCanvas/DiagramCanvas';
+import { DiagramSidebar } from './components/DiagramCanvas/DiagramSidebar';
 import { GitPanel } from './components/GitPanel/GitPanel';
 import { SpecsSidebar } from './components/SpecsSidebar/SpecsSidebar';
 import { ProjectValidationPanel } from './components/Validation/ProjectValidationPanel';
@@ -34,12 +37,20 @@ async function handleExternalChanges(changedPaths: string[], projectPath: string
     (p) => p.includes('/specs/schemas/') || p.includes('/specs/ui/') || p.endsWith('infrastructure.yaml'),
   );
 
+  const hasDiagramChange = changedPaths.some(
+    (p) => p.includes('/specs/diagrams/'),
+  );
+
   if (hasDomainOrProjectChange) {
     await useProjectStore.getState().reloadProject();
     useUiStore.getState().flashSync();
   } else if (hasSpecsChange && projectPath) {
     await useSpecsStore.getState().loadAll(projectPath);
     useUiStore.getState().flashSync();
+  }
+
+  if (hasDiagramChange && projectPath) {
+    await useDiagramStore.getState().loadDiagramList(projectPath);
   }
 
   if (changedFlowYamls.length > 0) {
@@ -87,6 +98,7 @@ export function AppShell() {
     useProjectStore.getState().loadProject(currentProjectPath).then(async () => {
       useGitStore.getState().refresh();
       useImplementationStore.getState().loadMappings();
+      useDiagramStore.getState().loadDiagramList(currentProjectPath);
 
       // Check for crash recovery autosave files
       try {
@@ -110,6 +122,7 @@ export function AppShell() {
       useProjectStore.getState().reset();
       useGitStore.getState().reset();
       useImplementationStore.getState().reset();
+      useDiagramStore.getState().reset();
     };
   }, [currentProjectPath, pushError]);
 
@@ -170,13 +183,15 @@ export function AppShell() {
       <Breadcrumb />
       <SheetTabs />
       <div className="flex-1 flex flex-row overflow-hidden">
-        {specsPanelOpen && <SpecsSidebar />}
+        {specsPanelOpen && level !== 'diagram' && <SpecsSidebar />}
+        {level === 'diagram' && <DiagramSidebar />}
         <div className="flex-1 flex flex-col overflow-hidden">
           {level === 'system' && <SystemMap />}
           {level === 'domain' && <DomainMap />}
           {level === 'flow' && <FlowCanvas />}
+          {level === 'diagram' && <DiagramCanvas />}
         </div>
-        {validationPanelOpen && level !== 'flow' && <ProjectValidationPanel />}
+        {validationPanelOpen && level !== 'flow' && level !== 'diagram' && <ProjectValidationPanel />}
         {panelOpen && <GitPanel />}
       </div>
 

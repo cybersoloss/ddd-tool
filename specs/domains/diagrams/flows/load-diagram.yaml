@@ -1,0 +1,68 @@
+flow:
+  id: load-diagram
+  name: Load Diagram
+  type: traditional
+  domain: diagrams
+  description: Load a single diagram YAML from disk, parse nodes/edges/text-boxes, set diagram-store
+
+trigger:
+  id: trigger-aM3eG8qS
+  position: { x: 250, y: 0 }
+  connections:
+    - targetNodeId: ipc_call-bN5fH2rT
+  spec:
+    event: "ui:diagram-selected"
+    description: User clicks a diagram in the sidebar list
+  label: "Diagram Selected"
+
+nodes:
+  - id: ipc_call-bN5fH2rT
+    type: ipc_call
+    position: { x: 250, y: 130 }
+    label: "Read Diagram YAML"
+    spec:
+      command: read_file
+      args:
+        path: "{projectPath}/specs/diagrams/{diagramId}.yaml"
+    connections:
+      - targetNodeId: process-cP7gJ4sU
+        sourceHandle: success
+      - targetNodeId: terminal-eR9fTx5z
+        sourceHandle: error
+
+  - id: process-cP7gJ4sU
+    type: process
+    position: { x: 250, y: 260 }
+    label: "Parse Diagram Document"
+    spec:
+      action: "Parse YAML to DiagramDocument — extract nodes (with positions, shapes, children), edges (with direction, style, labels), text_boxes, metadata"
+    connections:
+      - targetNodeId: process-dQ8hK5tV
+
+  - id: process-dQ8hK5tV
+    type: process
+    position: { x: 250, y: 390 }
+    label: "Set Diagram Store"
+    spec:
+      action: "Set diagram-store.currentDiagram with parsed document; set isDirty=false"
+    connections:
+      - targetNodeId: terminal-fS1gL6uW
+
+  - id: terminal-fS1gL6uW
+    type: terminal
+    position: { x: 250, y: 520 }
+    label: "Diagram Loaded"
+    spec:
+      outcome: success
+
+  - id: terminal-eR9fTx5z
+    type: terminal
+    position: { x: 550, y: 130 }
+    label: "Load Error"
+    spec:
+      outcome: error
+      description: "Diagram file not found or YAML parse error"
+
+metadata:
+  created: "2026-04-20T00:00:00Z"
+  modified: "2026-04-20T00:00:00Z"

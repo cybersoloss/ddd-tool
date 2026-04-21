@@ -1,0 +1,124 @@
+name: Diagram
+description: >
+  A freeform visual design diagram. Stored as YAML in specs/diagrams/.
+  Not tied to DDD node types — purely conceptual/architectural design.
+
+fields:
+  - name: name
+    type: string
+    required: true
+    description: Human-readable diagram name (renameable in UI)
+
+  - name: description
+    type: string
+    required: false
+    description: Multi-line description visible in sidebar and panel
+
+  - name: tags
+    type: string[]
+    required: false
+    description: Tags for filtering and searching across diagrams
+
+  - name: nodes
+    type: DiagramNode[]
+    required: true
+    description: Freeform nodes on the canvas
+    nested_fields:
+      - name: id
+        type: string
+        required: true
+      - name: label
+        type: string
+        required: true
+      - name: shape
+        type: string
+        required: false
+        description: "rectangle | rounded-rectangle | cylinder | diamond | circle | hexagon | cloud | person | document | folder | stack | custom"
+      - name: position
+        type: "{ x: number, y: number }"
+        required: false
+        description: Manual position — auto-computed if absent
+      - name: description
+        type: string
+        required: false
+      - name: notes
+        type: string
+        required: false
+        description: Extended text, multi-line
+      - name: style
+        type: object
+        required: false
+        description: "{ border_color, fill_color, fill_opacity, border_thickness, size, shadow }"
+      - name: icon
+        type: string
+        required: false
+        description: Lucide icon name
+      - name: children
+        type: string[]
+        required: false
+        description: Child labels for hierarchical grouping
+      - name: status
+        type: string
+        required: false
+        description: "draft | active | deprecated"
+      - name: link
+        type: string
+        required: false
+        description: Cross-link to another diagram or DDD flow (diagrams/id or domains/flow-id)
+
+  - name: edges
+    type: DiagramEdge[]
+    required: true
+    description: Connections between nodes (multiple edges allowed between same pair)
+    nested_fields:
+      - name: id
+        type: string
+        required: true
+        description: Unique edge identifier
+      - name: from
+        type: string
+        required: true
+        description: Source node ID
+      - name: to
+        type: string
+        required: true
+        description: Target node ID
+      - name: direction
+        type: string
+        required: false
+        description: "one-way | two-way | conditional"
+      - name: style
+        type: string
+        required: false
+        description: "solid | dashed | dotted"
+      - name: labels
+        type: string[]
+        required: false
+        description: One or more labels on the edge
+      - name: weight
+        type: string
+        required: false
+        description: "primary | secondary — affects visual thickness"
+
+  - name: text_boxes
+    type: TextBox[]
+    required: false
+    description: Freeform text placed anywhere on canvas
+    nested_fields:
+      - name: id
+        type: string
+        required: true
+      - name: position
+        type: "{ x: number, y: number }"
+        required: true
+      - name: text
+        type: string
+        required: true
+      - name: style
+        type: object
+        required: false
+        description: "{ size: small|medium|large, border, background }"
+
+metadata:
+  created: "2026-04-20T00:00:00Z"
+  modified: "2026-04-20T00:00:00Z"

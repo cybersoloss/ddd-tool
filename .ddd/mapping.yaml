@@ -673,6 +673,167 @@ flows:
     syncState: in_sync
     annotationCount: 0
 
+  # ── diagrams domain ─────────────────────────────────────────────────────────
+  diagrams/load-diagram-list:
+    spec: specs/domains/diagrams/flows/load-diagram-list.yaml
+    specHash: "cff387b1464c3d22ee4662693b5cf322d4089b8b972a0d47174fbdea135842cf"
+    files:
+      - src/stores/diagram-store.ts
+      - src/components/DiagramCanvas/DiagramSidebar.tsx
+    fileHashes:
+      src/stores/diagram-store.ts: "e8c1eed83cbb507b64f3ff4a55861725874edfa3809ea1c1993490c779dce9be"
+      src/components/DiagramCanvas/DiagramSidebar.tsx: "f14b5b46f4166cc3694f411abafa8681509c88e329cc2c09359820d7c2d73bb1"
+    implementedAt: "2026-04-21T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  diagrams/load-diagram:
+    spec: specs/domains/diagrams/flows/load-diagram.yaml
+    specHash: "81f58037a696727cab4c847b82f83b8c1ee044d10405ba4a28049eea26b83def"
+    files:
+      - src/stores/diagram-store.ts
+      - src/components/DiagramCanvas/DiagramCanvas.tsx
+    fileHashes:
+      src/stores/diagram-store.ts: "e8c1eed83cbb507b64f3ff4a55861725874edfa3809ea1c1993490c779dce9be"
+      src/components/DiagramCanvas/DiagramCanvas.tsx: "8fde91a2e35c1135dd23c6ecec1c42b365e5c1fbed4b1c71a0b49fd98c450722"
+    implementedAt: "2026-04-21T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  diagrams/save-diagram:
+    spec: specs/domains/diagrams/flows/save-diagram.yaml
+    specHash: "c0d2c5c4d6bd23d95e80a4261409d6c4cfb3864f39ca64e1ce987a439667ba2b"
+    files:
+      - src/stores/diagram-store.ts
+      - src/components/DiagramCanvas/DiagramCanvas.tsx
+    fileHashes:
+      src/stores/diagram-store.ts: "e8c1eed83cbb507b64f3ff4a55861725874edfa3809ea1c1993490c779dce9be"
+      src/components/DiagramCanvas/DiagramCanvas.tsx: "8fde91a2e35c1135dd23c6ecec1c42b365e5c1fbed4b1c71a0b49fd98c450722"
+    implementedAt: "2026-04-21T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  diagrams/create-diagram:
+    spec: specs/domains/diagrams/flows/create-diagram.yaml
+    specHash: "2d05c6ad4e93a1bd4c4f592220cba5a2a016ded541d85f343900505a47519a65"
+    files:
+      - src/stores/diagram-store.ts
+      - src/components/DiagramCanvas/DiagramSidebar.tsx
+    fileHashes:
+      src/stores/diagram-store.ts: "e8c1eed83cbb507b64f3ff4a55861725874edfa3809ea1c1993490c779dce9be"
+      src/components/DiagramCanvas/DiagramSidebar.tsx: "f14b5b46f4166cc3694f411abafa8681509c88e329cc2c09359820d7c2d73bb1"
+    implementedAt: "2026-04-21T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  diagrams/delete-diagram:
+    spec: specs/domains/diagrams/flows/delete-diagram.yaml
+    specHash: "784cdab1e54151c32e60b89fb90ae807c608e13a70321a9744a30fa5a877f068"
+    files:
+      - src/stores/diagram-store.ts
+      - src/components/DiagramCanvas/DiagramSidebar.tsx
+    fileHashes:
+      src/stores/diagram-store.ts: "e8c1eed83cbb507b64f3ff4a55861725874edfa3809ea1c1993490c779dce9be"
+      src/components/DiagramCanvas/DiagramSidebar.tsx: "f14b5b46f4166cc3694f411abafa8681509c88e329cc2c09359820d7c2d73bb1"
+    implementedAt: "2026-04-21T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  diagrams/rename-diagram:
+    spec: specs/domains/diagrams/flows/rename-diagram.yaml
+    specHash: "609d405c693f6bd06c4da1e3dc0dd68b5980bd779f47d13b178e0697ccaf7331"
+    files:
+      - src/stores/diagram-store.ts
+      - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+    fileHashes:
+      src/stores/diagram-store.ts: "e8c1eed83cbb507b64f3ff4a55861725874edfa3809ea1c1993490c779dce9be"
+      src/components/DiagramCanvas/DiagramPropertiesPanel.tsx: "5dcc71f60696fa1fbb5d7758ab07a49739e77d7611b54bc0429d4c37f868852f"
+    implementedAt: "2026-04-21T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  diagrams/add-diagram-node:
+    spec: specs/domains/diagrams/flows/add-diagram-node.yaml
+    specHash: "b3fa3558ad149ca2f44c5d5978b32a1e9262da1cef864fc5e533ecc91dc00181"
+    files:
+      - src/stores/diagram-store.ts
+      - src/components/DiagramCanvas/DiagramCanvas.tsx
+      - src/components/DiagramCanvas/DiagramToolbar.tsx
+      - src/components/DiagramCanvas/DiagramShapeNode.tsx
+    fileHashes:
+      src/stores/diagram-store.ts: "e8c1eed83cbb507b64f3ff4a55861725874edfa3809ea1c1993490c779dce9be"
+      src/components/DiagramCanvas/DiagramCanvas.tsx: "8fde91a2e35c1135dd23c6ecec1c42b365e5c1fbed4b1c71a0b49fd98c450722"
+      src/components/DiagramCanvas/DiagramToolbar.tsx: "127ee2304f62d0e66a0938d9b7802f14ab640933021049a652171fa17f37bcbc"
+      src/components/DiagramCanvas/DiagramShapeNode.tsx: "18d973630832e4b894ed1b7c372655d6d11cf40fcecdd870620cef9db74c6333"
+    implementedAt: "2026-04-21T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  diagrams/add-diagram-edge:
+    spec: specs/domains/diagrams/flows/add-diagram-edge.yaml
+    specHash: "c1282b236c759892b8cc5ade7c6ddcf8d49cd0e67a3c9586acb35ac557c9614e"
+    files:
+      - src/stores/diagram-store.ts
+      - src/components/DiagramCanvas/DiagramCanvas.tsx
+    fileHashes:
+      src/stores/diagram-store.ts: "e8c1eed83cbb507b64f3ff4a55861725874edfa3809ea1c1993490c779dce9be"
+      src/components/DiagramCanvas/DiagramCanvas.tsx: "8fde91a2e35c1135dd23c6ecec1c42b365e5c1fbed4b1c71a0b49fd98c450722"
+    implementedAt: "2026-04-21T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  diagrams/add-text-box:
+    spec: specs/domains/diagrams/flows/add-text-box.yaml
+    specHash: "97e9bd901eadc4ea21a3d05bda2c05e07b1d3b51eff111e9fda64bca4bcc00ce"
+    files:
+      - src/stores/diagram-store.ts
+      - src/components/DiagramCanvas/DiagramCanvas.tsx
+      - src/components/DiagramCanvas/DiagramTextBoxNode.tsx
+    fileHashes:
+      src/stores/diagram-store.ts: "e8c1eed83cbb507b64f3ff4a55861725874edfa3809ea1c1993490c779dce9be"
+      src/components/DiagramCanvas/DiagramCanvas.tsx: "8fde91a2e35c1135dd23c6ecec1c42b365e5c1fbed4b1c71a0b49fd98c450722"
+      src/components/DiagramCanvas/DiagramTextBoxNode.tsx: "fc71ba2a73574043f930d096f89e1cea07286d7dc492019c484931dc70f4deb8"
+    implementedAt: "2026-04-21T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  diagrams/update-diagram-node:
+    spec: specs/domains/diagrams/flows/update-diagram-node.yaml
+    specHash: "b07205d3385f716040ffde4c07952a15ca1baec9ed22f94a973eb4a74ebdbdab"
+    files:
+      - src/stores/diagram-store.ts
+      - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+    fileHashes:
+      src/stores/diagram-store.ts: "e8c1eed83cbb507b64f3ff4a55861725874edfa3809ea1c1993490c779dce9be"
+      src/components/DiagramCanvas/DiagramPropertiesPanel.tsx: "5dcc71f60696fa1fbb5d7758ab07a49739e77d7611b54bc0429d4c37f868852f"
+    implementedAt: "2026-04-21T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
+  diagrams/update-diagram-edge:
+    spec: specs/domains/diagrams/flows/update-diagram-edge.yaml
+    specHash: "94371a8579d930003036daf021dddb78390907e5ea92be094daea395bb880b28"
+    files:
+      - src/stores/diagram-store.ts
+      - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+    fileHashes:
+      src/stores/diagram-store.ts: "e8c1eed83cbb507b64f3ff4a55861725874edfa3809ea1c1993490c779dce9be"
+      src/components/DiagramCanvas/DiagramPropertiesPanel.tsx: "5dcc71f60696fa1fbb5d7758ab07a49739e77d7611b54bc0429d4c37f868852f"
+    implementedAt: "2026-04-21T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
 pages:
   project-launcher:
     spec: specs/ui/project-launcher.yaml

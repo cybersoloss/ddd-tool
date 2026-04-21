@@ -1,0 +1,43 @@
+flow:
+  id: add-diagram-node
+  name: Add Diagram Node
+  type: traditional
+  domain: diagrams
+  description: Add a freeform node (predefined shape or custom) to the canvas at click position
+
+trigger:
+  id: trigger-cQ6eJ3sU
+  position: { x: 250, y: 0 }
+  connections:
+    - targetNodeId: process-dR7fK4tV
+  spec:
+    event: "ui:diagram-canvas-click"
+    description: User selects a shape from palette and clicks canvas to place it
+  label: "Canvas Click"
+
+nodes:
+  - id: process-dR7fK4tV
+    type: process
+    position: { x: 250, y: 130 }
+    label: "Create Node"
+    spec:
+      action: >
+        Create DiagramNode with: generated ID, selected shape (rectangle/cylinder/diamond/circle/
+        hexagon/cloud/person/document/folder/stack/rounded-rectangle/custom), click position,
+        default label, default style from shape preset. Add to diagram-store.currentDiagram.nodes.
+        Set isDirty=true.
+        Each shape renders bidirectional handles on all four sides (top, right, bottom, left) so
+        edges can be drawn from or to any side of any shape.
+    connections:
+      - targetNodeId: terminal-eS8gL5uW
+
+  - id: terminal-eS8gL5uW
+    type: terminal
+    position: { x: 250, y: 260 }
+    label: "Node Added"
+    spec:
+      outcome: success
+
+metadata:
+  created: "2026-04-20T00:00:00Z"
+  modified: "2026-04-21T00:00:00Z"

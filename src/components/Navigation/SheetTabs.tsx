@@ -5,6 +5,7 @@ import type { SheetLocation } from '../../types/sheet';
 
 function getTabLabel(location: SheetLocation, domainConfigs: ReturnType<typeof useProjectStore.getState>['domainConfigs']): string {
   if (location.level === 'system') return 'System';
+  if (location.level === 'diagram') return 'Diagrams';
   if (location.level === 'domain' && location.domainId) {
     return domainConfigs[location.domainId]?.name ?? location.domainId;
   }
@@ -16,7 +17,7 @@ function getTabLabel(location: SheetLocation, domainConfigs: ReturnType<typeof u
 }
 
 function locationEquals(a: SheetLocation, b: SheetLocation): boolean {
-  return a.level === b.level && a.domainId === b.domainId && a.flowId === b.flowId;
+  return a.level === b.level && a.domainId === b.domainId && a.flowId === b.flowId && a.diagramId === b.diagramId;
 }
 
 export function SheetTabs() {
@@ -36,7 +37,7 @@ export function SheetTabs() {
 
         return (
           <div
-            key={`${tab.level}-${tab.domainId ?? ''}-${tab.flowId ?? ''}`}
+            key={`${tab.level}-${tab.domainId ?? ''}-${tab.flowId ?? ''}-${tab.diagramId ?? ''}`}
             className={`group flex items-center gap-1 px-2.5 py-1 rounded text-xs cursor-pointer transition-colors shrink-0 ${
               isActive
                 ? 'bg-bg-primary text-text-primary'

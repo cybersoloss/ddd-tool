@@ -1,0 +1,41 @@
+flow:
+  id: add-diagram-edge
+  name: Add Diagram Edge
+  type: traditional
+  domain: diagrams
+  description: Connect two diagram nodes with a styled edge
+
+trigger:
+  id: trigger-fT9hM6vX
+  position: { x: 250, y: 0 }
+  connections:
+    - targetNodeId: process-gU1iN7wY
+  spec:
+    event: "ui:diagram-edge-connect"
+    description: User drags from one node handle to another to create an edge
+  label: "Edge Connected"
+
+nodes:
+  - id: process-gU1iN7wY
+    type: process
+    position: { x: 250, y: 130 }
+    label: "Create Edge"
+    spec:
+      action: >
+        Create DiagramEdge with: generated ID, from (source node ID), to (target node ID),
+        default direction (one-way), default style (solid), empty labels.
+        Reject self-loops (from === to). Multiple edges between the same pair are allowed.
+        Add to diagram-store.currentDiagram.edges. Set isDirty=true.
+    connections:
+      - targetNodeId: terminal-hV2jP8xZ
+
+  - id: terminal-hV2jP8xZ
+    type: terminal
+    position: { x: 250, y: 260 }
+    label: "Edge Added"
+    spec:
+      outcome: success
+
+metadata:
+  created: "2026-04-20T00:00:00Z"
+  modified: "2026-04-21T00:00:00Z"

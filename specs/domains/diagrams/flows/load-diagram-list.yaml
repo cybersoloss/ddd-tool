@@ -1,0 +1,101 @@
+flow:
+  id: load-diagram-list
+  name: Load Diagram List
+  type: traditional
+  domain: diagrams
+  description: Scan specs/diagrams/*.yaml and populate sidebar with diagram names, descriptions, and tags
+
+trigger:
+  id: trigger-kR7mN4xZ
+  position: { x: 250, y: 0 }
+  connections:
+    - targetNodeId: ipc_call-pW3vL8qT
+  spec:
+    event: "ui:project-loaded"
+    description: Project opened or reloaded — scan for diagram files
+  label: "Project Loaded"
+
+nodes:
+  - id: ipc_call-pW3vL8qT
+    type: ipc_call
+    position: { x: 250, y: 130 }
+    label: "List Diagram Files"
+    spec:
+      command: list_directory
+      args:
+        path: "{projectPath}/specs/diagrams"
+        pattern: "*.yaml"
+    connections:
+      - targetNodeId: decision-hN4rP9cK
+        sourceHandle: success
+      - targetNodeId: process-tG6nB1hX
+        sourceHandle: error
+
+  - id: process-tG6nB1hX
+    type: process
+    position: { x: 550, y: 130 }
+    label: "Init Empty List"
+    spec:
+      action: "Set diagram-store.diagrams to empty array — no diagrams directory yet"
+    connections:
+      - targetNodeId: terminal-vA4xW9fS
+
+  - id: decision-hN4rP9cK
+    type: decision
+    position: { x: 250, y: 260 }
+    label: "Any Diagrams?"
+    spec:
+      condition: "$.files.length > 0"
+    connections:
+      - targetNodeId: loop-sK3xR9wT
+        sourceHandle: "true"
+      - targetNodeId: process-tG6nB1hX
+        sourceHandle: "false"
+
+  - id: loop-sK3xR9wT
+    type: loop
+    position: { x: 250, y: 390 }
+    label: "For Each Diagram File"
+    spec:
+      collection: "$.files"
+      iterator: "file"
+    connections:
+      - targetNodeId: ipc_call-uD5cV3jZ
+        sourceHandle: body
+      - targetNodeId: process-wE3zP8gN
+        sourceHandle: done
+
+  - id: ipc_call-uD5cV3jZ
+    type: ipc_call
+    position: { x: 250, y: 520 }
+    label: "Read Diagram Header"
+    spec:
+      command: read_file
+      args:
+        path: "$.file"
+      description: "Read only name, description, tags from YAML front matter"
+    connections:
+      - targetNodeId: loop-sK3xR9wT
+        sourceHandle: success
+      - targetNodeId: loop-sK3xR9wT
+        sourceHandle: error
+
+  - id: process-wE3zP8gN
+    type: process
+    position: { x: 250, y: 650 }
+    label: "Set Diagram List"
+    spec:
+      action: "Set diagram-store.diagrams with collected metadata array (id, name, description, tags per diagram)"
+    connections:
+      - targetNodeId: terminal-vA4xW9fS
+
+  - id: terminal-vA4xW9fS
+    type: terminal
+    position: { x: 250, y: 780 }
+    label: "List Loaded"
+    spec:
+      outcome: success
+
+metadata:
+  created: "2026-04-20T00:00:00Z"
+  modified: "2026-04-20T00:00:00Z"

@@ -17,7 +17,8 @@
     { "id": "git", "name": "Git", "description": "Git version control — status, staging, commit, clone, log", "role": "process" },
     { "id": "implementation", "name": "Implementation", "description": "Drift detection, spec-to-code mapping, reconciliation", "role": "process" },
     { "id": "specs-sidebar", "name": "Specs Sidebar", "description": "Four-pillars sidebar: schema editor, UI page editor, infrastructure editor", "role": "interface" },
-    { "id": "validation", "name": "Validation", "description": "Flow and project validation rules, quality gates, real-time indicators", "role": "process" }
+    { "id": "validation", "name": "Validation", "description": "Flow and project validation rules, quality gates, real-time indicators", "role": "process" },
+    { "id": "diagrams", "name": "Diagrams", "description": "Freeform visual design canvas — architecture diagrams, mind maps, conceptual design with Visio-like shapes", "role": "interface" }
   ],
   "createdAt": "2026-02-28T00:00:00.000Z"
 }
