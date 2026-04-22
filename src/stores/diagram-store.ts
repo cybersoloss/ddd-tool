@@ -195,7 +195,6 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   },
 
   createDiagram: async (projectPath, name, description) => {
-    console.log('[diagram] createDiagram called, projectPath:', projectPath);
     const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     const now = new Date().toISOString();
 
@@ -213,11 +212,9 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
     const diagramsDir = `${projectPath}/specs/diagrams`;
     const filePath = `${diagramsDir}/${id}.yaml`;
 
-    console.log('[diagram] writing to:', filePath);
     markWriting();
     try {
       await invoke('write_file', { path: filePath, contents: yamlContent });
-      console.log('[diagram] write_file succeeded');
     } catch (writeErr) {
       console.error('[diagram] write_file FAILED:', filePath, writeErr);
       throw writeErr;

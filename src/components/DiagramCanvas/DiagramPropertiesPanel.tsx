@@ -243,6 +243,20 @@ function NodeProperties({ node, onUpdate }: {
           ))}
         </select>
       </Field>
+      <Field label={`Branch Width (${node.branch_max_width || 150}px)`}>
+        <input
+          type="range"
+          min={80}
+          max={300}
+          step={10}
+          value={node.branch_max_width || 150}
+          onChange={(e) => {
+            const v = parseInt(e.target.value, 10);
+            onUpdate({ branch_max_width: v === 150 ? undefined : v });
+          }}
+          className="w-full"
+        />
+      </Field>
       <div className="border-t border-border pt-2">
         <p className="text-[10px] font-semibold text-text-muted mb-1">Style</p>
         <div className="space-y-2">

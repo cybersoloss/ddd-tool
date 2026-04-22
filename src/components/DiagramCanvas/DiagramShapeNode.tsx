@@ -18,6 +18,7 @@ export interface DiagramShapeNodeData {
   onAddChild?: (label: string, parentPath: number[] | null) => void;
   onDeleteChild?: (path: number[]) => void;
   onEditChild?: (path: number[], newLabel: string) => void;
+  branch_max_width?: number;
   [key: string]: unknown;
 }
 
@@ -113,23 +114,56 @@ function ShapeWrapper({ shape, style, children }: {
 // ─── Branch tree rendering ──────────────────────────────────────────────────
 // Renders children as HTML elements with proper positioning outside the shape.
 
-function BranchLabel({ label, onEdit }: { label: string; onEdit?: (newLabel: string) => void }) {
+function BranchLabel({ label, maxWidth, onEdit }: { label: string; maxWidth?: number; onEdit?: (newLabel: string) => void }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(label);
-  const ref = useRef<HTMLInputElement>(null);
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const mw = maxWidth || 150;
 
   useEffect(() => { setValue(label); }, [label]);
-  useEffect(() => { if (editing && ref.current) { ref.current.focus(); ref.current.select(); } }, [editing]);
+  useEffect(() => {
+    if (editing && ref.current) {
+      ref.current.focus();
+      ref.current.select();
+      // Auto-size height
+      ref.current.style.height = 'auto';
+      ref.current.style.height = ref.current.scrollHeight + 'px';
+    }
+  }, [editing]);
 
   if (editing) {
     return (
-      <input
+      <textarea
         ref={ref}
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={(e) => {
+          setValue(e.target.value);
+          if (ref.current) {
+            ref.current.style.height = 'auto';
+            ref.current.style.height = ref.current.scrollHeight + 'px';
+          }
+        }}
         onKeyDown={(e) => {
           e.stopPropagation();
+          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+            // Cmd/Ctrl+Enter inserts a newline
+            e.preventDefault();
+            const ta = ref.current;
+            if (ta) {
+              const start = ta.selectionStart;
+              const end = ta.selectionEnd;
+              const next = value.substring(0, start) + '\n' + value.substring(end);
+              setValue(next);
+              requestAnimationFrame(() => {
+                ta.selectionStart = ta.selectionEnd = start + 1;
+                ta.style.height = 'auto';
+                ta.style.height = ta.scrollHeight + 'px';
+              });
+            }
+            return;
+          }
           if (e.key === 'Enter') {
+            e.preventDefault();
             const trimmed = value.trim();
             if (trimmed && trimmed !== label) onEdit?.(trimmed);
             setEditing(false);
@@ -141,26 +175,33 @@ function BranchLabel({ label, onEdit }: { label: string; onEdit?: (newLabel: str
           if (trimmed && trimmed !== label) onEdit?.(trimmed);
           setEditing(false);
         }}
-        size={Math.max(8, value.length + 2)}
-        className="text-[10px] bg-slate-800 text-white border border-blue-400 rounded px-2 py-0.5 outline-none min-w-[80px]"
+        rows={1}
+        className="text-[10px] bg-slate-800 text-white border border-blue-400 rounded px-2 py-1 outline-none min-w-[80px] resize-none overflow-hidden"
+        style={{ maxWidth: mw }}
       />
     );
   }
+
+  const lines = label.split('\n');
   return (
     <span
-      className="text-[10px] whitespace-nowrap leading-tight cursor-pointer px-1 py-0.5 rounded text-slate-300 hover:text-white hover:bg-slate-700/50"
+      className="inline-block text-[10px] leading-tight cursor-pointer px-1.5 py-0.5 rounded border border-slate-500/30 text-slate-300 hover:text-white hover:bg-slate-700/50 hover:border-slate-400/50"
+      style={{ maxWidth: mw, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
       onDoubleClick={(e) => { e.stopPropagation(); setEditing(true); }}
       title="Click: add sub | Double-click: edit | Right-click: delete"
     >
-      {label}
+      {lines.length > 1
+        ? lines.map((line, i) => <span key={i}>{line}{i < lines.length - 1 && <br />}</span>)
+        : label}
     </span>
   );
 }
 
-function BranchTree({ items, side, lineColor, path = [], onClickBranch, onDeleteBranch, onEditBranch }: {
+function BranchTree({ items, side, lineColor, maxWidth, path = [], onClickBranch, onDeleteBranch, onEditBranch }: {
   items: MindMapChild[];
   side: 'left' | 'right' | 'down';
   lineColor: string;
+  maxWidth?: number;
   path?: number[];
   onClickBranch?: (path: number[]) => void;
   onDeleteBranch?: (path: number[]) => void;
@@ -181,12 +222,12 @@ function BranchTree({ items, side, lineColor, path = [], onClickBranch, onDelete
               onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onDeleteBranch?.(itemPath); }}
             >
               <div className={`${isDown ? 'h-3 w-px' : 'w-3 h-px'} shrink-0`} style={{ backgroundColor: lineColor }} />
-              <BranchLabel label={child.label} onEdit={(newLabel) => onEditBranch?.(itemPath, newLabel)} />
+              <BranchLabel label={child.label} maxWidth={maxWidth} onEdit={(newLabel) => onEditBranch?.(itemPath, newLabel)} />
             </div>
             {child.children && child.children.length > 0 && (
               <div className={`flex ${isDown ? 'flex-col items-center' : isLeft ? 'flex-row-reverse' : 'flex-row'} items-center gap-0`}>
                 <div className={`${isDown ? 'h-2 w-px' : 'w-2 h-px'} shrink-0`} style={{ backgroundColor: lineColor, opacity: 0.5 }} />
-                <BranchTree items={child.children} side={side} lineColor={lineColor} path={itemPath} onClickBranch={onClickBranch} onDeleteBranch={onDeleteBranch} onEditBranch={onEditBranch} />
+                <BranchTree items={child.children} side={side} lineColor={lineColor} maxWidth={maxWidth} path={itemPath} onClickBranch={onClickBranch} onDeleteBranch={onDeleteBranch} onEditBranch={onEditBranch} />
               </div>
             )}
           </div>
@@ -198,7 +239,7 @@ function BranchTree({ items, side, lineColor, path = [], onClickBranch, onDelete
 
 export const DiagramShapeNode = memo(function DiagramShapeNode({ data }: NodeProps) {
   const d = data as unknown as DiagramShapeNodeData;
-  const { label, shape, status, children: rawChildren, onLabelChange, onAddChild, onDeleteChild, onEditChild, layout_type, color_group } = d;
+  const { label, shape, status, children: rawChildren, onLabelChange, onAddChild, onDeleteChild, onEditChild, layout_type, color_group, branch_max_width } = d;
   const [editing, setEditing] = useState(false);
   const [editLabel, setEditLabel] = useState(label);
   const [adding, setAdding] = useState(false);
@@ -306,7 +347,7 @@ export const DiagramShapeNode = memo(function DiagramShapeNode({ data }: NodePro
           {leftKids.length > 0 && (
             <>
               <BranchTree
-                items={leftKids} side="left" lineColor={lineColor}
+                items={leftKids} side="left" lineColor={lineColor} maxWidth={branch_max_width}
                 onClickBranch={(subPath) => handleBranchClick([leftPaths[subPath[0]], ...subPath.slice(1)])}
                 onDeleteBranch={(subPath) => handleDeleteBranch([leftPaths[subPath[0]], ...subPath.slice(1)])}
                 onEditBranch={(subPath, nl) => handleEditBranch([leftPaths[subPath[0]], ...subPath.slice(1)], nl)}
@@ -319,7 +360,7 @@ export const DiagramShapeNode = memo(function DiagramShapeNode({ data }: NodePro
             <>
               <div className="w-3 h-px" style={{ backgroundColor: lineColor }} />
               <BranchTree
-                items={rightKids} side="right" lineColor={lineColor}
+                items={rightKids} side="right" lineColor={lineColor} maxWidth={branch_max_width}
                 onClickBranch={(subPath) => handleBranchClick([rightPaths[subPath[0]], ...subPath.slice(1)])}
                 onDeleteBranch={(subPath) => handleDeleteBranch([rightPaths[subPath[0]], ...subPath.slice(1)])}
                 onEditBranch={(subPath, nl) => handleEditBranch([rightPaths[subPath[0]], ...subPath.slice(1)], nl)}
@@ -331,13 +372,13 @@ export const DiagramShapeNode = memo(function DiagramShapeNode({ data }: NodePro
         <div className="flex flex-col items-center gap-2">
           {shapeContent}
           <div className="h-3 w-px" style={{ backgroundColor: lineColor }} />
-          <BranchTree items={children} side="down" lineColor={lineColor} onClickBranch={handleBranchClick} onDeleteBranch={handleDeleteBranch} onEditBranch={handleEditBranch} />
+          <BranchTree items={children} side="down" lineColor={lineColor} maxWidth={branch_max_width} onClickBranch={handleBranchClick} onDeleteBranch={handleDeleteBranch} onEditBranch={handleEditBranch} />
         </div>
       ) : lt === 'logic-chart' && children.length > 0 ? (
         <div className="flex flex-row items-center gap-2">
           {shapeContent}
           <div className="w-3 h-px" style={{ backgroundColor: lineColor }} />
-          <BranchTree items={children} side="right" lineColor={lineColor} onClickBranch={handleBranchClick} onDeleteBranch={handleDeleteBranch} onEditBranch={handleEditBranch} />
+          <BranchTree items={children} side="right" lineColor={lineColor} maxWidth={branch_max_width} onClickBranch={handleBranchClick} onDeleteBranch={handleDeleteBranch} onEditBranch={handleEditBranch} />
         </div>
       ) : (
         shapeContent
