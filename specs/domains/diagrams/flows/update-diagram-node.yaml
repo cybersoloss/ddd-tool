@@ -3,7 +3,10 @@ flow:
   name: Update Diagram Node
   type: traditional
   domain: diagrams
-  description: Edit node properties — label, description, shape, color, icon, children, link
+  description: >
+    Edit node properties — label, description, shape, color_group, style, icon,
+    status, link. When color_group changes, outgoing edges and descendant nodes
+    that inherited the old color update to match.
 
 trigger:
   id: trigger-lZ6nT3bD
@@ -25,8 +28,10 @@ nodes:
     spec:
       action: >
         Find node by ID in diagram-store.currentDiagram.nodes. Update changed properties:
-        label, description, notes, shape, style (border_color, fill_color, fill_opacity,
-        border_thickness, size, shadow), icon, children, status, link.
+        label, description, notes, shape, color_group, style (border_color, fill_color,
+        fill_opacity, border_thickness, size, shadow), icon, status, link.
+        If color_group changed, propagate to outgoing edges and descendant nodes that
+        don't have their own explicit color_group set.
         Set isDirty=true.
     connections:
       - targetNodeId: terminal-nB8qV5dF
@@ -40,4 +45,4 @@ nodes:
 
 metadata:
   created: "2026-04-20T00:00:00Z"
-  modified: "2026-04-21T00:00:00Z"
+  modified: "2026-04-22T00:00:00Z"

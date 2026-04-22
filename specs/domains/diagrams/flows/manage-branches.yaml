@@ -1,0 +1,117 @@
+flow:
+  id: manage-branches
+  name: Manage Branches
+  type: traditional
+  domain: diagrams
+  description: >
+    Keyboard-driven branch tree editor. Each shape has its own recursive children
+    tree (MindMapChild[]) rendered visually per the shape's layout_type.
+
+    ## Interaction Model
+    - Tab or Enter on focused shape: add a child (opens inline input)
+    - Arrow keys: navigate between children
+    - Backspace/Delete: remove selected child (reparent its sub-children to parent)
+    - Double-click child label: edit inline
+    - Escape: exit branch mode
+
+    ## Visual Rendering (per shape's layout_type)
+    - mind-map: children radiate left/right from shape with curved connector lines.
+      First-level children split evenly: odd go right, even go left. Sub-children
+      continue in the same direction. Each level adds horizontal offset.
+    - org-chart: children render below shape, centered horizontally, with vertical
+      connector lines and horizontal distribution.
+    - tree-chart: children render below-right with bracket-style connectors.
+    - logic-chart: children render to the right in a vertical stack with
+      right-angle bracket connectors.
+
+    ## Color Cascade
+    Children inherit the parent shape's color_group for connector line color
+    and visual grouping. Child labels use text color, connectors use border color.
+
+trigger:
+  id: trigger-bR3kW8mF
+  position: { x: 250, y: 0 }
+  connections:
+    - targetNodeId: decision-cN5xY2pQ
+  spec:
+    event: "ui:branch-interaction"
+    description: >
+      User interacts with a shape's branch tree via Tab/Enter (add child),
+      Arrow keys (navigate), Backspace (delete), or double-click (edit).
+  label: "Branch Interaction"
+
+nodes:
+  - id: decision-cN5xY2pQ
+    type: decision
+    position: { x: 250, y: 130 }
+    label: "Action Type?"
+    spec:
+      condition: "event.action — add, delete, edit, or navigate"
+    connections:
+      - targetNodeId: process-dM6rZ3qW
+        sourceHandle: "true"
+        label: "structural (add/delete/edit)"
+      - targetNodeId: process-eP7sA4rX
+        sourceHandle: "false"
+        label: "navigation (arrow keys, escape)"
+
+  - id: process-dM6rZ3qW
+    type: process
+    position: { x: 80, y: 280 }
+    label: "Mutate Children Tree"
+    spec:
+      action: >
+        Apply structural operation to the shape's MindMapChild[] tree:
+
+        ADD (Tab/Enter): Open inline text input below shape. On submit,
+        append new { label } to children array. If a child is selected,
+        add as sub-child of that child instead.
+
+        DELETE (Backspace on selected child): Remove child from tree.
+        Reparent its sub-children to the deleted child's parent.
+
+        EDIT (double-click child label): Replace label text with inline
+        input. On submit, update the label.
+
+        All operations update node.children via diagram-store.updateNode().
+        Set isDirty=true.
+    connections:
+      - targetNodeId: process-gR9uC6tZ
+
+  - id: process-eP7sA4rX
+    type: process
+    position: { x: 420, y: 280 }
+    label: "Update Selection"
+    spec:
+      action: >
+        Handle navigation without mutating the tree:
+        ArrowUp/Down: move selection to prev/next visible child
+        ArrowRight: expand or enter children
+        ArrowLeft: collapse or go to parent
+        Escape: exit branch mode, deselect
+    connections:
+      - targetNodeId: process-gR9uC6tZ
+
+  - id: process-gR9uC6tZ
+    type: process
+    position: { x: 250, y: 450 }
+    label: "Re-render Branch Tree"
+    spec:
+      action: >
+        DiagramShapeNode re-renders the branch tree visualization based on
+        the shape's layout_type. The visual arms/branches/connectors update
+        to reflect the new children state. Color cascade applies from
+        shape's color_group to connector lines.
+    connections:
+      - targetNodeId: terminal-hS1vD7uA
+
+  - id: terminal-hS1vD7uA
+    type: terminal
+    position: { x: 250, y: 580 }
+    label: "Branch Updated"
+    spec:
+      outcome: success
+
+metadata:
+  created: "2026-04-22T00:00:00Z"
+  modified: "2026-04-22T00:00:00Z"

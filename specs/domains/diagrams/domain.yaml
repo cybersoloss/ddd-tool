@@ -1,9 +1,10 @@
 name: Diagrams
 description: >
-  Freeform visual design canvas for architecture diagrams, mind maps, and conceptual design.
-  Not tied to DDD node types or validation — purely visual thinking tool. Supports Visio-like
-  predefined shapes, hierarchical nodes, rich edges (one-way, two-way, conditional), freeform
-  text boxes, and cross-linking between diagrams or to DDD flows.
+  Visual ideation canvas for mind maps, org charts, tree charts, and logic charts.
+  Each shape node has its own recursive children tree rendered in a chosen layout
+  style. Children are internal to a shape — Tab/Enter adds children, Arrow keys
+  navigate, Backspace deletes. Shapes can also connect to other shapes via edges
+  for independent wiring. Accessed via the Diagrams menu.
 role: interface
 
 owns_schemas:
@@ -36,7 +37,7 @@ flows:
 
   - id: create-diagram
     name: Create Diagram
-    description: Create a new empty diagram with name, description, and initial canvas
+    description: Create a new empty diagram with name and description
     type: traditional
 
   - id: delete-diagram
@@ -51,12 +52,12 @@ flows:
 
   - id: add-diagram-node
     name: Add Diagram Node
-    description: Add a freeform node (predefined shape or custom) to the canvas at click position
+    description: Add a freeform shape node to the canvas at click position
     type: traditional
 
   - id: add-diagram-edge
     name: Add Diagram Edge
-    description: Connect two nodes with a styled edge (direction, style, labels)
+    description: Connect two shape nodes with a styled edge (independent wiring, NOT parent-child)
     type: traditional
 
   - id: add-text-box
@@ -66,7 +67,21 @@ flows:
 
   - id: update-diagram-node
     name: Update Diagram Node
-    description: Edit node properties — label, description, shape, color, icon, children, link
+    description: >
+      Edit node properties — label, description, shape, color_group, layout_type,
+      style, icon, status, link. Children are managed by manage-branches flow.
+    type: traditional
+
+  - id: manage-branches
+    name: Manage Branches
+    description: >
+      Keyboard-driven branch tree editor for shape children. Each shape has its own
+      recursive children tree rendered in the shape's layout_type style.
+      Tab/Enter = add child, Arrow keys = navigate, Backspace = delete,
+      Shift+Tab = outdent, double-click = edit label.
+      The visual rendering adapts to layout_type: mind-map (radiate left/right),
+      org-chart (below centered), tree-chart (below-right bracket),
+      logic-chart (right vertical bracket).
     type: traditional
 
   - id: update-diagram-edge
@@ -90,4 +105,5 @@ layout:
     add-text-box: { x: 500, y: 300 }
     update-diagram-node: { x: 700, y: 100 }
     update-diagram-edge: { x: 700, y: 200 }
+    manage-branches: { x: 700, y: 300 }
   portals: {}

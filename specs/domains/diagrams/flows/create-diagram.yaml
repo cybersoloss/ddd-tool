@@ -3,7 +3,10 @@ flow:
   name: Create Diagram
   type: traditional
   domain: diagrams
-  description: Create a new empty diagram with name and description
+  description: >
+    Create a new diagram with name, description, and layout_type. For hierarchical
+    layouts (mind-map, org-chart, tree-chart, logic-chart), automatically creates
+    a root node with the diagram name as label.
 
 trigger:
   id: trigger-mZ8nT6bD
@@ -28,6 +31,10 @@ nodes:
         - name: description
           type: string
           required: false
+        - name: layout_type
+          type: string
+          required: false
+          default: freeform
     connections:
       - targetNodeId: process-pC2rW9eG
         sourceHandle: valid
@@ -39,7 +46,10 @@ nodes:
     position: { x: 250, y: 260 }
     label: "Build Empty Diagram"
     spec:
-      action: "Create DiagramDocument with name, description, empty nodes/edges/text_boxes arrays, generated ID, timestamps"
+      action: >
+        Create DiagramDocument with name, description, layout_type, generated ID, timestamps.
+        If layout_type is hierarchical (not freeform), create a root node with the diagram
+        name as label, positioned at layout origin. Otherwise empty nodes/edges/text_boxes.
     connections:
       - targetNodeId: ipc_call-qD3sX8fH
 
@@ -84,4 +94,4 @@ nodes:
 
 metadata:
   created: "2026-04-20T00:00:00Z"
-  modified: "2026-04-20T00:00:00Z"
+  modified: "2026-04-22T00:00:00Z"

@@ -23,18 +23,14 @@ import { DiagramShapeNode, type DiagramShapeNodeData } from './DiagramShapeNode'
 import { DiagramTextBoxNode } from './DiagramTextBoxNode';
 import { DiagramToolbar } from './DiagramToolbar';
 import { DiagramPropertiesPanel } from './DiagramPropertiesPanel';
-import type { DiagramNodeShape } from '../../types/diagram';
+import type { DiagramNode, DiagramNodeShape, MindMapChild } from '../../types/diagram';
+import { colorGroupToColor } from '../../utils/diagram-layout';
+import { nanoid } from 'nanoid';
 
 const nodeTypes = {
   diagramShape: DiagramShapeNode,
   diagramTextBox: DiagramTextBoxNode,
 };
-
-// ─── Modes ──────────────────────────────────────────────────────────────────
-// The canvas has three mutually exclusive interaction modes:
-//   1. Normal — drag nodes, select things, delete with Backspace
-//   2. Place shape/text — click canvas to place, then return to Normal
-//   3. Connect — click source node, click target node, edge created, stays in Connect
 
 type Mode =
   | { type: 'normal' }
@@ -60,10 +56,13 @@ function DiagramCanvasInner() {
   const storeDeleteEdge = useDiagramStore((s) => s.deleteEdge);
   const storeDeleteTextBox = useDiagramStore((s) => s.deleteTextBox);
   const updateNode = useDiagramStore((s) => s.updateNode);
+  const updateEdge = useDiagramStore((s) => s.updateEdge);
   const updateTextBox = useDiagramStore((s) => s.updateTextBox);
   const [mode, setMode] = useState<Mode>({ type: 'normal' });
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+  const [editingEdgeLabel, setEditingEdgeLabel] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [edgeLabelValue, setEdgeLabelValue] = useState('');
   const modeRef = useRef<Mode>(mode);
   modeRef.current = mode;
 
@@ -78,12 +77,71 @@ function DiagramCanvasInner() {
     return () => { loadedRef.current = null; };
   }, [diagramId, projectPath, loadDiagram]);
 
-  // ─── Cmd+S save ─────────────────────────────────────────────────────────
+  const clipboardRef = useRef<DiagramNode | null>(null);
+
+  // Duplicate a node: deep copy with new ID, offset position
+  const duplicateNode = useCallback((nodeId: string) => {
+    if (!currentDiagram) return;
+    const source = currentDiagram.nodes.find((n) => n.id === nodeId);
+    if (!source) return;
+    const newNode: DiagramNode = {
+      ...structuredClone(source),
+      id: `node-${nanoid(8)}`,
+      label: `${source.label} (copy)`,
+      position: {
+        x: (source.position?.x ?? 100) + 40,
+        y: (source.position?.y ?? 100) + 40,
+      },
+    };
+    const { currentDiagram: cd } = useDiagramStore.getState();
+    if (!cd) return;
+    useDiagramStore.setState({
+      currentDiagram: { ...cd, nodes: [...cd.nodes, newNode] },
+      isDirty: true,
+    });
+    setSelectedNodeId(newNode.id);
+  }, [currentDiagram]);
+
+  // ─── Keyboard shortcuts ─────────────────────────────────────────────────
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault();
         if (projectPath && isDirty) saveDiagram(projectPath);
+      }
+      // Cmd+D: duplicate selected node
+      if ((e.metaKey || e.ctrlKey) && e.key === 'd' && selectedNodeId && !selectedNodeId.startsWith('text-')) {
+        e.preventDefault();
+        duplicateNode(selectedNodeId);
+      }
+      // Cmd+C: copy selected node
+      if ((e.metaKey || e.ctrlKey) && e.key === 'c' && selectedNodeId && !selectedNodeId.startsWith('text-')) {
+        const diagram = useDiagramStore.getState().currentDiagram;
+        const node = diagram?.nodes.find((n) => n.id === selectedNodeId);
+        if (node) clipboardRef.current = structuredClone(node);
+      }
+      // Cmd+V: paste copied node
+      if ((e.metaKey || e.ctrlKey) && e.key === 'v' && clipboardRef.current) {
+        e.preventDefault();
+        const source = clipboardRef.current;
+        const newNode: DiagramNode = {
+          ...structuredClone(source),
+          id: `node-${nanoid(8)}`,
+          label: `${source.label}`,
+          position: {
+            x: (source.position?.x ?? 100) + 60,
+            y: (source.position?.y ?? 100) + 60,
+          },
+        };
+        // Update clipboard position so next paste offsets further
+        clipboardRef.current = { ...clipboardRef.current, position: newNode.position };
+        const cd = useDiagramStore.getState().currentDiagram;
+        if (!cd) return;
+        useDiagramStore.setState({
+          currentDiagram: { ...cd, nodes: [...cd.nodes, newNode] },
+          isDirty: true,
+        });
+        setSelectedNodeId(newNode.id);
       }
       if (e.key === 'Escape') {
         setMode({ type: 'normal' });
@@ -91,7 +149,7 @@ function DiagramCanvasInner() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [projectPath, isDirty, saveDiagram]);
+  }, [projectPath, isDirty, saveDiagram, selectedNodeId, duplicateNode]);
 
   // ─── Build React Flow nodes ─────────────────────────────────────────────
   const rfNodes: Node[] = useMemo(() => {
@@ -111,37 +169,70 @@ function DiagramCanvasInner() {
           style: n.style,
           icon: n.icon,
           status: n.status,
+          color_group: n.color_group,
+          layout_type: n.layout_type,
           children: n.children,
-          branch_direction: n.branch_direction,
           onLabelChange: (label: string) => updateNode(n.id, { label }),
-          onAddBranch: (branchLabel: string, parentPath: number[] | null) => {
-            type MC = import('../../types/diagram').MindMapChild;
-            const deepClone = (items: MC[]): MC[] =>
+          onAddChild: (childLabel: string, parentPath: number[] | null) => {
+            const deepClone = (items: MindMapChild[]): MindMapChild[] =>
               items.map((item) => ({ ...item, children: item.children ? deepClone(item.children) : undefined }));
-            const existing = deepClone((n.children || []) as MC[]);
+            const existing = deepClone(
+              (n.children || []).map((c) => typeof c === 'string' ? { label: c as string } : c as MindMapChild),
+            );
 
             if (!parentPath) {
-              // Root-level branch
-              existing.push({ label: branchLabel });
+              existing.push({ label: childLabel });
             } else {
-              // Navigate to the parent and add as child
-              let target: MC[] = existing;
+              let target: MindMapChild[] = existing;
               for (let i = 0; i < parentPath.length; i++) {
                 const idx = parentPath[i];
                 if (idx >= target.length) break;
                 if (i === parentPath.length - 1) {
                   if (!target[idx].children) target[idx].children = [];
-                  target[idx].children!.push({ label: branchLabel });
+                  target[idx].children!.push({ label: childLabel });
                 } else {
                   target = target[idx].children || [];
                 }
               }
             }
 
-            updateNode(n.id, {
-              children: existing,
-              branch_direction: n.branch_direction || 'both',
-            });
+            updateNode(n.id, { children: existing });
+          },
+          onDeleteChild: (path: number[]) => {
+            const deepClone = (items: MindMapChild[]): MindMapChild[] =>
+              items.map((item) => ({ ...item, children: item.children ? deepClone(item.children) : undefined }));
+            const existing = deepClone(
+              (n.children || []).map((c) => typeof c === 'string' ? { label: c as string } : c as MindMapChild),
+            );
+
+            if (path.length === 1) {
+              existing.splice(path[0], 1);
+            } else {
+              let target: MindMapChild[] = existing;
+              for (let i = 0; i < path.length - 1; i++) {
+                target = target[path[i]].children || [];
+              }
+              target.splice(path[path.length - 1], 1);
+            }
+
+            updateNode(n.id, { children: existing.length > 0 ? existing : undefined });
+          },
+          onEditChild: (path: number[], newLabel: string) => {
+            const deepClone = (items: MindMapChild[]): MindMapChild[] =>
+              items.map((item) => ({ ...item, children: item.children ? deepClone(item.children) : undefined }));
+            const existing = deepClone(
+              (n.children || []).map((c) => typeof c === 'string' ? { label: c as string } : c as MindMapChild),
+            );
+
+            let target: MindMapChild[] = existing;
+            for (let i = 0; i < path.length - 1; i++) {
+              target = target[path[i]].children || [];
+            }
+            if (path.length > 0 && path[path.length - 1] < target.length) {
+              target[path[path.length - 1]].label = newLabel;
+            }
+
+            updateNode(n.id, { children: existing });
           },
         } satisfies DiagramShapeNodeData,
       });
@@ -170,11 +261,13 @@ function DiagramCanvasInner() {
     return currentDiagram.edges.map((e) => {
       const strokeWidth = e.weight === 'primary' ? 3 : e.weight === 'secondary' ? 1 : 2;
       const strokeDasharray = e.style === 'dashed' ? '6 3' : e.style === 'dotted' ? '2 2' : undefined;
+      const sourceNode = currentDiagram.nodes.find((n) => n.id === e.from);
+      const edgeColor = colorGroupToColor(sourceNode?.color_group) || 'var(--color-text-muted)';
       const markerEnd = e.direction !== 'two-way'
-        ? { type: MarkerType.ArrowClosed, color: 'var(--color-text-muted)' }
+        ? { type: MarkerType.ArrowClosed, color: edgeColor }
         : undefined;
       const markerStart = e.direction === 'two-way'
-        ? { type: MarkerType.ArrowClosed, color: 'var(--color-text-muted)' }
+        ? { type: MarkerType.ArrowClosed, color: edgeColor }
         : undefined;
       return {
         id: e.id,
@@ -184,7 +277,7 @@ function DiagramCanvasInner() {
         targetHandle: e.toHandle,
         selected: selectedEdgeId === e.id,
         label: (e.labels || []).join(' / ') || undefined,
-        style: { stroke: 'var(--color-text-muted)', strokeWidth, strokeDasharray },
+        style: { stroke: edgeColor, strokeWidth, strokeDasharray },
         markerEnd,
         markerStart,
         animated: e.direction === 'conditional',
@@ -203,7 +296,6 @@ function DiagramCanvasInner() {
           moveNode(change.id, change.position);
         }
       }
-      // Only update selection in normal mode
       if (change.type === 'select' && change.selected && modeRef.current.type === 'normal') {
         setSelectedNodeId(change.id);
         setSelectedEdgeId(null);
@@ -220,40 +312,35 @@ function DiagramCanvasInner() {
     }
   }, [storeDeleteEdge]);
 
-  // Handle-drag connection — only works when NOT in connect mode
   const onConnect = useCallback((connection: Connection) => {
     if (modeRef.current.type.startsWith('connect')) return;
     if (connection.source && connection.target && connection.source !== connection.target) {
-      storeAddEdge(
-        connection.source,
-        connection.target,
-        connection.sourceHandle ?? undefined,
-        connection.targetHandle ?? undefined,
-      );
+      storeAddEdge(connection.source, connection.target, connection.sourceHandle ?? undefined, connection.targetHandle ?? undefined);
     }
   }, [storeAddEdge]);
 
-  // Click on a node — handles connect mode source/target picking
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
     const m = modeRef.current;
     if (node.id.startsWith('text-')) return;
-
     if (m.type === 'connect-pick-source') {
       setMode({ type: 'connect-pick-target', sourceId: node.id });
     } else if (m.type === 'connect-pick-target') {
-      if (node.id !== m.sourceId) {
-        storeAddEdge(m.sourceId, node.id);
-      }
-      // Stay in connect mode for another edge
+      if (node.id !== m.sourceId) storeAddEdge(m.sourceId, node.id);
       setMode({ type: 'connect-pick-source' });
     }
-    // In normal mode, onNodesChange handles selection
   }, [storeAddEdge]);
 
-  // Click on an edge — select it for properties panel / deletion
   const onEdgeClick = useCallback((_event: React.MouseEvent, edge: Edge) => {
     setSelectedEdgeId(edge.id);
     setSelectedNodeId(null);
+  }, []);
+
+  const onEdgeDoubleClick = useCallback((event: React.MouseEvent, edge: Edge) => {
+    event.stopPropagation();
+    const diagram = useDiagramStore.getState().currentDiagram;
+    const edgeData = diagram?.edges.find((e) => e.id === edge.id);
+    setEdgeLabelValue((edgeData?.labels || []).join(', '));
+    setEditingEdgeLabel({ id: edge.id, x: event.clientX, y: event.clientY });
   }, []);
 
   const onNodesDelete = useCallback((nodes: Node[]) => {
@@ -269,7 +356,6 @@ function DiagramCanvasInner() {
     setSelectedEdgeId(null);
   }, [storeDeleteEdge]);
 
-  // Click on empty canvas
   const onPaneClick = useCallback((event: React.MouseEvent) => {
     const m = modeRef.current;
     if (m.type === 'place-shape') {
@@ -284,27 +370,14 @@ function DiagramCanvasInner() {
       setSelectedNodeId(null);
       setSelectedEdgeId(null);
     }
-    // In connect modes, clicking empty canvas does nothing (user must click a node or Cancel)
   }, [screenToFlowPosition, storeAddNode, storeAddTextBox]);
 
-  // ─── Toolbar handlers ─────────────────────────────────────────────────
-  const handleAddShape = useCallback((shape: DiagramNodeShape) => {
-    setMode({ type: 'place-shape', shape });
-  }, []);
-
-  const handleAddTextBox = useCallback(() => {
-    setMode({ type: 'place-text' });
-  }, []);
-
+  const handleAddShape = useCallback((shape: DiagramNodeShape) => { setMode({ type: 'place-shape', shape }); }, []);
+  const handleAddTextBox = useCallback(() => { setMode({ type: 'place-text' }); }, []);
   const handleToggleConnect = useCallback(() => {
-    setMode((prev) =>
-      prev.type.startsWith('connect')
-        ? { type: 'normal' }
-        : { type: 'connect-pick-source' }
-    );
+    setMode((prev) => prev.type.startsWith('connect') ? { type: 'normal' } : { type: 'connect-pick-source' });
   }, []);
 
-  // ─── Mode banner text ────────────────────────────────────────────────
   const isConnectMode = mode.type === 'connect-pick-source' || mode.type === 'connect-pick-target';
   const bannerText =
     mode.type === 'place-shape' ? `Click canvas to place ${mode.shape}` :
@@ -312,8 +385,6 @@ function DiagramCanvasInner() {
     mode.type === 'connect-pick-source' ? 'Click the source node' :
     mode.type === 'connect-pick-target' ? 'Now click the target node' :
     null;
-
-  // ─── Render ──────────────────────────────────────────────────────────
 
   if (!diagramId || !currentDiagram) {
     return (
@@ -332,12 +403,7 @@ function DiagramCanvasInner() {
         {bannerText && (
           <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1 text-xs text-blue-700">
             {bannerText} —
-            <button
-              onClick={() => setMode({ type: 'normal' })}
-              className="ml-2 underline"
-            >
-              Cancel
-            </button>
+            <button onClick={() => setMode({ type: 'normal' })} className="ml-2 underline">Cancel</button>
           </div>
         )}
 
@@ -368,6 +434,7 @@ function DiagramCanvasInner() {
           onConnect={onConnect}
           onNodeClick={onNodeClick}
           onEdgeClick={onEdgeClick}
+          onEdgeDoubleClick={onEdgeDoubleClick}
           onNodesDelete={onNodesDelete}
           onEdgesDelete={onEdgesDelete}
           onPaneClick={onPaneClick}
@@ -383,6 +450,36 @@ function DiagramCanvasInner() {
             className="!bg-slate-800 !border-slate-600 !shadow-lg [&>button]:!bg-slate-700 [&>button]:!border-slate-600 [&>button]:!text-slate-200 [&>button:hover]:!bg-slate-600 [&>button>svg]:!fill-slate-200"
           />
         </ReactFlow>
+
+        {/* Floating edge label editor — appears on double-click */}
+        {editingEdgeLabel && (
+          <div
+            className="fixed z-50"
+            style={{ left: editingEdgeLabel.x - 80, top: editingEdgeLabel.y - 15 }}
+          >
+            <input
+              autoFocus
+              value={edgeLabelValue}
+              onChange={(e) => setEdgeLabelValue(e.target.value)}
+              onKeyDown={(e) => {
+                e.stopPropagation();
+                if (e.key === 'Enter') {
+                  const labels = edgeLabelValue.trim() ? edgeLabelValue.split(',').map((l) => l.trim()).filter(Boolean) : [];
+                  updateEdge(editingEdgeLabel.id, { labels });
+                  setEditingEdgeLabel(null);
+                }
+                if (e.key === 'Escape') setEditingEdgeLabel(null);
+              }}
+              onBlur={() => {
+                const labels = edgeLabelValue.trim() ? edgeLabelValue.split(',').map((l) => l.trim()).filter(Boolean) : [];
+                updateEdge(editingEdgeLabel.id, { labels });
+                setEditingEdgeLabel(null);
+              }}
+              placeholder="Edge label..."
+              className="text-xs bg-slate-800 text-white border border-blue-400 rounded px-2 py-1 outline-none min-w-[160px] shadow-lg"
+            />
+          </div>
+        )}
       </div>
 
       <DiagramPropertiesPanel

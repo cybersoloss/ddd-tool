@@ -806,15 +806,37 @@ flows:
     syncState: in_sync
     annotationCount: 0
 
+  diagrams/auto-layout:
+    spec: specs/domains/diagrams/flows/auto-layout.yaml
+    specHash: "4d099daa6d89e6a9a92d9fdf62c5c19d2bf5c7e44a3074d3040b453d46d32a87"
+    files:
+      - src/types/diagram.ts
+      - src/utils/diagram-layout.ts
+      - src/components/DiagramCanvas/DiagramShapeNode.tsx
+      - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+      - src/components/DiagramCanvas/DiagramCanvas.tsx
+      - src/stores/diagram-store.ts
+    fileHashes:
+      src/types/diagram.ts: "d91cdf07754673a1760d0bae11fb0f21c1c5e2c60dc03486815412ac2cf3c002"
+      src/utils/diagram-layout.ts: "64e64c82dcce4f1fa8a7bd6266e551e5ec74c2b4be6ca4143037034d56e444ac"
+      src/components/DiagramCanvas/DiagramShapeNode.tsx: "ca0f69a32336ed2eb040528c912af1596a530ec9923da4fd1b3004e80d5353b4"
+      src/components/DiagramCanvas/DiagramPropertiesPanel.tsx: "cd99bfa6b8860cd33e4518e92f9bb2651a997e0e01c47560e5bbe48bbe14042c"
+      src/components/DiagramCanvas/DiagramCanvas.tsx: "00557cc3523127405f2d5196da58a0954043f4465dc77724fdb58fc1c044cc4e"
+      src/stores/diagram-store.ts: "a8a911d25f538b317b7940ca2761846bfbfe05bb1fdcd4d4fc409dcaadf70d5f"
+    implementedAt: "2026-04-22T00:00:00.000Z"
+    mode: new
+    syncState: in_sync
+    annotationCount: 0
+
   diagrams/update-diagram-node:
     spec: specs/domains/diagrams/flows/update-diagram-node.yaml
-    specHash: "b07205d3385f716040ffde4c07952a15ca1baec9ed22f94a973eb4a74ebdbdab"
+    specHash: "e48e74e3411b"
     files:
       - src/stores/diagram-store.ts
       - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
     fileHashes:
-      src/stores/diagram-store.ts: "e8c1eed83cbb507b64f3ff4a55861725874edfa3809ea1c1993490c779dce9be"
-      src/components/DiagramCanvas/DiagramPropertiesPanel.tsx: "5dcc71f60696fa1fbb5d7758ab07a49739e77d7611b54bc0429d4c37f868852f"
+      src/stores/diagram-store.ts: "a8a911d25f538b317b7940ca2761846bfbfe05bb1fdcd4d4fc409dcaadf70d5f"
+      src/components/DiagramCanvas/DiagramPropertiesPanel.tsx: "cd99bfa6b8860cd33e4518e92f9bb2651a997e0e01c47560e5bbe48bbe14042c"
     implementedAt: "2026-04-21T00:00:00.000Z"
     mode: new
     syncState: in_sync
