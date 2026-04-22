@@ -1,7 +1,10 @@
 name: Diagram
 description: >
-  A freeform visual design diagram. Stored as YAML in specs/diagrams/.
-  Not tied to DDD node types — purely conceptual/architectural design.
+  A visual ideation diagram. Stored as YAML in specs/diagrams/.
+  Each shape node can have its own recursive children tree (branches/subtopics)
+  rendered in a chosen layout style (mind-map, org-chart, tree-chart, logic-chart).
+  Children are properties of a shape — they live INSIDE the shape, not as separate
+  canvas nodes. Shapes can also connect to other shapes via edges (independent wiring).
 
 fields:
   - name: name
@@ -22,7 +25,10 @@ fields:
   - name: nodes
     type: DiagramNode[]
     required: true
-    description: Freeform nodes on the canvas
+    description: >
+      Shape nodes on the canvas. Each shape can independently have children
+      (recursive tree) rendered in its chosen layout_type. Shapes can also
+      connect to other shapes via edges.
     nested_fields:
       - name: id
         type: string
@@ -37,7 +43,7 @@ fields:
       - name: position
         type: "{ x: number, y: number }"
         required: false
-        description: Manual position — auto-computed if absent
+        description: Position on canvas
       - name: description
         type: string
         required: false
@@ -53,10 +59,39 @@ fields:
         type: string
         required: false
         description: Lucide icon name
-      - name: children
-        type: string[]
+      - name: color_group
+        type: string
         required: false
-        description: Child labels for hierarchical grouping
+        description: >
+          Color group identifier (e.g. "red", "blue", "yellow", "white").
+          Sets the shape's border color and cascades to children branch lines.
+      - name: layout_type
+        type: string
+        required: false
+        description: >
+          How this shape's children tree is rendered visually. Per-shape setting.
+          mind-map — children radiate left/right from shape, curved connectors
+          org-chart — children below shape, centered, vertical connectors
+          tree-chart — children below-right with bracket connectors
+          logic-chart — children right in vertical stack, bracket connectors
+          Default: mind-map (when children exist)
+      - name: children
+        type: MindMapChild[]
+        required: false
+        description: >
+          Recursive tree of branches/subtopics attached to this shape.
+          Each child has a label and optional nested children.
+          Tab/Enter on a selected shape adds a child. Backspace deletes.
+          Arrow keys navigate. Children render visually per layout_type.
+        nested_fields:
+          - name: label
+            type: string
+            required: true
+            description: Branch label text
+          - name: children
+            type: MindMapChild[]
+            required: false
+            description: Recursive sub-branches (same structure)
       - name: status
         type: string
         required: false
@@ -69,12 +104,14 @@ fields:
   - name: edges
     type: DiagramEdge[]
     required: true
-    description: Connections between nodes (multiple edges allowed between same pair)
+    description: >
+      Connections between shape nodes. These are independent wiring between
+      shapes (A→B). They do NOT define parent-child hierarchy — that's what
+      the children property on each shape does.
     nested_fields:
       - name: id
         type: string
         required: true
-        description: Unique edge identifier
       - name: from
         type: string
         required: true
@@ -121,4 +158,4 @@ fields:
 
 metadata:
   created: "2026-04-20T00:00:00Z"
-  modified: "2026-04-20T00:00:00Z"
+  modified: "2026-04-22T00:00:00Z"

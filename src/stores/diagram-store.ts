@@ -29,6 +29,8 @@ interface DiagramState {
   saveDiagram: (projectPath: string) => Promise<void>;
   // Flow: create-diagram
   createDiagram: (projectPath: string, name: string, description?: string) => Promise<string>;
+  // Duplicate entire diagram
+  duplicateDiagram: (projectPath: string, diagramId: string) => Promise<string>;
   // Flow: delete-diagram
   deleteDiagram: (projectPath: string, diagramId: string) => Promise<void>;
   // Flow: rename-diagram
@@ -153,9 +155,15 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       };
 
       const yamlContent = stringify(updated, { lineWidth: 120 });
-      const filePath = `${projectPath}/specs/diagrams/${currentDiagramId}.yaml`;
+      const diagramsDir = `${projectPath}/specs/diagrams`;
+      const filePath = `${diagramsDir}/${currentDiagramId}.yaml`;
 
       markWriting();
+      // Ensure directory exists before writing
+      try {
+        const exists: boolean = await invoke('path_exists', { path: diagramsDir });
+        if (!exists) await invoke('create_directory', { path: diagramsDir });
+      } catch { /* ignore */ }
       await invoke('write_file', { path: filePath, contents: yamlContent });
 
       set({
@@ -184,9 +192,15 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
     };
 
     const yamlContent = stringify(doc, { lineWidth: 120 });
-    const filePath = `${projectPath}/specs/diagrams/${id}.yaml`;
+    const diagramsDir = `${projectPath}/specs/diagrams`;
+    const filePath = `${diagramsDir}/${id}.yaml`;
 
+    // Ensure specs/diagrams/ directory exists
     markWriting();
+    try {
+      const exists: boolean = await invoke('path_exists', { path: diagramsDir });
+      if (!exists) await invoke('create_directory', { path: diagramsDir });
+    } catch { /* directory may already exist */ }
     await invoke('write_file', { path: filePath, contents: yamlContent });
 
     const meta: DiagramMeta = { id, name, description };
@@ -198,6 +212,59 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
     }));
 
     return id;
+  },
+
+  duplicateDiagram: async (projectPath, diagramId) => {
+    const filePath = `${projectPath}/specs/diagrams/${diagramId}.yaml`;
+    try {
+      const content: string = await invoke('read_file', { path: filePath });
+      const parsed = parse(content) as DiagramDocument | null;
+      if (!parsed) throw new Error('Failed to parse');
+
+      const newName = `${parsed.name} (copy)`;
+      const newId = newName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const now = new Date().toISOString();
+
+      // Deep clone with new IDs for nodes
+      const doc: DiagramDocument = {
+        ...structuredClone(parsed),
+        name: newName,
+        metadata: { created: now, modified: now },
+      };
+      // Regenerate node IDs
+      const idMap = new Map<string, string>();
+      for (const n of doc.nodes) {
+        const newNodeId = `node-${nanoid(8)}`;
+        idMap.set(n.id, newNodeId);
+        n.id = newNodeId;
+      }
+      // Remap edge references
+      for (const e of doc.edges) {
+        e.id = `edge-${nanoid(8)}`;
+        e.from = idMap.get(e.from) || e.from;
+        e.to = idMap.get(e.to) || e.to;
+      }
+      // Remap text box IDs
+      for (const t of doc.text_boxes || []) {
+        t.id = `text-${nanoid(8)}`;
+      }
+
+      const yamlContent = stringify(doc, { lineWidth: 120 });
+      const diagramsDir = `${projectPath}/specs/diagrams`;
+      const newFilePath = `${diagramsDir}/${newId}.yaml`;
+      markWriting();
+      try {
+        const exists: boolean = await invoke('path_exists', { path: diagramsDir });
+        if (!exists) await invoke('create_directory', { path: diagramsDir });
+      } catch { /* ignore */ }
+      await invoke('write_file', { path: newFilePath, contents: yamlContent });
+
+      const meta: DiagramMeta = { id: newId, name: newName, description: parsed.description };
+      set((s) => ({ diagrams: [...s.diagrams, meta] }));
+      return newId;
+    } catch (e) {
+      throw new Error(`Failed to duplicate: ${e}`);
+    }
   },
 
   deleteDiagram: async (projectPath, diagramId) => {
@@ -237,12 +304,28 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
     const { currentDiagram } = get();
     if (!currentDiagram) return;
 
+    // Apply last-used style if available, otherwise default
+    let style = defaultStyleForShape(shape);
+    let color_group: string | undefined;
+    let layout_type: import('../types/diagram').DiagramLayoutType | undefined;
+    try {
+      const saved = localStorage.getItem('ddd-diagram-last-style');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.style) style = { ...style, ...parsed.style };
+        if (parsed.color_group) color_group = parsed.color_group;
+        if (parsed.layout_type) layout_type = parsed.layout_type;
+      }
+    } catch { /* ignore */ }
+
     const node: DiagramNode = {
       id: `node-${nanoid(8)}`,
       label: shapeLabel(shape),
       shape,
       position,
-      style: defaultStyleForShape(shape),
+      style,
+      color_group,
+      layout_type,
     };
 
     set({
@@ -301,6 +384,17 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   updateNode: (nodeId, updates) => {
     const { currentDiagram } = get();
     if (!currentDiagram) return;
+
+    // Remember last-used style for new shapes
+    if (updates.style || updates.color_group !== undefined || updates.layout_type !== undefined) {
+      try {
+        const existing = JSON.parse(localStorage.getItem('ddd-diagram-last-style') || '{}');
+        if (updates.style) existing.style = { ...existing.style, ...updates.style };
+        if (updates.color_group !== undefined) existing.color_group = updates.color_group || undefined;
+        if (updates.layout_type !== undefined) existing.layout_type = updates.layout_type || undefined;
+        localStorage.setItem('ddd-diagram-last-style', JSON.stringify(existing));
+      } catch { /* ignore */ }
+    }
 
     set({
       currentDiagram: {

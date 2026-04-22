@@ -1,5 +1,4 @@
 import { useDiagramStore } from '../../stores/diagram-store';
-import { useState } from 'react';
 import type {
   DiagramNode,
   DiagramEdge,
@@ -8,9 +7,9 @@ import type {
   DiagramEdgeStyle,
   DiagramEdgeWeight,
   DiagramNodeStatus,
-  BranchDirection,
-  MindMapChild,
+  DiagramLayoutType,
 } from '../../types/diagram';
+import { COLOR_GROUPS } from '../../utils/diagram-layout';
 
 const SHAPES: DiagramNodeShape[] = [
   'rectangle', 'rounded-rectangle', 'circle', 'diamond', 'hexagon',
@@ -21,13 +20,13 @@ const DIRECTIONS: DiagramEdgeDirection[] = ['one-way', 'two-way', 'conditional']
 const EDGE_STYLES: DiagramEdgeStyle[] = ['solid', 'dashed', 'dotted'];
 const WEIGHTS: DiagramEdgeWeight[] = ['primary', 'secondary'];
 const STATUSES: DiagramNodeStatus[] = ['draft', 'active', 'deprecated'];
-const BRANCH_DIRECTIONS: { value: BranchDirection | ''; label: string }[] = [
-  { value: '', label: 'None' },
-  { value: 'right', label: 'Right' },
-  { value: 'left', label: 'Left' },
-  { value: 'both', label: 'Both sides' },
-  { value: 'down', label: 'Down' },
-  { value: 'up', label: 'Up' },
+const COLOR_GROUP_OPTIONS = ['', ...Object.keys(COLOR_GROUPS)];
+const LAYOUT_TYPES: { value: DiagramLayoutType | ''; label: string }[] = [
+  { value: '', label: 'Default (Mind Map)' },
+  { value: 'mind-map', label: 'Mind Map' },
+  { value: 'org-chart', label: 'Org Chart' },
+  { value: 'tree-chart', label: 'Tree Chart' },
+  { value: 'logic-chart', label: 'Logic Chart' },
 ];
 
 interface DiagramPropertiesPanelProps {
@@ -218,26 +217,30 @@ function NodeProperties({ node, onUpdate }: {
           placeholder="diagrams/id or domains/flow-id"
         />
       </Field>
-      <div className="border-t border-border pt-2">
-        <p className="text-[10px] font-semibold text-text-muted mb-1">Branches</p>
-        <div className="space-y-2">
-          <Field label="Direction">
-            <select
-              value={node.branch_direction || ''}
-              onChange={(e) => onUpdate({ branch_direction: (e.target.value || undefined) as BranchDirection | undefined })}
-              className="input-field text-xs"
-            >
-              {BRANCH_DIRECTIONS.map((d) => (
-                <option key={d.value} value={d.value}>{d.label}</option>
-              ))}
-            </select>
-          </Field>
-          <ChildrenEditor
-            children={(node.children || []).map((c: string | MindMapChild) => typeof c === 'string' ? { label: c } : c)}
-            onChange={(children) => onUpdate({ children: children.length > 0 ? children : undefined })}
-          />
-        </div>
-      </div>
+      <Field label="Color Group">
+        <select
+          value={node.color_group || ''}
+          onChange={(e) => onUpdate({ color_group: e.target.value || undefined })}
+          className="input-field text-xs"
+        >
+          {COLOR_GROUP_OPTIONS.map((g) => (
+            <option key={g} value={g}>
+              {g || 'None'}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Branch Layout">
+        <select
+          value={node.layout_type || ''}
+          onChange={(e) => onUpdate({ layout_type: (e.target.value || undefined) as DiagramLayoutType | undefined })}
+          className="input-field text-xs"
+        >
+          {LAYOUT_TYPES.map((lt) => (
+            <option key={lt.value} value={lt.value}>{lt.label}</option>
+          ))}
+        </select>
+      </Field>
       <div className="border-t border-border pt-2">
         <p className="text-[10px] font-semibold text-text-muted mb-1">Style</p>
         <div className="space-y-2">
@@ -314,121 +317,6 @@ function EdgeProperties({ edge, onUpdate }: {
           placeholder="Comma-separated labels"
         />
       </Field>
-    </div>
-  );
-}
-
-function ChildrenEditor({ children: items, onChange }: {
-  children: MindMapChild[];
-  onChange: (children: MindMapChild[]) => void;
-}) {
-  const [newItem, setNewItem] = useState('');
-
-  const addItem = () => {
-    const trimmed = newItem.trim();
-    if (trimmed) {
-      onChange([...items, { label: trimmed }]);
-      setNewItem('');
-    }
-  };
-
-  const removeItem = (index: number) => {
-    onChange(items.filter((_, j) => j !== index));
-  };
-
-  const addSubChild = (index: number, label: string) => {
-    const updated = items.map((item, i) =>
-      i === index ? { ...item, children: [...(item.children || []), { label }] } : item,
-    );
-    onChange(updated);
-  };
-
-  const removeSubChild = (parentIndex: number, childIndex: number) => {
-    const updated = items.map((item, i) =>
-      i === parentIndex
-        ? { ...item, children: (item.children || []).filter((_, j) => j !== childIndex) }
-        : item,
-    );
-    onChange(updated);
-  };
-
-  return (
-    <div>
-      <label className="text-[10px] font-medium text-text-muted block mb-0.5">Branches</label>
-      {items.length > 0 && (
-        <div className="space-y-1 mb-1">
-          {items.map((item, i) => (
-            <BranchItemEditor
-              key={i}
-              item={item}
-              onRemove={() => removeItem(i)}
-              onAddChild={(label) => addSubChild(i, label)}
-              onRemoveChild={(ci) => removeSubChild(i, ci)}
-            />
-          ))}
-        </div>
-      )}
-      <div className="flex gap-1">
-        <input
-          type="text"
-          value={newItem}
-          onChange={(e) => setNewItem(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addItem(); } }}
-          className="input-field text-[10px] flex-1"
-          placeholder="Type and press Enter..."
-        />
-      </div>
-    </div>
-  );
-}
-
-function BranchItemEditor({ item, onRemove, onAddChild, onRemoveChild }: {
-  item: MindMapChild;
-  onRemove: () => void;
-  onAddChild: (label: string) => void;
-  onRemoveChild: (index: number) => void;
-}) {
-  const [subInput, setSubInput] = useState('');
-  const [expanded, setExpanded] = useState(false);
-
-  return (
-    <div>
-      <div className="flex items-center gap-1">
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="text-[9px] text-text-muted w-3"
-        >
-          {expanded ? '-' : '+'}
-        </button>
-        <span className="text-[10px] text-text-secondary flex-1 truncate">{item.label}</span>
-        <button onClick={onRemove} className="text-[9px] text-danger hover:text-danger/80">x</button>
-      </div>
-      {expanded && (
-        <div className="ml-3 mt-0.5 pl-2 border-l border-border/50">
-          {(item.children || []).map((child, ci) => (
-            <div key={ci} className="flex items-center gap-1">
-              <span className="text-[9px] text-text-muted flex-1 truncate">{child.label}</span>
-              <button onClick={() => onRemoveChild(ci)} className="text-[8px] text-danger">x</button>
-            </div>
-          ))}
-          <div className="flex gap-1 mt-0.5">
-            <input
-              type="text"
-              value={subInput}
-              onChange={(e) => setSubInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && subInput.trim()) {
-                  e.preventDefault();
-                  onAddChild(subInput.trim());
-                  setSubInput('');
-                }
-              }}
-              className="input-field text-[9px] flex-1"
-              placeholder="Sub-branch..."
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }

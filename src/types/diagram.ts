@@ -15,7 +15,8 @@ export type DiagramNodeShape =
   | 'custom';
 
 export type DiagramNodeStatus = 'draft' | 'active' | 'deprecated';
-export type BranchDirection = 'right' | 'left' | 'down' | 'both' | 'up';
+
+export type DiagramLayoutType = 'mind-map' | 'org-chart' | 'tree-chart' | 'logic-chart';
 
 export interface MindMapChild {
   label: string;
@@ -40,8 +41,9 @@ export interface DiagramNode {
   notes?: string;
   style?: DiagramNodeStyle;
   icon?: string;
+  color_group?: string;
+  layout_type?: DiagramLayoutType;
   children?: MindMapChild[];
-  branch_direction?: BranchDirection;
   status?: DiagramNodeStatus;
   link?: string;
 }

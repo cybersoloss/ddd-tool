@@ -7,6 +7,7 @@ export function DiagramSidebar() {
   const diagrams = useDiagramStore((s) => s.diagrams);
   const currentDiagramId = useDiagramStore((s) => s.currentDiagramId);
   const createDiagram = useDiagramStore((s) => s.createDiagram);
+  const duplicateDiagram = useDiagramStore((s) => s.duplicateDiagram);
   const deleteDiagram = useDiagramStore((s) => s.deleteDiagram);
   const navigateToDiagram = useSheetStore((s) => s.navigateToDiagram);
   const projectPath = useAppStore((s) => s.currentProjectPath);
@@ -106,6 +107,16 @@ export function DiagramSidebar() {
                 </div>
               )}
             </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (projectPath) duplicateDiagram(projectPath, d.id).catch(() => {});
+              }}
+              className="opacity-0 group-hover:opacity-100 text-text-muted text-[10px] ml-1 hover:text-text-primary"
+              title="Duplicate diagram"
+            >
+              dup
+            </button>
             <button
               onClick={(e) => {
                 e.stopPropagation();

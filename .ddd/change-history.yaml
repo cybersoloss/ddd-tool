@@ -1030,3 +1030,135 @@
   status: "pending_implement"
   implemented_at: null
   code_files: []
+
+- id: "chg-0098"
+  timestamp: "2026-04-21T12:00:00.000Z"
+  source: "ddd-update"
+  scope: { level: L1, domain: null, flow: null, pillar: data }
+  spec_file: "specs/schemas/diagram.yaml"
+  spec_checksum: "3031a3d25f95"
+  status: "pending_implement"
+  implemented_at: null
+  code_files: []
+
+- id: "chg-0099"
+  timestamp: "2026-04-21T12:00:00.000Z"
+  source: "ddd-update"
+  scope: { level: L2, domain: diagrams, flow: null, pillar: logic }
+  spec_file: "specs/domains/diagrams/domain.yaml"
+  spec_checksum: "d58eb4f47428"
+  status: "pending_implement"
+  implemented_at: null
+  code_files: []
+
+- id: "chg-0100"
+  timestamp: "2026-04-21T12:00:00.000Z"
+  source: "ddd-update"
+  scope: { level: L3, domain: diagrams, flow: manage-branches, pillar: logic }
+  spec_file: "specs/domains/diagrams/flows/manage-branches.yaml"
+  spec_checksum: "85f5916f1f23"
+  status: "implemented"
+  implemented_at: "2026-04-21T12:00:00.000Z"
+  code_files:
+    - src/utils/branch-tree-ops.ts
+    - src/components/DiagramCanvas/BranchTreeEditor.tsx
+    - src/components/DiagramCanvas/DiagramShapeNode.tsx
+    - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+    - src/components/DiagramCanvas/DiagramCanvas.tsx
+
+- id: "chg-0101"
+  timestamp: "2026-04-21T12:00:00.000Z"
+  source: "ddd-update"
+  scope: { level: L3, domain: diagrams, flow: update-diagram-node, pillar: logic }
+  spec_file: "specs/domains/diagrams/flows/update-diagram-node.yaml"
+  spec_checksum: "97d10abca670"
+  status: "pending_implement"
+  implemented_at: null
+  code_files: []
+
+- id: "chg-0102"
+  timestamp: "2026-04-22T00:00:00.000Z"
+  source: "ddd-update"
+  scope: { level: L1, domain: null, flow: null, pillar: data }
+  spec_file: "specs/schemas/diagram.yaml"
+  spec_checksum: "fd34e9008563"
+  status: "implemented"
+  implemented_at: "2026-04-22T00:00:00.000Z"
+  code_files:
+    - src/types/diagram.ts
+
+- id: "chg-0103"
+  timestamp: "2026-04-22T00:00:00.000Z"
+  source: "ddd-update"
+  scope: { level: L2, domain: diagrams, flow: null, pillar: logic }
+  spec_file: "specs/domains/diagrams/domain.yaml"
+  spec_checksum: "0b32afe74318"
+  status: "implemented"
+  implemented_at: "2026-04-22T00:00:00.000Z"
+  code_files:
+    - src/stores/diagram-store.ts
+
+- id: "chg-0104"
+  timestamp: "2026-04-22T00:00:00.000Z"
+  source: "ddd-update"
+  scope: { level: L3, domain: diagrams, flow: auto-layout, pillar: logic }
+  spec_file: "specs/domains/diagrams/flows/auto-layout.yaml"
+  spec_checksum: "4d099daa6d89"
+  status: "implemented"
+  implemented_at: "2026-04-22T00:00:00.000Z"
+  code_files:
+    - src/utils/diagram-layout.ts
+    - src/components/DiagramCanvas/DiagramCanvas.tsx
+
+- id: "chg-0105"
+  timestamp: "2026-04-22T00:00:00.000Z"
+  source: "ddd-update"
+  scope: { level: L3, domain: diagrams, flow: update-diagram-node, pillar: logic }
+  spec_file: "specs/domains/diagrams/flows/update-diagram-node.yaml"
+  spec_checksum: "e48e74e3411b"
+  status: "implemented"
+  implemented_at: "2026-04-22T00:00:00.000Z"
+  code_files:
+    - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+    - src/components/DiagramCanvas/DiagramShapeNode.tsx
+
+- id: "chg-0106"
+  timestamp: "2026-04-22T00:00:00.000Z"
+  source: "ddd-update"
+  scope: { level: L3, domain: diagrams, flow: create-diagram, pillar: logic }
+  spec_file: "specs/domains/diagrams/flows/create-diagram.yaml"
+  spec_checksum: "5efcd6ca3f97"
+  status: "implemented"
+  implemented_at: "2026-04-22T00:00:00.000Z"
+  code_files:
+    - src/stores/diagram-store.ts
+
+- id: "chg-0107"
+  timestamp: "2026-04-22T12:00:00.000Z"
+  source: "ddd-update"
+  scope: { level: L1, domain: null, flow: null, pillar: data }
+  spec_file: "specs/schemas/diagram.yaml"
+  spec_checksum: "a682b6c2334a"
+  status: "pending_implement"
+  implemented_at: null
+  code_files: []
+
+- id: "chg-0108"
+  timestamp: "2026-04-22T12:00:00.000Z"
+  source: "ddd-update"
+  scope: { level: L2, domain: diagrams, flow: null, pillar: logic }
+  spec_file: "specs/domains/diagrams/domain.yaml"
+  spec_checksum: "c370e0afda23"
+  status: "pending_implement"
+  implemented_at: null
+  code_files: []
+
+- id: "chg-0109"
+  timestamp: "2026-04-22T12:00:00.000Z"
+  source: "ddd-update"
+  scope: { level: L3, domain: diagrams, flow: manage-branches, pillar: logic }
+  spec_file: "specs/domains/diagrams/flows/manage-branches.yaml"
+  spec_checksum: "8fe1366c643c"
+  status: "pending_implement"
+  implemented_at: null
+  code_files: []
