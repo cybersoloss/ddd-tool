@@ -109,6 +109,15 @@ function DiagramCanvasInner() {
         e.preventDefault();
         if (projectPath && isDirty) saveDiagram(projectPath);
       }
+      // Cmd+Z: undo, Cmd+Shift+Z: redo
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        useDiagramStore.getState().undo();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && e.shiftKey) {
+        e.preventDefault();
+        useDiagramStore.getState().redo();
+      }
       // Cmd+D: duplicate selected node
       if ((e.metaKey || e.ctrlKey) && e.key === 'd' && selectedNodeId && !selectedNodeId.startsWith('text-')) {
         e.preventDefault();
@@ -259,13 +268,11 @@ function DiagramCanvasInner() {
   const rfEdges: Edge[] = useMemo(() => {
     if (!currentDiagram) return [];
     return currentDiagram.edges.map((e) => {
-      const strokeWidth = e.weight === 'primary' ? 3 : e.weight === 'secondary' ? 1 : 2;
+      const strokeWidth = e.weight === 'primary' ? 4 : e.weight === 'secondary' ? 1.5 : 2.5;
       const strokeDasharray = e.style === 'dashed' ? '6 3' : e.style === 'dotted' ? '2 2' : undefined;
       const sourceNode = currentDiagram.nodes.find((n) => n.id === e.from);
-      const edgeColor = colorGroupToColor(sourceNode?.color_group) || 'var(--color-text-muted)';
-      const markerEnd = e.direction !== 'two-way'
-        ? { type: MarkerType.ArrowClosed, color: edgeColor }
-        : undefined;
+      const edgeColor = colorGroupToColor(sourceNode?.color_group) || '#94a3b8';
+      const markerEnd = { type: MarkerType.ArrowClosed, color: edgeColor };
       const markerStart = e.direction === 'two-way'
         ? { type: MarkerType.ArrowClosed, color: edgeColor }
         : undefined;
@@ -275,8 +282,13 @@ function DiagramCanvasInner() {
         target: e.to,
         sourceHandle: e.fromHandle,
         targetHandle: e.toHandle,
+        type: 'smoothstep',
         selected: selectedEdgeId === e.id,
         label: (e.labels || []).join(' / ') || undefined,
+        labelStyle: { fill: '#e2e8f0', fontSize: 11, fontWeight: 500 },
+        labelBgStyle: { fill: '#1e293b', fillOpacity: 0.9 },
+        labelBgPadding: [4, 6] as [number, number],
+        labelBgBorderRadius: 4,
         style: { stroke: edgeColor, strokeWidth, strokeDasharray },
         markerEnd,
         markerStart,

@@ -14,6 +14,8 @@ import { COLOR_GROUPS } from '../../utils/diagram-layout';
 const SHAPES: DiagramNodeShape[] = [
   'rectangle', 'rounded-rectangle', 'circle', 'diamond', 'hexagon',
   'cylinder', 'cloud', 'person', 'document', 'folder', 'stack', 'custom',
+  'server', 'database', 'browser', 'mobile', 'api', 'queue',
+  'lock', 'gear', 'lightning', 'globe',
 ];
 
 const DIRECTIONS: DiagramEdgeDirection[] = ['one-way', 'two-way', 'conditional'];

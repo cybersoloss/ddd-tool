@@ -13,6 +13,8 @@ import type {
   DiagramNodeStyle,
 } from '../types/diagram';
 
+const MAX_UNDO = 50;
+
 interface DiagramState {
   diagrams: DiagramMeta[];
   currentDiagram: DiagramDocument | null;
@@ -20,6 +22,8 @@ interface DiagramState {
   isDirty: boolean;
   isSaving: boolean;
   loaded: boolean;
+  _undoStack: DiagramDocument[];
+  _redoStack: DiagramDocument[];
 
   // Flow: load-diagram-list
   loadDiagramList: (projectPath: string) => Promise<void>;
@@ -53,8 +57,19 @@ interface DiagramState {
   deleteTextBox: (textBoxId: string) => void;
   moveNode: (nodeId: string, position: { x: number; y: number }) => void;
   moveTextBox: (textBoxId: string, position: { x: number; y: number }) => void;
+  undo: () => void;
+  redo: () => void;
   unloadDiagram: () => void;
   reset: () => void;
+}
+
+function pushUndo(get: () => DiagramState, set: (partial: Partial<DiagramState>) => void) {
+  const { currentDiagram, _undoStack } = get();
+  if (!currentDiagram) return;
+  set({
+    _undoStack: [..._undoStack, structuredClone(currentDiagram)].slice(-MAX_UNDO),
+    _redoStack: [], // clear redo on new action
+  });
 }
 
 export const useDiagramStore = create<DiagramState>((set, get) => ({
@@ -62,6 +77,8 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   currentDiagram: null,
   currentDiagramId: null,
   isDirty: false,
+  _undoStack: [],
+  _redoStack: [],
   isSaving: false,
   loaded: false,
 
@@ -159,12 +176,12 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       const filePath = `${diagramsDir}/${currentDiagramId}.yaml`;
 
       markWriting();
-      // Ensure directory exists before writing
       try {
-        const exists: boolean = await invoke('path_exists', { path: diagramsDir });
-        if (!exists) await invoke('create_directory', { path: diagramsDir });
-      } catch { /* ignore */ }
-      await invoke('write_file', { path: filePath, contents: yamlContent });
+        await invoke('write_file', { path: filePath, contents: yamlContent });
+      } catch (writeErr) {
+        console.error('Failed to save diagram:', filePath, writeErr);
+        throw writeErr;
+      }
 
       set({
         currentDiagram: updated,
@@ -178,6 +195,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   },
 
   createDiagram: async (projectPath, name, description) => {
+    console.log('[diagram] createDiagram called, projectPath:', projectPath);
     const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     const now = new Date().toISOString();
 
@@ -195,13 +213,15 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
     const diagramsDir = `${projectPath}/specs/diagrams`;
     const filePath = `${diagramsDir}/${id}.yaml`;
 
-    // Ensure specs/diagrams/ directory exists
+    console.log('[diagram] writing to:', filePath);
     markWriting();
     try {
-      const exists: boolean = await invoke('path_exists', { path: diagramsDir });
-      if (!exists) await invoke('create_directory', { path: diagramsDir });
-    } catch { /* directory may already exist */ }
-    await invoke('write_file', { path: filePath, contents: yamlContent });
+      await invoke('write_file', { path: filePath, contents: yamlContent });
+      console.log('[diagram] write_file succeeded');
+    } catch (writeErr) {
+      console.error('[diagram] write_file FAILED:', filePath, writeErr);
+      throw writeErr;
+    }
 
     const meta: DiagramMeta = { id, name, description };
     set((s) => ({
@@ -301,6 +321,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   },
 
   addNode: (shape, position) => {
+    pushUndo(get, set);
     const { currentDiagram } = get();
     if (!currentDiagram) return;
 
@@ -338,6 +359,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   },
 
   addEdge: (from, to, fromHandle?, toHandle?) => {
+    pushUndo(get, set);
     const { currentDiagram } = get();
     if (!currentDiagram) return;
 
@@ -362,6 +384,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   },
 
   addTextBox: (position) => {
+    pushUndo(get, set);
     const { currentDiagram } = get();
     if (!currentDiagram) return;
 
@@ -382,6 +405,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   },
 
   updateNode: (nodeId, updates) => {
+    pushUndo(get, set);
     const { currentDiagram } = get();
     if (!currentDiagram) return;
 
@@ -408,6 +432,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   },
 
   updateEdge: (edgeId, updates) => {
+    pushUndo(get, set);
     const { currentDiagram } = get();
     if (!currentDiagram) return;
 
@@ -423,6 +448,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   },
 
   updateTextBox: (textBoxId, updates) => {
+    pushUndo(get, set);
     const { currentDiagram } = get();
     if (!currentDiagram) return;
 
@@ -438,6 +464,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   },
 
   deleteNode: (nodeId) => {
+    pushUndo(get, set);
     const { currentDiagram } = get();
     if (!currentDiagram) return;
 
@@ -453,6 +480,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   },
 
   deleteEdge: (edgeId) => {
+    pushUndo(get, set);
     const { currentDiagram } = get();
     if (!currentDiagram) return;
 
@@ -466,6 +494,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   },
 
   deleteTextBox: (textBoxId) => {
+    pushUndo(get, set);
     const { currentDiagram } = get();
     if (!currentDiagram) return;
 
@@ -508,8 +537,32 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
     });
   },
 
+  undo: () => {
+    const { _undoStack, currentDiagram } = get();
+    if (_undoStack.length === 0 || !currentDiagram) return;
+    const prev = _undoStack[_undoStack.length - 1];
+    set({
+      _undoStack: _undoStack.slice(0, -1),
+      _redoStack: [...get()._redoStack, structuredClone(currentDiagram)].slice(-MAX_UNDO),
+      currentDiagram: prev,
+      isDirty: true,
+    });
+  },
+
+  redo: () => {
+    const { _redoStack, currentDiagram } = get();
+    if (_redoStack.length === 0 || !currentDiagram) return;
+    const next = _redoStack[_redoStack.length - 1];
+    set({
+      _redoStack: _redoStack.slice(0, -1),
+      _undoStack: [...get()._undoStack, structuredClone(currentDiagram)].slice(-MAX_UNDO),
+      currentDiagram: next,
+      isDirty: true,
+    });
+  },
+
   unloadDiagram: () => {
-    set({ currentDiagram: null, currentDiagramId: null, isDirty: false });
+    set({ currentDiagram: null, currentDiagramId: null, isDirty: false, _undoStack: [], _redoStack: [] });
   },
 
   reset: () => {
@@ -535,11 +588,21 @@ function shapeLabel(shape: DiagramNodeShape): string {
     case 'circle': return 'Circle';
     case 'hexagon': return 'Hexagon';
     case 'cloud': return 'Cloud';
-    case 'person': return 'Actor';
+    case 'person': return 'User';
     case 'document': return 'Document';
     case 'folder': return 'Folder';
     case 'stack': return 'Stack';
     case 'custom': return 'Custom';
+    case 'server': return 'Server';
+    case 'database': return 'Database';
+    case 'browser': return 'Browser';
+    case 'mobile': return 'Mobile';
+    case 'api': return 'API';
+    case 'queue': return 'Queue';
+    case 'lock': return 'Security';
+    case 'gear': return 'Service';
+    case 'lightning': return 'Event';
+    case 'globe': return 'Internet';
   }
 }
 
@@ -547,12 +610,24 @@ function defaultStyleForShape(shape: DiagramNodeShape): DiagramNodeStyle {
   switch (shape) {
     case 'person':
       return { fill_color: '#e0f2fe', border_color: '#0284c7' };
-    case 'cylinder':
+    case 'cylinder': case 'database':
       return { fill_color: '#fef3c7', border_color: '#d97706' };
-    case 'cloud':
+    case 'cloud': case 'globe':
       return { fill_color: '#f3e8ff', border_color: '#7c3aed' };
     case 'diamond':
       return { fill_color: '#fce7f3', border_color: '#db2777' };
+    case 'server':
+      return { fill_color: '#dbeafe', border_color: '#2563eb' };
+    case 'browser': case 'mobile':
+      return { fill_color: '#ecfdf5', border_color: '#059669' };
+    case 'api': case 'lightning':
+      return { fill_color: '#fff7ed', border_color: '#ea580c' };
+    case 'queue':
+      return { fill_color: '#fef9c3', border_color: '#ca8a04' };
+    case 'lock':
+      return { fill_color: '#fce7f3', border_color: '#be185d' };
+    case 'gear':
+      return { fill_color: '#f1f5f9', border_color: '#475569' };
     default:
       return { fill_color: '#f8fafc', border_color: '#64748b' };
   }
