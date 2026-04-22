@@ -75,7 +75,15 @@
       "Bash(defaults read:*)",
       "Read(//Applications/DDD Tool.app/**)",
       "Bash(find /Users/mhc/dev/ddd-tool/tests/e2e -name \"*shortfall*\" -o -name \"*shortfalls*\" 2>/dev/null | xargs ls -lt 2>/dev/null)",
-      "Bash(sed -i '' 's/\"version\": \"0\\\\.2\\\\.0\"/\"version\": \"0.2.64\"/' /Users/mhc/dev/ddd-tool/package.json /Users/mhc/dev/ddd-tool/src-tauri/tauri.conf.json && sed -i '' 's/^version = \"0\\\\.2\\\\.0\"/version = \"0.2.64\"/' /Users/mhc/dev/ddd-tool/src-tauri/Cargo.toml && grep '\"version\"' /Users/mhc/dev/ddd-tool/package.json && grep '\"version\"' /Users/mhc/dev/ddd-tool/src-tauri/tauri.conf.json && grep '^version' /Users/mhc/dev/ddd-tool/src-tauri/Cargo.toml)"
+      "Bash(sed -i '' 's/\"version\": \"0\\\\.2\\\\.0\"/\"version\": \"0.2.64\"/' /Users/mhc/dev/ddd-tool/package.json /Users/mhc/dev/ddd-tool/src-tauri/tauri.conf.json && sed -i '' 's/^version = \"0\\\\.2\\\\.0\"/version = \"0.2.64\"/' /Users/mhc/dev/ddd-tool/src-tauri/Cargo.toml && grep '\"version\"' /Users/mhc/dev/ddd-tool/package.json && grep '\"version\"' /Users/mhc/dev/ddd-tool/src-tauri/tauri.conf.json && grep '^version' /Users/mhc/dev/ddd-tool/src-tauri/Cargo.toml)",
+      "Bash(cp:*)",
+      "Bash(rm -rf \"/Applications/DDD Tool.app\")",
+      "Bash(cp -R \"/Users/mhc/dev/ddd-tool/src-tauri/target/release/bundle/macos/DDD Tool.app\" /Applications/)",
+      "Bash(uniq -c echo \"---\" grep -B10 \"sourceHandle: done\" /Users/mhc/dev/Publio/specs/domains/*/flows/*.yaml)",
+      "Bash(uniq -c echo \"---\" grep -B10 \"sourceHandle: done\" /Users/mhc/dev/GTDCOLLECTOR/specs/domains/*/flows/*.yaml)",
+      "Bash(uniq -c echo \"---\" grep -B10 \"sourceHandle: body\" /Users/mhc/dev/Publio/specs/domains/*/flows/*.yaml)",
+      "Bash(python3 -c ':*)",
+      "Bash(/Users/mhc/dev/ddd-tool/src-tauri/target/debug/ddd-tool:*)"
     ]
   }
 }

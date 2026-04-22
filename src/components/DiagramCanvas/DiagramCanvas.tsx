@@ -181,6 +181,7 @@ function DiagramCanvasInner() {
           color_group: n.color_group,
           layout_type: n.layout_type,
           children: n.children,
+          branch_max_width: n.branch_max_width,
           onLabelChange: (label: string) => updateNode(n.id, { label }),
           onAddChild: (childLabel: string, parentPath: number[] | null) => {
             const deepClone = (items: MindMapChild[]): MindMapChild[] =>

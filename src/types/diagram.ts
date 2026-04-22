@@ -58,6 +58,7 @@ export interface DiagramNode {
   children?: MindMapChild[];
   status?: DiagramNodeStatus;
   link?: string;
+  branch_max_width?: number;
 }
 
 export type DiagramEdgeDirection = 'one-way' | 'two-way' | 'conditional';
