@@ -87,6 +87,24 @@ function ShapeWrapper({ shape, style, children }: {
     }
     case 'rounded-rectangle':
       return <div className={`${base} rounded-xl`} style={{ border: `${borderThickness}px solid ${borderColor}`, backgroundColor: fillColor, opacity: fillOpacity }}>{children}</div>;
+    // Object types — rendered as rounded rect with icon badge
+    case 'server': case 'database': case 'browser': case 'mobile':
+    case 'api': case 'queue': case 'lock': case 'gear':
+    case 'lightning': case 'globe': {
+      const iconMap: Record<string, string> = {
+        server: '🖥', database: '🗄', browser: '🌐', mobile: '📱',
+        api: '⚡', queue: '📨', lock: '🔒', gear: '⚙',
+        lightning: '⚡', globe: '🌍',
+      };
+      return (
+        <div className="relative">
+          <span className="absolute -top-2 -left-1 text-sm z-10">{iconMap[shape] || '📦'}</span>
+          <div className={`${base} rounded-lg`} style={{ border: `${borderThickness}px solid ${borderColor}`, backgroundColor: fillColor, opacity: fillOpacity, paddingTop: 10 }}>
+            {children}
+          </div>
+        </div>
+      );
+    }
     default:
       return <div className={`${base} rounded`} style={{ border: `${borderThickness}px solid ${borderColor}`, backgroundColor: fillColor, opacity: fillOpacity }}>{children}</div>;
   }
@@ -123,7 +141,8 @@ function BranchLabel({ label, onEdit }: { label: string; onEdit?: (newLabel: str
           if (trimmed && trimmed !== label) onEdit?.(trimmed);
           setEditing(false);
         }}
-        className="text-[10px] bg-slate-800 text-white border border-blue-400 rounded px-1 py-0 outline-none min-w-[40px] w-[80px]"
+        size={Math.max(8, value.length + 2)}
+        className="text-[10px] bg-slate-800 text-white border border-blue-400 rounded px-2 py-0.5 outline-none min-w-[80px]"
       />
     );
   }
@@ -276,14 +295,10 @@ export const DiagramShapeNode = memo(function DiagramShapeNode({ data }: NodePro
         }
       }}
     >
-      <Handle type="target" position={Position.Top} id="top-target" className="!w-2 !h-2 !bg-slate-400" />
-      <Handle type="source" position={Position.Top} id="top-source" className="!w-2 !h-2 !bg-slate-400" />
-      <Handle type="target" position={Position.Right} id="right-target" className="!w-2 !h-2 !bg-slate-400" />
-      <Handle type="source" position={Position.Right} id="right-source" className="!w-2 !h-2 !bg-slate-400" />
-      <Handle type="target" position={Position.Bottom} id="bottom-target" className="!w-2 !h-2 !bg-slate-400" />
-      <Handle type="source" position={Position.Bottom} id="bottom-source" className="!w-2 !h-2 !bg-slate-400" />
-      <Handle type="target" position={Position.Left} id="left-target" className="!w-2 !h-2 !bg-slate-400" />
-      <Handle type="source" position={Position.Left} id="left-source" className="!w-2 !h-2 !bg-slate-400" />
+      <Handle type="source" position={Position.Top} id="top" className="!w-3.5 !h-3.5 !bg-slate-400 !border-2 !border-slate-500 hover:!bg-blue-400" />
+      <Handle type="source" position={Position.Right} id="right" className="!w-3.5 !h-3.5 !bg-slate-400 !border-2 !border-slate-500 hover:!bg-blue-400" />
+      <Handle type="source" position={Position.Bottom} id="bottom" className="!w-3.5 !h-3.5 !bg-slate-400 !border-2 !border-slate-500 hover:!bg-blue-400" />
+      <Handle type="source" position={Position.Left} id="left" className="!w-3.5 !h-3.5 !bg-slate-400 !border-2 !border-slate-500 hover:!bg-blue-400" />
 
       {/* Layout-specific rendering */}
       {lt === 'mind-map' && children.length > 0 ? (

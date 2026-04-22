@@ -1,6 +1,7 @@
 // ─── Diagram Types (specs/schemas/diagram.yaml) ────────────────────────────
 
 export type DiagramNodeShape =
+  // Basic shapes
   | 'rectangle'
   | 'rounded-rectangle'
   | 'cylinder'
@@ -12,7 +13,18 @@ export type DiagramNodeShape =
   | 'document'
   | 'folder'
   | 'stack'
-  | 'custom';
+  | 'custom'
+  // Object types
+  | 'server'
+  | 'database'
+  | 'browser'
+  | 'mobile'
+  | 'api'
+  | 'queue'
+  | 'lock'
+  | 'gear'
+  | 'lightning'
+  | 'globe';
 
 export type DiagramNodeStatus = 'draft' | 'active' | 'deprecated';
 
