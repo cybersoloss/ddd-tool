@@ -48,8 +48,10 @@ nodes:
     spec:
       action: >
         Create DiagramDocument with name, description, layout_type, generated ID, timestamps.
-        If layout_type is hierarchical (not freeform), create a root node with the diagram
-        name as label, positioned at layout origin. Otherwise empty nodes/edges/text_boxes.
+        Initialize with sheets: [{ id: nanoid(), name: "Sheet 1", nodes: [], edges: [],
+        text_boxes: [] }]. If layout_type is hierarchical (not freeform), add a root node
+        with the diagram name as label to sheets[0].nodes. Top-level nodes/edges/text_boxes
+        left empty (sheets format is canonical for new diagrams).
     connections:
       - targetNodeId: ipc_call-qD3sX8fH
 
@@ -94,4 +96,4 @@ nodes:
 
 metadata:
   created: "2026-04-20T00:00:00Z"
-  modified: "2026-04-22T00:00:00Z"
+  modified: "2026-04-24T00:00:00Z"

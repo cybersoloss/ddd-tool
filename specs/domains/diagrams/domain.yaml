@@ -15,6 +15,7 @@ stores:
     shape:
       diagrams: "DiagramMeta[]"
       currentDiagram: "DiagramDocument | null"
+      currentSheetIndex: number
       isDirty: boolean
       isSaving: boolean
     access_pattern: read_write
@@ -89,6 +90,50 @@ flows:
     description: Edit edge properties — direction, style, labels, weight
     type: traditional
 
+  - id: add-sheet
+    name: Add Sheet
+    description: >
+      Add a new sheet (tab) to the current diagram. Creates an empty sheet
+      with a default name ("Sheet N") and switches to it. If the diagram has
+      no sheets[] yet (single-sheet backward compat), migrates the existing
+      top-level nodes/edges/text_boxes into sheets[0] first.
+    type: traditional
+
+  - id: rename-sheet
+    name: Rename Sheet
+    description: Rename a sheet tab label in the current diagram
+    type: traditional
+
+  - id: delete-sheet
+    name: Delete Sheet
+    description: >
+      Delete a sheet from the current diagram. Requires at least 2 sheets —
+      cannot delete the last remaining sheet. Switches to the nearest sheet
+      after deletion.
+    type: traditional
+
+  - id: switch-sheet
+    name: Switch Sheet
+    description: >
+      Switch the active sheet in the current diagram. Updates currentSheetIndex
+      in the store. The canvas re-renders with the selected sheet's nodes,
+      edges, and text_boxes.
+    type: traditional
+
+  - id: reorder-sheets
+    name: Reorder Sheets
+    description: >
+      Drag-reorder sheet tabs. Moves a sheet from one position to another
+      in the sheets[] array. Updates currentSheetIndex if the active sheet moved.
+    type: traditional
+
+  - id: duplicate-sheet
+    name: Duplicate Sheet
+    description: >
+      Duplicate the current sheet, creating a deep copy of all nodes, edges,
+      and text_boxes with new IDs. Appended after the current sheet.
+    type: traditional
+
 publishes_events: []
 consumes_events: []
 
@@ -106,4 +151,10 @@ layout:
     update-diagram-node: { x: 700, y: 100 }
     update-diagram-edge: { x: 700, y: 200 }
     manage-branches: { x: 700, y: 300 }
+    add-sheet: { x: 100, y: 500 }
+    rename-sheet: { x: 300, y: 500 }
+    delete-sheet: { x: 500, y: 500 }
+    switch-sheet: { x: 700, y: 500 }
+    reorder-sheets: { x: 100, y: 600 }
+    duplicate-sheet: { x: 300, y: 600 }
   portals: {}

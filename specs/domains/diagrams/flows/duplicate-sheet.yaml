@@ -1,0 +1,55 @@
+flow:
+  id: duplicate-sheet
+  name: Duplicate Sheet
+  type: traditional
+  domain: diagrams
+  description: >
+    Duplicate the current sheet, creating a deep copy of all nodes, edges,
+    and text_boxes with new IDs. Appended after the current sheet.
+
+trigger:
+  id: trigger-pF9iL1tL
+  position: { x: 250, y: 0 }
+  connections:
+    - targetNodeId: process-qG1jM2uM
+  spec:
+    event: "ui:duplicate-sheet-clicked"
+    description: User right-clicks sheet tab and selects Duplicate
+  label: "Duplicate Sheet"
+
+nodes:
+  - id: process-qG1jM2uM
+    type: process
+    position: { x: 250, y: 130 }
+    label: "Deep Clone Sheet"
+    spec:
+      action: >
+        Deep clone sheets[currentSheetIndex]. Assign new id=nanoid() to the
+        sheet and to every node, edge, and text_box within it. Remap all
+        edge from/to references and node connection targetNodeIds to the
+        new IDs. Set name to original name + " (copy)".
+    connections:
+      - targetNodeId: process-rH2kN3vN
+
+  - id: process-rH2kN3vN
+    type: process
+    position: { x: 250, y: 260 }
+    label: "Insert & Switch"
+    spec:
+      action: >
+        Insert cloned sheet into sheets[] at currentSheetIndex + 1.
+        Set currentSheetIndex to the new sheet's index.
+        Mark isDirty=true.
+    connections:
+      - targetNodeId: terminal-sJ3lP4wP
+
+  - id: terminal-sJ3lP4wP
+    type: terminal
+    position: { x: 250, y: 390 }
+    label: "Sheet Duplicated"
+    spec:
+      outcome: success
+
+metadata:
+  created: "2026-04-24T00:00:00Z"
+  modified: "2026-04-24T00:00:00Z"

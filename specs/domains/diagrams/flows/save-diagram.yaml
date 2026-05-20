@@ -21,7 +21,12 @@ nodes:
     position: { x: 250, y: 130 }
     label: "Serialize to YAML"
     spec:
-      action: "Convert diagram-store.currentDiagram to YAML string — preserve node positions, edge properties, text box positions, metadata"
+      action: >
+        Convert diagram-store.currentDiagram to YAML string — preserve
+        node positions, edge properties, text box positions, sheets (if present),
+        metadata. If sheets[] exists, serialize the full sheets array with
+        per-sheet nodes/edges/text_boxes. Top-level nodes/edges/text_boxes
+        are omitted when sheets[] is present.
     connections:
       - targetNodeId: ipc_call-iV4jP2xZ
 
@@ -66,4 +71,4 @@ nodes:
 
 metadata:
   created: "2026-04-20T00:00:00Z"
-  modified: "2026-04-20T00:00:00Z"
+  modified: "2026-04-24T00:00:00Z"

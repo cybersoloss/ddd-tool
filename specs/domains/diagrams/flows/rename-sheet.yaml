@@ -1,0 +1,63 @@
+flow:
+  id: rename-sheet
+  name: Rename Sheet
+  type: traditional
+  domain: diagrams
+  description: Rename a sheet tab label in the current diagram
+
+trigger:
+  id: trigger-yP1sU3cW
+  position: { x: 250, y: 0 }
+  connections:
+    - targetNodeId: input-zQ2tV4dX
+  spec:
+    event: "ui:sheet-tab-double-clicked"
+    description: User double-clicks a sheet tab to rename it
+  label: "Rename Sheet"
+
+nodes:
+  - id: input-zQ2tV4dX
+    type: input
+    position: { x: 250, y: 130 }
+    label: "New Sheet Name"
+    spec:
+      fields:
+        - name: sheetIndex
+          type: number
+          required: true
+        - name: name
+          type: string
+          required: true
+    connections:
+      - targetNodeId: process-aR3uW5eY
+        sourceHandle: valid
+      - targetNodeId: terminal-bS4vX6fZ
+        sourceHandle: invalid
+
+  - id: process-aR3uW5eY
+    type: process
+    position: { x: 250, y: 260 }
+    label: "Update Sheet Name"
+    spec:
+      action: "Set sheets[sheetIndex].name to trimmed input. Mark isDirty=true."
+    connections:
+      - targetNodeId: terminal-cT5wY7gA
+
+  - id: terminal-cT5wY7gA
+    type: terminal
+    position: { x: 250, y: 390 }
+    label: "Sheet Renamed"
+    spec:
+      outcome: success
+
+  - id: terminal-bS4vX6fZ
+    type: terminal
+    position: { x: 550, y: 130 }
+    label: "Invalid Name"
+    spec:
+      outcome: error
+      description: "Empty or whitespace-only name"
+
+metadata:
+  created: "2026-04-24T00:00:00Z"
+  modified: "2026-04-24T00:00:00Z"

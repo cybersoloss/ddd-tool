@@ -23,7 +23,9 @@ import { DiagramShapeNode, type DiagramShapeNodeData } from './DiagramShapeNode'
 import { DiagramTextBoxNode } from './DiagramTextBoxNode';
 import { DiagramToolbar } from './DiagramToolbar';
 import { DiagramPropertiesPanel } from './DiagramPropertiesPanel';
+import { SheetTabBar } from './SheetTabBar';
 import type { DiagramNode, DiagramNodeShape, MindMapChild } from '../../types/diagram';
+import { getSheetContent, setSheetContent } from '../../types/diagram';
 import { colorGroupToColor } from '../../utils/diagram-layout';
 import { nanoid } from 'nanoid';
 
@@ -44,6 +46,7 @@ function DiagramCanvasInner() {
   const diagramId = useSheetStore((s) => s.current.diagramId);
   const projectPath = useAppStore((s) => s.currentProjectPath);
   const currentDiagram = useDiagramStore((s) => s.currentDiagram);
+  const currentSheetIndex = useDiagramStore((s) => s.currentSheetIndex);
   const isDirty = useDiagramStore((s) => s.isDirty);
   const loadDiagram = useDiagramStore((s) => s.loadDiagram);
   const saveDiagram = useDiagramStore((s) => s.saveDiagram);
@@ -82,7 +85,8 @@ function DiagramCanvasInner() {
   // Duplicate a node: deep copy with new ID, offset position
   const duplicateNode = useCallback((nodeId: string) => {
     if (!currentDiagram) return;
-    const source = currentDiagram.nodes.find((n) => n.id === nodeId);
+    const sc = getSheetContent(currentDiagram, currentSheetIndex);
+    const source = sc.nodes.find((n) => n.id === nodeId);
     if (!source) return;
     const newNode: DiagramNode = {
       ...structuredClone(source),
@@ -93,14 +97,17 @@ function DiagramCanvasInner() {
         y: (source.position?.y ?? 100) + 40,
       },
     };
-    const { currentDiagram: cd } = useDiagramStore.getState();
+    const store = useDiagramStore.getState();
+    const cd = store.currentDiagram;
     if (!cd) return;
+    const sheetIdx = store.currentSheetIndex;
+    const content = getSheetContent(cd, sheetIdx);
     useDiagramStore.setState({
-      currentDiagram: { ...cd, nodes: [...cd.nodes, newNode] },
+      currentDiagram: setSheetContent(cd, sheetIdx, { nodes: [...content.nodes, newNode] }),
       isDirty: true,
     });
     setSelectedNodeId(newNode.id);
-  }, [currentDiagram]);
+  }, [currentDiagram, currentSheetIndex]);
 
   // ─── Keyboard shortcuts ─────────────────────────────────────────────────
   useEffect(() => {
@@ -125,8 +132,9 @@ function DiagramCanvasInner() {
       }
       // Cmd+C: copy selected node
       if ((e.metaKey || e.ctrlKey) && e.key === 'c' && selectedNodeId && !selectedNodeId.startsWith('text-')) {
-        const diagram = useDiagramStore.getState().currentDiagram;
-        const node = diagram?.nodes.find((n) => n.id === selectedNodeId);
+        const store = useDiagramStore.getState();
+        const sc = store.currentDiagram ? getSheetContent(store.currentDiagram, store.currentSheetIndex) : null;
+        const node = sc?.nodes.find((n) => n.id === selectedNodeId);
         if (node) clipboardRef.current = structuredClone(node);
       }
       // Cmd+V: paste copied node
@@ -142,12 +150,15 @@ function DiagramCanvasInner() {
             y: (source.position?.y ?? 100) + 60,
           },
         };
-        // Update clipboard position so next paste offsets further
         clipboardRef.current = { ...clipboardRef.current, position: newNode.position };
-        const cd = useDiagramStore.getState().currentDiagram;
+        const store = useDiagramStore.getState();
+        const cd = store.currentDiagram;
         if (!cd) return;
+        const content = getSheetContent(cd, store.currentSheetIndex);
         useDiagramStore.setState({
-          currentDiagram: { ...cd, nodes: [...cd.nodes, newNode] },
+          currentDiagram: setSheetContent(cd, store.currentSheetIndex, {
+            nodes: [...content.nodes, newNode],
+          }),
           isDirty: true,
         });
         setSelectedNodeId(newNode.id);
@@ -163,9 +174,10 @@ function DiagramCanvasInner() {
   // ─── Build React Flow nodes ─────────────────────────────────────────────
   const rfNodes: Node[] = useMemo(() => {
     if (!currentDiagram) return [];
+    const sheetContent = getSheetContent(currentDiagram, currentSheetIndex);
     const nodes: Node[] = [];
 
-    for (const n of currentDiagram.nodes) {
+    for (const n of sheetContent.nodes) {
       nodes.push({
         id: n.id,
         type: 'diagramShape',
@@ -248,7 +260,7 @@ function DiagramCanvasInner() {
       });
     }
 
-    for (const t of currentDiagram.text_boxes || []) {
+    for (const t of sheetContent.text_boxes) {
       nodes.push({
         id: t.id,
         type: 'diagramTextBox',
@@ -263,15 +275,16 @@ function DiagramCanvasInner() {
     }
 
     return nodes;
-  }, [currentDiagram, updateTextBox, updateNode, selectedNodeId]);
+  }, [currentDiagram, currentSheetIndex, updateTextBox, updateNode, selectedNodeId]);
 
   // ─── Build React Flow edges ─────────────────────────────────────────────
   const rfEdges: Edge[] = useMemo(() => {
     if (!currentDiagram) return [];
-    return currentDiagram.edges.map((e) => {
+    const sc = getSheetContent(currentDiagram, currentSheetIndex);
+    return sc.edges.map((e) => {
       const strokeWidth = e.weight === 'primary' ? 4 : e.weight === 'secondary' ? 1.5 : 2.5;
       const strokeDasharray = e.style === 'dashed' ? '6 3' : e.style === 'dotted' ? '2 2' : undefined;
-      const sourceNode = currentDiagram.nodes.find((n) => n.id === e.from);
+      const sourceNode = sc.nodes.find((n) => n.id === e.from);
       const edgeColor = colorGroupToColor(sourceNode?.color_group) || '#94a3b8';
       const markerEnd = { type: MarkerType.ArrowClosed, color: edgeColor };
       const markerStart = e.direction === 'two-way'
@@ -296,7 +309,7 @@ function DiagramCanvasInner() {
         animated: e.direction === 'conditional',
       };
     });
-  }, [currentDiagram, selectedEdgeId]);
+  }, [currentDiagram, currentSheetIndex, selectedEdgeId]);
 
   // ─── React Flow callbacks ──────────────────────────────────────────────
 
@@ -350,8 +363,11 @@ function DiagramCanvasInner() {
 
   const onEdgeDoubleClick = useCallback((event: React.MouseEvent, edge: Edge) => {
     event.stopPropagation();
-    const diagram = useDiagramStore.getState().currentDiagram;
-    const edgeData = diagram?.edges.find((e) => e.id === edge.id);
+    const store = useDiagramStore.getState();
+    const diagram = store.currentDiagram;
+    if (!diagram) return;
+    const sc = getSheetContent(diagram, store.currentSheetIndex);
+    const edgeData = sc.edges.find((e) => e.id === edge.id);
     setEdgeLabelValue((edgeData?.labels || []).join(', '));
     setEditingEdgeLabel({ id: edge.id, x: event.clientX, y: event.clientY });
   }, []);
@@ -412,7 +428,7 @@ function DiagramCanvasInner() {
 
   return (
     <div className="flex-1 flex flex-row overflow-hidden">
-      <div className="flex-1 relative">
+      <div className="flex-1 flex flex-col relative">
         {bannerText && (
           <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1 text-xs text-blue-700">
             {bannerText} —
@@ -438,31 +454,33 @@ function DiagramCanvasInner() {
           </div>
         )}
 
-        <ReactFlow
-          nodes={rfNodes}
-          edges={rfEdges}
-          nodeTypes={nodeTypes}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onNodeClick={onNodeClick}
-          onEdgeClick={onEdgeClick}
-          onEdgeDoubleClick={onEdgeDoubleClick}
-          onNodesDelete={onNodesDelete}
-          onEdgesDelete={onEdgesDelete}
-          onPaneClick={onPaneClick}
-          connectionMode={ConnectionMode.Loose}
-          fitView
-          deleteKeyCode={['Backspace', 'Delete']}
-          edgesFocusable
-          defaultEdgeOptions={{ selectable: true, focusable: true, interactionWidth: 20 }}
-          className={mode.type !== 'normal' ? 'cursor-crosshair' : ''}
-        >
-          <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
-          <Controls
-            className="!bg-slate-800 !border-slate-600 !shadow-lg [&>button]:!bg-slate-700 [&>button]:!border-slate-600 [&>button]:!text-slate-200 [&>button:hover]:!bg-slate-600 [&>button>svg]:!fill-slate-200"
-          />
-        </ReactFlow>
+        <div className="flex-1 min-h-0">
+          <ReactFlow
+            nodes={rfNodes}
+            edges={rfEdges}
+            nodeTypes={nodeTypes}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onNodeClick={onNodeClick}
+            onEdgeClick={onEdgeClick}
+            onEdgeDoubleClick={onEdgeDoubleClick}
+            onNodesDelete={onNodesDelete}
+            onEdgesDelete={onEdgesDelete}
+            onPaneClick={onPaneClick}
+            connectionMode={ConnectionMode.Loose}
+            fitView
+            deleteKeyCode={['Backspace', 'Delete']}
+            edgesFocusable
+            defaultEdgeOptions={{ selectable: true, focusable: true, interactionWidth: 20 }}
+            className={mode.type !== 'normal' ? 'cursor-crosshair' : ''}
+          >
+            <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
+            <Controls
+              className="!bg-slate-800 !border-slate-600 !shadow-lg [&>button]:!bg-slate-700 [&>button]:!border-slate-600 [&>button]:!text-slate-200 [&>button:hover]:!bg-slate-600 [&>button>svg]:!fill-slate-200"
+            />
+          </ReactFlow>
+        </div>
 
         {/* Floating edge label editor — appears on double-click */}
         {editingEdgeLabel && (
@@ -493,6 +511,8 @@ function DiagramCanvasInner() {
             />
           </div>
         )}
+
+        <SheetTabBar />
       </div>
 
       <DiagramPropertiesPanel

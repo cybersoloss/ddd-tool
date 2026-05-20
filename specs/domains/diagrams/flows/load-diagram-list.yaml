@@ -85,7 +85,10 @@ nodes:
     position: { x: 250, y: 650 }
     label: "Set Diagram List"
     spec:
-      action: "Set diagram-store.diagrams with collected metadata array (id, name, description, tags per diagram)"
+      action: >
+        Set diagram-store.diagrams with collected metadata array (id, name,
+        description, tags, sheetCount per diagram). sheetCount = sheets.length
+        if sheets[] exists, otherwise 1.
     connections:
       - targetNodeId: terminal-vA4xW9fS
 
@@ -98,4 +101,4 @@ nodes:
 
 metadata:
   created: "2026-04-20T00:00:00Z"
-  modified: "2026-04-20T00:00:00Z"
+  modified: "2026-04-24T00:00:00Z"

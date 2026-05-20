@@ -1,0 +1,62 @@
+flow:
+  id: delete-sheet
+  name: Delete Sheet
+  type: traditional
+  domain: diagrams
+  description: >
+    Delete a sheet from the current diagram. Cannot delete the last remaining
+    sheet. Switches to the nearest sheet after deletion.
+
+trigger:
+  id: trigger-dU6xZ8hB
+  position: { x: 250, y: 0 }
+  connections:
+    - targetNodeId: decision-eV7yA9iC
+  spec:
+    event: "ui:delete-sheet-clicked"
+    description: User right-clicks sheet tab and selects Delete, or clicks X on tab
+  label: "Delete Sheet"
+
+nodes:
+  - id: decision-eV7yA9iC
+    type: decision
+    position: { x: 250, y: 130 }
+    label: "More Than One Sheet?"
+    spec:
+      condition: "currentDiagram.sheets.length > 1"
+    connections:
+      - targetNodeId: process-fW8zB1jD
+        sourceHandle: "true"
+      - targetNodeId: terminal-hY2bD3lF
+        sourceHandle: "false"
+
+  - id: process-fW8zB1jD
+    type: process
+    position: { x: 250, y: 260 }
+    label: "Remove Sheet & Adjust Index"
+    spec:
+      action: >
+        Remove sheets[sheetIndex] from array. If currentSheetIndex >=
+        sheets.length, set to sheets.length - 1. If currentSheetIndex >
+        deleted index, decrement by 1. Mark isDirty=true.
+    connections:
+      - targetNodeId: terminal-gX1aC2kE
+
+  - id: terminal-gX1aC2kE
+    type: terminal
+    position: { x: 250, y: 390 }
+    label: "Sheet Deleted"
+    spec:
+      outcome: success
+
+  - id: terminal-hY2bD3lF
+    type: terminal
+    position: { x: 550, y: 130 }
+    label: "Cannot Delete Last Sheet"
+    spec:
+      outcome: error
+      description: "A diagram must have at least one sheet"
+
+metadata:
+  created: "2026-04-24T00:00:00Z"
+  modified: "2026-04-24T00:00:00Z"

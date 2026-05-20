@@ -807,9 +807,14 @@
     pillar: data
   spec_file: "specs/schemas/flow-mapping.yaml"
   spec_checksum: "99ab2c1a0b40"
-  status: "pending_implement"
-  implemented_at: null
-  code_files: []
+  status: "implemented"
+  implemented_at: "2026-04-24T12:00:00.000Z"
+  code_files:
+    - src/types/diagram.ts
+    - src/stores/diagram-store.ts
+    - src/components/DiagramCanvas/DiagramCanvas.tsx
+    - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+    - src/components/DiagramCanvas/SheetTabBar.tsx
 
 - id: "chg-0081"
   timestamp: "2026-02-28T01:00:00.000Z"
@@ -821,9 +826,14 @@
     pillar: data
   spec_file: "specs/schemas/global-settings.yaml"
   spec_checksum: "f83d6ad920ad"
-  status: "pending_implement"
-  implemented_at: null
-  code_files: []
+  status: "implemented"
+  implemented_at: "2026-04-24T12:00:00.000Z"
+  code_files:
+    - src/types/diagram.ts
+    - src/stores/diagram-store.ts
+    - src/components/DiagramCanvas/DiagramCanvas.tsx
+    - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+    - src/components/DiagramCanvas/SheetTabBar.tsx
 
 - id: "chg-0082"
   timestamp: "2026-02-28T01:00:00.000Z"
@@ -835,9 +845,14 @@
     pillar: interface
   spec_file: "specs/ui/project-launcher.yaml"
   spec_checksum: "d8abf54db3e7"
-  status: "pending_implement"
-  implemented_at: null
-  code_files: []
+  status: "implemented"
+  implemented_at: "2026-04-24T12:00:00.000Z"
+  code_files:
+    - src/types/diagram.ts
+    - src/stores/diagram-store.ts
+    - src/components/DiagramCanvas/DiagramCanvas.tsx
+    - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+    - src/components/DiagramCanvas/SheetTabBar.tsx
 
 - id: "chg-0083"
   timestamp: "2026-02-28T01:00:00.000Z"
@@ -849,9 +864,14 @@
     pillar: interface
   spec_file: "specs/ui/flow-canvas.yaml"
   spec_checksum: "3aae8bcccd15"
-  status: "pending_implement"
-  implemented_at: null
-  code_files: []
+  status: "implemented"
+  implemented_at: "2026-04-24T12:00:00.000Z"
+  code_files:
+    - src/types/diagram.ts
+    - src/stores/diagram-store.ts
+    - src/components/DiagramCanvas/DiagramCanvas.tsx
+    - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+    - src/components/DiagramCanvas/SheetTabBar.tsx
 
 - id: "chg-0084"
   timestamp: "2026-02-28T01:00:00.000Z"
@@ -863,9 +883,14 @@
     pillar: infrastructure
   spec_file: "specs/infrastructure.yaml"
   spec_checksum: "6f894dbfbb97"
-  status: "pending_implement"
-  implemented_at: null
-  code_files: []
+  status: "implemented"
+  implemented_at: "2026-04-24T12:00:00.000Z"
+  code_files:
+    - src/types/diagram.ts
+    - src/stores/diagram-store.ts
+    - src/components/DiagramCanvas/DiagramCanvas.tsx
+    - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+    - src/components/DiagramCanvas/SheetTabBar.tsx
 
 - id: "chg-0085"
   timestamp: "2026-02-28T01:00:00.000Z"
@@ -877,9 +902,14 @@
     pillar: logic
   spec_file: "specs/architecture.yaml"
   spec_checksum: "f18a4f04255b"
-  status: "pending_implement"
-  implemented_at: null
-  code_files: []
+  status: "implemented"
+  implemented_at: "2026-04-24T12:00:00.000Z"
+  code_files:
+    - src/types/diagram.ts
+    - src/stores/diagram-store.ts
+    - src/components/DiagramCanvas/DiagramCanvas.tsx
+    - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+    - src/components/DiagramCanvas/SheetTabBar.tsx
 
 - id: "chg-0086"
   timestamp: "2026-02-28T01:00:00.000Z"
@@ -891,9 +921,14 @@
     pillar: logic
   spec_file: "specs/domains/app/flows/boot.yaml"
   spec_checksum: "d2297b039ddc"
-  status: "pending_implement"
-  implemented_at: null
-  code_files: []
+  status: "implemented"
+  implemented_at: "2026-04-24T12:00:00.000Z"
+  code_files:
+    - src/types/diagram.ts
+    - src/stores/diagram-store.ts
+    - src/components/DiagramCanvas/DiagramCanvas.tsx
+    - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+    - src/components/DiagramCanvas/SheetTabBar.tsx
 
 - id: "chg-0087"
   timestamp: "2026-02-28T01:00:00.000Z"
@@ -905,9 +940,14 @@
     pillar: logic
   spec_file: "specs/domains/flow-editor/flows/save-flow.yaml"
   spec_checksum: "cd4db7b4702b"
-  status: "pending_implement"
-  implemented_at: null
-  code_files: []
+  status: "implemented"
+  implemented_at: "2026-04-24T12:00:00.000Z"
+  code_files:
+    - src/types/diagram.ts
+    - src/stores/diagram-store.ts
+    - src/components/DiagramCanvas/DiagramCanvas.tsx
+    - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+    - src/components/DiagramCanvas/SheetTabBar.tsx
 
 - id: "chg-0088"
   timestamp: "2026-02-28T01:00:00.000Z"
@@ -919,9 +959,14 @@
     pillar: logic
   spec_file: "specs/domains/flow-editor/flows/load-flow.yaml"
   spec_checksum: "f011a4800581"
-  status: "pending_implement"
-  implemented_at: null
-  code_files: []
+  status: "implemented"
+  implemented_at: "2026-04-24T12:00:00.000Z"
+  code_files:
+    - src/types/diagram.ts
+    - src/stores/diagram-store.ts
+    - src/components/DiagramCanvas/DiagramCanvas.tsx
+    - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+    - src/components/DiagramCanvas/SheetTabBar.tsx
 
 - id: "chg-0089"
   timestamp: "2026-02-28T01:00:00.000Z"
@@ -933,9 +978,14 @@
     pillar: logic
   spec_file: "specs/domains/project-management/flows/load-project.yaml"
   spec_checksum: "c705a2b40345"
-  status: "pending_implement"
-  implemented_at: null
-  code_files: []
+  status: "implemented"
+  implemented_at: "2026-04-24T12:00:00.000Z"
+  code_files:
+    - src/types/diagram.ts
+    - src/stores/diagram-store.ts
+    - src/components/DiagramCanvas/DiagramCanvas.tsx
+    - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+    - src/components/DiagramCanvas/SheetTabBar.tsx
 
 - id: "chg-0090"
   timestamp: "2026-02-28T01:00:00.000Z"
@@ -947,9 +997,14 @@
     pillar: logic
   spec_file: "specs/domains/implementation/flows/detect-drift.yaml"
   spec_checksum: "5aa100dbea82"
-  status: "pending_implement"
-  implemented_at: null
-  code_files: []
+  status: "implemented"
+  implemented_at: "2026-04-24T12:00:00.000Z"
+  code_files:
+    - src/types/diagram.ts
+    - src/stores/diagram-store.ts
+    - src/components/DiagramCanvas/DiagramCanvas.tsx
+    - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+    - src/components/DiagramCanvas/SheetTabBar.tsx
 
 - id: "chg-0091"
   timestamp: "2026-02-28T16:47:00.000Z"
@@ -987,9 +1042,14 @@
   scope: { level: L3, domain: diagrams, flow: add-diagram-node, pillar: logic }
   spec_file: "specs/domains/diagrams/flows/add-diagram-node.yaml"
   spec_checksum: "f65b3c05535a"
-  status: "pending_implement"
-  implemented_at: null
-  code_files: []
+  status: "implemented"
+  implemented_at: "2026-04-24T12:00:00.000Z"
+  code_files:
+    - src/types/diagram.ts
+    - src/stores/diagram-store.ts
+    - src/components/DiagramCanvas/DiagramCanvas.tsx
+    - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+    - src/components/DiagramCanvas/SheetTabBar.tsx
 
 - id: "chg-0094"
   timestamp: "2026-04-21T00:00:00.000Z"
@@ -1162,3 +1222,184 @@
   status: "pending_implement"
   implemented_at: null
   code_files: []
+
+# ── Diagram Sheets Feature (ddd-update 2026-04-24) ──────────────────────────
+- id: "chg-0110"
+  timestamp: "2026-04-24T00:00:00.000Z"
+  source: "ddd-update"
+  scope: { level: L1, domain: null, flow: null, pillar: data }
+  spec_file: "specs/schemas/diagram.yaml"
+  spec_checksum: "a83605aefeff"
+  status: "implemented"
+  implemented_at: "2026-04-24T12:00:00.000Z"
+  code_files:
+    - src/types/diagram.ts
+    - src/stores/diagram-store.ts
+    - src/components/DiagramCanvas/DiagramCanvas.tsx
+    - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+    - src/components/DiagramCanvas/SheetTabBar.tsx
+
+- id: "chg-0111"
+  timestamp: "2026-04-24T00:00:00.000Z"
+  source: "ddd-update"
+  scope: { level: L2, domain: diagrams, flow: null, pillar: null }
+  spec_file: "specs/domains/diagrams/domain.yaml"
+  spec_checksum: "24c1a2e6372d"
+  status: "implemented"
+  implemented_at: "2026-04-24T12:00:00.000Z"
+  code_files:
+    - src/types/diagram.ts
+    - src/stores/diagram-store.ts
+    - src/components/DiagramCanvas/DiagramCanvas.tsx
+    - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+    - src/components/DiagramCanvas/SheetTabBar.tsx
+
+- id: "chg-0112"
+  timestamp: "2026-04-24T00:00:00.000Z"
+  source: "ddd-update"
+  scope: { level: L3, domain: diagrams, flow: load-diagram, pillar: logic }
+  spec_file: "specs/domains/diagrams/flows/load-diagram.yaml"
+  spec_checksum: "4ae1a4e9df5d"
+  status: "implemented"
+  implemented_at: "2026-04-24T12:00:00.000Z"
+  code_files:
+    - src/types/diagram.ts
+    - src/stores/diagram-store.ts
+    - src/components/DiagramCanvas/DiagramCanvas.tsx
+    - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+    - src/components/DiagramCanvas/SheetTabBar.tsx
+
+- id: "chg-0113"
+  timestamp: "2026-04-24T00:00:00.000Z"
+  source: "ddd-update"
+  scope: { level: L3, domain: diagrams, flow: save-diagram, pillar: logic }
+  spec_file: "specs/domains/diagrams/flows/save-diagram.yaml"
+  spec_checksum: "4bf19df10f76"
+  status: "implemented"
+  implemented_at: "2026-04-24T12:00:00.000Z"
+  code_files:
+    - src/types/diagram.ts
+    - src/stores/diagram-store.ts
+    - src/components/DiagramCanvas/DiagramCanvas.tsx
+    - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+    - src/components/DiagramCanvas/SheetTabBar.tsx
+
+- id: "chg-0114"
+  timestamp: "2026-04-24T00:00:00.000Z"
+  source: "ddd-update"
+  scope: { level: L3, domain: diagrams, flow: create-diagram, pillar: logic }
+  spec_file: "specs/domains/diagrams/flows/create-diagram.yaml"
+  spec_checksum: "44c64f396b77"
+  status: "implemented"
+  implemented_at: "2026-04-24T12:00:00.000Z"
+  code_files:
+    - src/types/diagram.ts
+    - src/stores/diagram-store.ts
+    - src/components/DiagramCanvas/DiagramCanvas.tsx
+    - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+    - src/components/DiagramCanvas/SheetTabBar.tsx
+
+- id: "chg-0115"
+  timestamp: "2026-04-24T00:00:00.000Z"
+  source: "ddd-update"
+  scope: { level: L3, domain: diagrams, flow: load-diagram-list, pillar: logic }
+  spec_file: "specs/domains/diagrams/flows/load-diagram-list.yaml"
+  spec_checksum: "3405db71c366"
+  status: "implemented"
+  implemented_at: "2026-04-24T12:00:00.000Z"
+  code_files:
+    - src/types/diagram.ts
+    - src/stores/diagram-store.ts
+    - src/components/DiagramCanvas/DiagramCanvas.tsx
+    - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+    - src/components/DiagramCanvas/SheetTabBar.tsx
+
+- id: "chg-0116"
+  timestamp: "2026-04-24T00:00:00.000Z"
+  source: "ddd-update"
+  scope: { level: L3, domain: diagrams, flow: add-sheet, pillar: logic }
+  spec_file: "specs/domains/diagrams/flows/add-sheet.yaml"
+  spec_checksum: "2137e3b8f869"
+  status: "implemented"
+  implemented_at: "2026-04-24T12:00:00.000Z"
+  code_files:
+    - src/types/diagram.ts
+    - src/stores/diagram-store.ts
+    - src/components/DiagramCanvas/DiagramCanvas.tsx
+    - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+    - src/components/DiagramCanvas/SheetTabBar.tsx
+
+- id: "chg-0117"
+  timestamp: "2026-04-24T00:00:00.000Z"
+  source: "ddd-update"
+  scope: { level: L3, domain: diagrams, flow: rename-sheet, pillar: logic }
+  spec_file: "specs/domains/diagrams/flows/rename-sheet.yaml"
+  spec_checksum: "c128a22b9207"
+  status: "implemented"
+  implemented_at: "2026-04-24T12:00:00.000Z"
+  code_files:
+    - src/types/diagram.ts
+    - src/stores/diagram-store.ts
+    - src/components/DiagramCanvas/DiagramCanvas.tsx
+    - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+    - src/components/DiagramCanvas/SheetTabBar.tsx
+
+- id: "chg-0118"
+  timestamp: "2026-04-24T00:00:00.000Z"
+  source: "ddd-update"
+  scope: { level: L3, domain: diagrams, flow: delete-sheet, pillar: logic }
+  spec_file: "specs/domains/diagrams/flows/delete-sheet.yaml"
+  spec_checksum: "93be210152c1"
+  status: "implemented"
+  implemented_at: "2026-04-24T12:00:00.000Z"
+  code_files:
+    - src/types/diagram.ts
+    - src/stores/diagram-store.ts
+    - src/components/DiagramCanvas/DiagramCanvas.tsx
+    - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+    - src/components/DiagramCanvas/SheetTabBar.tsx
+
+- id: "chg-0119"
+  timestamp: "2026-04-24T00:00:00.000Z"
+  source: "ddd-update"
+  scope: { level: L3, domain: diagrams, flow: switch-sheet, pillar: logic }
+  spec_file: "specs/domains/diagrams/flows/switch-sheet.yaml"
+  spec_checksum: "1a2988f414b8"
+  status: "implemented"
+  implemented_at: "2026-04-24T12:00:00.000Z"
+  code_files:
+    - src/types/diagram.ts
+    - src/stores/diagram-store.ts
+    - src/components/DiagramCanvas/DiagramCanvas.tsx
+    - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+    - src/components/DiagramCanvas/SheetTabBar.tsx
+
+- id: "chg-0120"
+  timestamp: "2026-04-24T00:00:00.000Z"
+  source: "ddd-update"
+  scope: { level: L3, domain: diagrams, flow: reorder-sheets, pillar: logic }
+  spec_file: "specs/domains/diagrams/flows/reorder-sheets.yaml"
+  spec_checksum: "019dd0659562"
+  status: "implemented"
+  implemented_at: "2026-04-24T12:00:00.000Z"
+  code_files:
+    - src/types/diagram.ts
+    - src/stores/diagram-store.ts
+    - src/components/DiagramCanvas/DiagramCanvas.tsx
+    - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+    - src/components/DiagramCanvas/SheetTabBar.tsx
+
+- id: "chg-0121"
+  timestamp: "2026-04-24T00:00:00.000Z"
+  source: "ddd-update"
+  scope: { level: L3, domain: diagrams, flow: duplicate-sheet, pillar: logic }
+  spec_file: "specs/domains/diagrams/flows/duplicate-sheet.yaml"
+  spec_checksum: "f21dd1ac592f"
+  status: "implemented"
+  implemented_at: "2026-04-24T12:00:00.000Z"
+  code_files:
+    - src/types/diagram.ts
+    - src/stores/diagram-store.ts
+    - src/components/DiagramCanvas/DiagramCanvas.tsx
+    - src/components/DiagramCanvas/DiagramPropertiesPanel.tsx
+    - src/components/DiagramCanvas/SheetTabBar.tsx

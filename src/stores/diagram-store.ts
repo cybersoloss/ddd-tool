@@ -11,7 +11,9 @@ import type {
   DiagramTextBox,
   DiagramNodeShape,
   DiagramNodeStyle,
+  DiagramSheet,
 } from '../types/diagram';
+import { getSheetContent, setSheetContent } from '../types/diagram';
 
 const MAX_UNDO = 50;
 
@@ -19,6 +21,7 @@ interface DiagramState {
   diagrams: DiagramMeta[];
   currentDiagram: DiagramDocument | null;
   currentDiagramId: string | null;
+  currentSheetIndex: number;
   isDirty: boolean;
   isSaving: boolean;
   loaded: boolean;
@@ -61,6 +64,19 @@ interface DiagramState {
   redo: () => void;
   unloadDiagram: () => void;
   reset: () => void;
+
+  // Flow: add-sheet
+  addSheet: () => void;
+  // Flow: rename-sheet
+  renameSheet: (sheetIndex: number, name: string) => void;
+  // Flow: delete-sheet
+  deleteSheet: (sheetIndex: number) => void;
+  // Flow: switch-sheet
+  switchSheet: (sheetIndex: number) => void;
+  // Flow: reorder-sheets
+  reorderSheets: (fromIndex: number, toIndex: number) => void;
+  // Flow: duplicate-sheet
+  duplicateSheet: () => void;
 }
 
 function pushUndo(get: () => DiagramState, set: (partial: Partial<DiagramState>) => void) {
@@ -72,10 +88,29 @@ function pushUndo(get: () => DiagramState, set: (partial: Partial<DiagramState>)
   });
 }
 
+/** Ensure diagram has sheets[] — migrates legacy single-sheet format */
+function ensureSheets(doc: DiagramDocument): DiagramDocument {
+  if (doc.sheets && doc.sheets.length > 0) return doc;
+  return {
+    ...doc,
+    sheets: [{
+      id: nanoid(8),
+      name: 'Sheet 1',
+      nodes: doc.nodes || [],
+      edges: doc.edges || [],
+      text_boxes: doc.text_boxes || [],
+    }],
+    nodes: [],
+    edges: [],
+    text_boxes: [],
+  };
+}
+
 export const useDiagramStore = create<DiagramState>((set, get) => ({
   diagrams: [],
   currentDiagram: null,
   currentDiagramId: null,
+  currentSheetIndex: 0,
   isDirty: false,
   _undoStack: [],
   _redoStack: [],
@@ -118,6 +153,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
           name: parsed.name,
           description: parsed.description,
           tags: parsed.tags,
+          sheetCount: parsed.sheets ? parsed.sheets.length : 1,
         });
       } catch {
         // Skip unparseable files
@@ -134,21 +170,37 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       const parsed = parse(content) as DiagramDocument | null;
       if (!parsed) throw new Error('Failed to parse diagram YAML');
 
-      // Ensure arrays exist
+      // Ensure top-level arrays exist (backward compat)
       if (!Array.isArray(parsed.nodes)) parsed.nodes = [];
       if (!Array.isArray(parsed.edges)) parsed.edges = [];
       if (!Array.isArray(parsed.text_boxes)) parsed.text_boxes = [];
 
+      // Ensure sheet arrays exist
+      if (parsed.sheets) {
+        for (const sheet of parsed.sheets) {
+          if (!Array.isArray(sheet.nodes)) sheet.nodes = [];
+          if (!Array.isArray(sheet.edges)) sheet.edges = [];
+          if (!Array.isArray(sheet.text_boxes)) sheet.text_boxes = [];
+        }
+      }
+
       // Assign IDs to edges missing them (backward compat)
-      for (const edge of parsed.edges) {
-        if (!edge.id) {
-          edge.id = `edge-${nanoid(8)}`;
+      const fixEdgeIds = (edges: DiagramEdge[]) => {
+        for (const edge of edges) {
+          if (!edge.id) edge.id = `edge-${nanoid(8)}`;
+        }
+      };
+      fixEdgeIds(parsed.edges);
+      if (parsed.sheets) {
+        for (const sheet of parsed.sheets) {
+          fixEdgeIds(sheet.edges);
         }
       }
 
       set({
         currentDiagram: parsed,
         currentDiagramId: diagramId,
+        currentSheetIndex: 0,
         isDirty: false,
       });
     } catch (e) {
@@ -171,7 +223,15 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
         },
       };
 
-      const yamlContent = stringify(updated, { lineWidth: 120 });
+      // When saving with sheets, omit top-level nodes/edges/text_boxes if empty
+      const toSerialize = { ...updated };
+      if (toSerialize.sheets && toSerialize.sheets.length > 0) {
+        toSerialize.nodes = [];
+        toSerialize.edges = [];
+        toSerialize.text_boxes = [];
+      }
+
+      const yamlContent = stringify(toSerialize, { lineWidth: 120 });
       const diagramsDir = `${projectPath}/specs/diagrams`;
       const filePath = `${diagramsDir}/${currentDiagramId}.yaml`;
 
@@ -205,6 +265,13 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       nodes: [],
       edges: [],
       text_boxes: [],
+      sheets: [{
+        id: nanoid(8),
+        name: 'Sheet 1',
+        nodes: [],
+        edges: [],
+        text_boxes: [],
+      }],
       metadata: { created: now, modified: now },
     };
 
@@ -220,11 +287,12 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       throw writeErr;
     }
 
-    const meta: DiagramMeta = { id, name, description };
+    const meta: DiagramMeta = { id, name, description, sheetCount: 1 };
     set((s) => ({
       diagrams: [...s.diagrams, meta],
       currentDiagram: doc,
       currentDiagramId: id,
+      currentSheetIndex: 0,
       isDirty: false,
     }));
 
@@ -242,28 +310,36 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       const newId = newName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
       const now = new Date().toISOString();
 
-      // Deep clone with new IDs for nodes
       const doc: DiagramDocument = {
         ...structuredClone(parsed),
         name: newName,
         metadata: { created: now, modified: now },
       };
-      // Regenerate node IDs
-      const idMap = new Map<string, string>();
-      for (const n of doc.nodes) {
-        const newNodeId = `node-${nanoid(8)}`;
-        idMap.set(n.id, newNodeId);
-        n.id = newNodeId;
-      }
-      // Remap edge references
-      for (const e of doc.edges) {
-        e.id = `edge-${nanoid(8)}`;
-        e.from = idMap.get(e.from) || e.from;
-        e.to = idMap.get(e.to) || e.to;
-      }
-      // Remap text box IDs
-      for (const t of doc.text_boxes || []) {
-        t.id = `text-${nanoid(8)}`;
+
+      // Regenerate IDs for all content (top-level and sheets)
+      const remapContent = (nodes: DiagramNode[], edges: DiagramEdge[], textBoxes: DiagramTextBox[]) => {
+        const idMap = new Map<string, string>();
+        for (const n of nodes) {
+          const newNodeId = `node-${nanoid(8)}`;
+          idMap.set(n.id, newNodeId);
+          n.id = newNodeId;
+        }
+        for (const e of edges) {
+          e.id = `edge-${nanoid(8)}`;
+          e.from = idMap.get(e.from) || e.from;
+          e.to = idMap.get(e.to) || e.to;
+        }
+        for (const t of textBoxes) {
+          t.id = `text-${nanoid(8)}`;
+        }
+      };
+
+      remapContent(doc.nodes, doc.edges, doc.text_boxes || []);
+      if (doc.sheets) {
+        for (const sheet of doc.sheets) {
+          sheet.id = nanoid(8);
+          remapContent(sheet.nodes, sheet.edges, sheet.text_boxes || []);
+        }
       }
 
       const yamlContent = stringify(doc, { lineWidth: 120 });
@@ -276,7 +352,12 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       } catch { /* ignore */ }
       await invoke('write_file', { path: newFilePath, contents: yamlContent });
 
-      const meta: DiagramMeta = { id: newId, name: newName, description: parsed.description };
+      const meta: DiagramMeta = {
+        id: newId,
+        name: newName,
+        description: parsed.description,
+        sheetCount: doc.sheets ? doc.sheets.length : 1,
+      };
       set((s) => ({ diagrams: [...s.diagrams, meta] }));
       return newId;
     } catch (e) {
@@ -294,6 +375,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       diagrams: s.diagrams.filter((d) => d.id !== diagramId),
       currentDiagram: s.currentDiagramId === diagramId ? null : s.currentDiagram,
       currentDiagramId: s.currentDiagramId === diagramId ? null : s.currentDiagramId,
+      currentSheetIndex: s.currentDiagramId === diagramId ? 0 : s.currentSheetIndex,
       isDirty: s.currentDiagramId === diagramId ? false : s.isDirty,
     }));
   },
@@ -317,12 +399,13 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
     }));
   },
 
+  // ─── Content-mutating methods (sheet-aware) ────────────────────────────
+
   addNode: (shape, position) => {
     pushUndo(get, set);
-    const { currentDiagram } = get();
+    const { currentDiagram, currentSheetIndex } = get();
     if (!currentDiagram) return;
 
-    // Apply last-used style if available, otherwise default
     let style = defaultStyleForShape(shape);
     let color_group: string | undefined;
     let layout_type: import('../types/diagram').DiagramLayoutType | undefined;
@@ -346,18 +429,18 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       layout_type,
     };
 
+    const { nodes } = getSheetContent(currentDiagram, currentSheetIndex);
     set({
-      currentDiagram: {
-        ...currentDiagram,
-        nodes: [...currentDiagram.nodes, node],
-      },
+      currentDiagram: setSheetContent(currentDiagram, currentSheetIndex, {
+        nodes: [...nodes, node],
+      }),
       isDirty: true,
     });
   },
 
   addEdge: (from, to, fromHandle?, toHandle?) => {
     pushUndo(get, set);
-    const { currentDiagram } = get();
+    const { currentDiagram, currentSheetIndex } = get();
     if (!currentDiagram) return;
 
     const edge: DiagramEdge = {
@@ -371,18 +454,18 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       labels: [],
     };
 
+    const { edges } = getSheetContent(currentDiagram, currentSheetIndex);
     set({
-      currentDiagram: {
-        ...currentDiagram,
-        edges: [...currentDiagram.edges, edge],
-      },
+      currentDiagram: setSheetContent(currentDiagram, currentSheetIndex, {
+        edges: [...edges, edge],
+      }),
       isDirty: true,
     });
   },
 
   addTextBox: (position) => {
     pushUndo(get, set);
-    const { currentDiagram } = get();
+    const { currentDiagram, currentSheetIndex } = get();
     if (!currentDiagram) return;
 
     const textBox: DiagramTextBox = {
@@ -392,21 +475,20 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       style: { size: 'medium' },
     };
 
+    const { text_boxes } = getSheetContent(currentDiagram, currentSheetIndex);
     set({
-      currentDiagram: {
-        ...currentDiagram,
-        text_boxes: [...(currentDiagram.text_boxes || []), textBox],
-      },
+      currentDiagram: setSheetContent(currentDiagram, currentSheetIndex, {
+        text_boxes: [...text_boxes, textBox],
+      }),
       isDirty: true,
     });
   },
 
   updateNode: (nodeId, updates) => {
     pushUndo(get, set);
-    const { currentDiagram } = get();
+    const { currentDiagram, currentSheetIndex } = get();
     if (!currentDiagram) return;
 
-    // Remember last-used style for new shapes
     if (updates.style || updates.color_group !== undefined || updates.layout_type !== undefined) {
       try {
         const existing = JSON.parse(localStorage.getItem('ddd-diagram-last-style') || '{}');
@@ -417,122 +499,246 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       } catch { /* ignore */ }
     }
 
+    const { nodes } = getSheetContent(currentDiagram, currentSheetIndex);
     set({
-      currentDiagram: {
-        ...currentDiagram,
-        nodes: currentDiagram.nodes.map((n) =>
-          n.id === nodeId ? { ...n, ...updates } : n,
-        ),
-      },
+      currentDiagram: setSheetContent(currentDiagram, currentSheetIndex, {
+        nodes: nodes.map((n) => (n.id === nodeId ? { ...n, ...updates } : n)),
+      }),
       isDirty: true,
     });
   },
 
   updateEdge: (edgeId, updates) => {
     pushUndo(get, set);
-    const { currentDiagram } = get();
+    const { currentDiagram, currentSheetIndex } = get();
     if (!currentDiagram) return;
 
+    const { edges } = getSheetContent(currentDiagram, currentSheetIndex);
     set({
-      currentDiagram: {
-        ...currentDiagram,
-        edges: currentDiagram.edges.map((e) =>
-          e.id === edgeId ? { ...e, ...updates } : e,
-        ),
-      },
+      currentDiagram: setSheetContent(currentDiagram, currentSheetIndex, {
+        edges: edges.map((e) => (e.id === edgeId ? { ...e, ...updates } : e)),
+      }),
       isDirty: true,
     });
   },
 
   updateTextBox: (textBoxId, updates) => {
     pushUndo(get, set);
-    const { currentDiagram } = get();
+    const { currentDiagram, currentSheetIndex } = get();
     if (!currentDiagram) return;
 
+    const { text_boxes } = getSheetContent(currentDiagram, currentSheetIndex);
     set({
-      currentDiagram: {
-        ...currentDiagram,
-        text_boxes: (currentDiagram.text_boxes || []).map((t) =>
-          t.id === textBoxId ? { ...t, ...updates } : t,
-        ),
-      },
+      currentDiagram: setSheetContent(currentDiagram, currentSheetIndex, {
+        text_boxes: text_boxes.map((t) => (t.id === textBoxId ? { ...t, ...updates } : t)),
+      }),
       isDirty: true,
     });
   },
 
   deleteNode: (nodeId) => {
     pushUndo(get, set);
-    const { currentDiagram } = get();
+    const { currentDiagram, currentSheetIndex } = get();
     if (!currentDiagram) return;
 
+    const { nodes, edges } = getSheetContent(currentDiagram, currentSheetIndex);
     set({
-      currentDiagram: {
-        ...currentDiagram,
-        nodes: currentDiagram.nodes.filter((n) => n.id !== nodeId),
-        // Also remove edges connected to this node
-        edges: currentDiagram.edges.filter((e) => e.from !== nodeId && e.to !== nodeId),
-      },
+      currentDiagram: setSheetContent(currentDiagram, currentSheetIndex, {
+        nodes: nodes.filter((n) => n.id !== nodeId),
+        edges: edges.filter((e) => e.from !== nodeId && e.to !== nodeId),
+      }),
       isDirty: true,
     });
   },
 
   deleteEdge: (edgeId) => {
     pushUndo(get, set);
-    const { currentDiagram } = get();
+    const { currentDiagram, currentSheetIndex } = get();
     if (!currentDiagram) return;
 
+    const { edges } = getSheetContent(currentDiagram, currentSheetIndex);
     set({
-      currentDiagram: {
-        ...currentDiagram,
-        edges: currentDiagram.edges.filter((e) => e.id !== edgeId),
-      },
+      currentDiagram: setSheetContent(currentDiagram, currentSheetIndex, {
+        edges: edges.filter((e) => e.id !== edgeId),
+      }),
       isDirty: true,
     });
   },
 
   deleteTextBox: (textBoxId) => {
     pushUndo(get, set);
-    const { currentDiagram } = get();
+    const { currentDiagram, currentSheetIndex } = get();
     if (!currentDiagram) return;
 
+    const { text_boxes } = getSheetContent(currentDiagram, currentSheetIndex);
     set({
-      currentDiagram: {
-        ...currentDiagram,
-        text_boxes: (currentDiagram.text_boxes || []).filter((t) => t.id !== textBoxId),
-      },
+      currentDiagram: setSheetContent(currentDiagram, currentSheetIndex, {
+        text_boxes: text_boxes.filter((t) => t.id !== textBoxId),
+      }),
       isDirty: true,
     });
   },
 
   moveNode: (nodeId, position) => {
-    const { currentDiagram } = get();
+    const { currentDiagram, currentSheetIndex } = get();
     if (!currentDiagram) return;
 
+    const { nodes } = getSheetContent(currentDiagram, currentSheetIndex);
     set({
-      currentDiagram: {
-        ...currentDiagram,
-        nodes: currentDiagram.nodes.map((n) =>
-          n.id === nodeId ? { ...n, position } : n,
-        ),
-      },
+      currentDiagram: setSheetContent(currentDiagram, currentSheetIndex, {
+        nodes: nodes.map((n) => (n.id === nodeId ? { ...n, position } : n)),
+      }),
       isDirty: true,
     });
   },
 
   moveTextBox: (textBoxId, position) => {
+    const { currentDiagram, currentSheetIndex } = get();
+    if (!currentDiagram) return;
+
+    const { text_boxes } = getSheetContent(currentDiagram, currentSheetIndex);
+    set({
+      currentDiagram: setSheetContent(currentDiagram, currentSheetIndex, {
+        text_boxes: text_boxes.map((t) => (t.id === textBoxId ? { ...t, position } : t)),
+      }),
+      isDirty: true,
+    });
+  },
+
+  // ─── Sheet management ──────────────────────────────────────────────────
+
+  addSheet: () => {
+    pushUndo(get, set);
     const { currentDiagram } = get();
     if (!currentDiagram) return;
+
+    const doc = ensureSheets(currentDiagram);
+    const newSheet: DiagramSheet = {
+      id: nanoid(8),
+      name: `Sheet ${(doc.sheets!.length) + 1}`,
+      nodes: [],
+      edges: [],
+      text_boxes: [],
+    };
+
+    set({
+      currentDiagram: {
+        ...doc,
+        sheets: [...doc.sheets!, newSheet],
+      },
+      currentSheetIndex: doc.sheets!.length,
+      isDirty: true,
+    });
+  },
+
+  renameSheet: (sheetIndex, name) => {
+    const { currentDiagram } = get();
+    if (!currentDiagram?.sheets || sheetIndex >= currentDiagram.sheets.length) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
 
     set({
       currentDiagram: {
         ...currentDiagram,
-        text_boxes: (currentDiagram.text_boxes || []).map((t) =>
-          t.id === textBoxId ? { ...t, position } : t,
+        sheets: currentDiagram.sheets.map((s, i) =>
+          i === sheetIndex ? { ...s, name: trimmed } : s,
         ),
       },
       isDirty: true,
     });
   },
+
+  deleteSheet: (sheetIndex) => {
+    pushUndo(get, set);
+    const { currentDiagram, currentSheetIndex } = get();
+    if (!currentDiagram?.sheets || currentDiagram.sheets.length <= 1) return;
+
+    const newSheets = currentDiagram.sheets.filter((_, i) => i !== sheetIndex);
+    let newIndex = currentSheetIndex;
+    if (currentSheetIndex >= newSheets.length) {
+      newIndex = newSheets.length - 1;
+    } else if (currentSheetIndex > sheetIndex) {
+      newIndex = currentSheetIndex - 1;
+    }
+
+    set({
+      currentDiagram: { ...currentDiagram, sheets: newSheets },
+      currentSheetIndex: newIndex,
+      isDirty: true,
+    });
+  },
+
+  switchSheet: (sheetIndex) => {
+    const { currentDiagram } = get();
+    if (!currentDiagram) return;
+    const maxIndex = currentDiagram.sheets ? currentDiagram.sheets.length - 1 : 0;
+    set({ currentSheetIndex: Math.min(sheetIndex, maxIndex) });
+  },
+
+  reorderSheets: (fromIndex, toIndex) => {
+    pushUndo(get, set);
+    const { currentDiagram, currentSheetIndex } = get();
+    if (!currentDiagram?.sheets || fromIndex === toIndex) return;
+
+    const sheets = [...currentDiagram.sheets];
+    const [moved] = sheets.splice(fromIndex, 1);
+    sheets.splice(toIndex, 0, moved);
+
+    let newIndex = currentSheetIndex;
+    if (currentSheetIndex === fromIndex) {
+      newIndex = toIndex;
+    } else if (fromIndex < currentSheetIndex && toIndex >= currentSheetIndex) {
+      newIndex = currentSheetIndex - 1;
+    } else if (fromIndex > currentSheetIndex && toIndex <= currentSheetIndex) {
+      newIndex = currentSheetIndex + 1;
+    }
+
+    set({
+      currentDiagram: { ...currentDiagram, sheets },
+      currentSheetIndex: newIndex,
+      isDirty: true,
+    });
+  },
+
+  duplicateSheet: () => {
+    pushUndo(get, set);
+    const { currentDiagram, currentSheetIndex } = get();
+    if (!currentDiagram?.sheets) return;
+
+    const source = currentDiagram.sheets[currentSheetIndex];
+    if (!source) return;
+
+    const cloned = structuredClone(source);
+    cloned.id = nanoid(8);
+    cloned.name = `${source.name} (copy)`;
+
+    // Remap all IDs
+    const idMap = new Map<string, string>();
+    for (const n of cloned.nodes) {
+      const newId = `node-${nanoid(8)}`;
+      idMap.set(n.id, newId);
+      n.id = newId;
+    }
+    for (const e of cloned.edges) {
+      e.id = `edge-${nanoid(8)}`;
+      e.from = idMap.get(e.from) || e.from;
+      e.to = idMap.get(e.to) || e.to;
+    }
+    for (const t of cloned.text_boxes || []) {
+      t.id = `text-${nanoid(8)}`;
+    }
+
+    const sheets = [...currentDiagram.sheets];
+    sheets.splice(currentSheetIndex + 1, 0, cloned);
+
+    set({
+      currentDiagram: { ...currentDiagram, sheets },
+      currentSheetIndex: currentSheetIndex + 1,
+      isDirty: true,
+    });
+  },
+
+  // ─── Undo/Redo ─────────────────────────────────────────────────────────
 
   undo: () => {
     const { _undoStack, currentDiagram } = get();
@@ -559,7 +765,14 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   },
 
   unloadDiagram: () => {
-    set({ currentDiagram: null, currentDiagramId: null, isDirty: false, _undoStack: [], _redoStack: [] });
+    set({
+      currentDiagram: null,
+      currentDiagramId: null,
+      currentSheetIndex: 0,
+      isDirty: false,
+      _undoStack: [],
+      _redoStack: [],
+    });
   },
 
   reset: () => {
@@ -567,6 +780,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       diagrams: [],
       currentDiagram: null,
       currentDiagramId: null,
+      currentSheetIndex: 0,
       isDirty: false,
       isSaving: false,
       loaded: false,
