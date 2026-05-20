@@ -1,0 +1,39 @@
+flow:
+  id: switch-sheet
+  name: Switch Sheet
+  type: traditional
+  domain: diagrams
+  description: >
+    Switch the active sheet in the current diagram. Updates currentSheetIndex
+    in the store so the canvas re-renders with the selected sheet's content.
+
+trigger:
+  id: trigger-iZ3cE4mG
+  position: { x: 250, y: 0 }
+  connections:
+    - targetNodeId: process-jA4dF5nH
+  spec:
+    event: "ui:sheet-tab-clicked"
+    description: User clicks a different sheet tab
+  label: "Sheet Tab Clicked"
+
+nodes:
+  - id: process-jA4dF5nH
+    type: process
+    position: { x: 250, y: 130 }
+    label: "Set Active Sheet"
+    spec:
+      action: "Set currentSheetIndex to clicked tab's index. Canvas re-renders with sheets[index].nodes, edges, text_boxes."
+    connections:
+      - targetNodeId: terminal-kB5eG6pH
+
+  - id: terminal-kB5eG6pH
+    type: terminal
+    position: { x: 250, y: 260 }
+    label: "Sheet Switched"
+    spec:
+      outcome: success
+
+metadata:
+  created: "2026-04-24T00:00:00Z"
+  modified: "2026-04-24T00:00:00Z"

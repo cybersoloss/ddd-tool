@@ -35,7 +35,11 @@ nodes:
     position: { x: 250, y: 260 }
     label: "Parse Diagram Document"
     spec:
-      action: "Parse YAML to DiagramDocument — extract nodes (with positions, shapes, children), edges (with direction, style, labels), text_boxes, metadata"
+      action: >
+        Parse YAML to DiagramDocument — extract nodes (with positions, shapes,
+        children), edges (with direction, style, labels), text_boxes, sheets, metadata.
+        If sheets[] is absent (legacy format), the top-level nodes/edges/text_boxes
+        represent a single implicit sheet — no migration needed at load time.
     connections:
       - targetNodeId: process-dQ8hK5tV
 
@@ -44,7 +48,11 @@ nodes:
     position: { x: 250, y: 390 }
     label: "Set Diagram Store"
     spec:
-      action: "Set diagram-store.currentDiagram with parsed document; set isDirty=false"
+      action: >
+        Set diagram-store.currentDiagram with parsed document; set isDirty=false;
+        set currentSheetIndex=0. If sheets[] exists, canvas renders
+        sheets[0] content. If no sheets[], canvas renders top-level
+        nodes/edges/text_boxes.
     connections:
       - targetNodeId: terminal-fS1gL6uW
 
@@ -65,4 +73,4 @@ nodes:
 
 metadata:
   created: "2026-04-20T00:00:00Z"
-  modified: "2026-04-20T00:00:00Z"
+  modified: "2026-04-24T00:00:00Z"

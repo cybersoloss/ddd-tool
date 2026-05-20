@@ -26,9 +26,10 @@ fields:
     type: DiagramNode[]
     required: true
     description: >
-      Shape nodes on the canvas. Each shape can independently have children
-      (recursive tree) rendered in its chosen layout_type. Shapes can also
-      connect to other shapes via edges.
+      Top-level shape nodes (backward compat for single-sheet diagrams).
+      When sheets[] is present, these are ignored — each sheet holds its own nodes.
+      Each shape can independently have children (recursive tree) rendered in
+      its chosen layout_type. Shapes can also connect to other shapes via edges.
     nested_fields:
       - name: id
         type: string
@@ -105,9 +106,11 @@ fields:
     type: DiagramEdge[]
     required: true
     description: >
-      Connections between shape nodes. These are independent wiring between
-      shapes (A→B). They do NOT define parent-child hierarchy — that's what
-      the children property on each shape does.
+      Top-level edges (backward compat for single-sheet diagrams).
+      When sheets[] is present, these are ignored — each sheet holds its own edges.
+      Connections between shape nodes — independent wiring between shapes (A→B).
+      They do NOT define parent-child hierarchy — that's what the children
+      property on each shape does.
     nested_fields:
       - name: id
         type: string
@@ -140,7 +143,9 @@ fields:
   - name: text_boxes
     type: TextBox[]
     required: false
-    description: Freeform text placed anywhere on canvas
+    description: >
+      Top-level text boxes (backward compat for single-sheet diagrams).
+      When sheets[] is present, these are ignored — each sheet holds its own text_boxes.
     nested_fields:
       - name: id
         type: string
@@ -156,6 +161,37 @@ fields:
         required: false
         description: "{ size: small|medium|large, border, background }"
 
+  - name: sheets
+    type: DiagramSheet[]
+    required: false
+    description: >
+      Ordered list of sheets (pages/tabs) within the diagram. Each sheet has
+      its own independent canvas with nodes, edges, and text boxes. When sheets[]
+      is present, the top-level nodes/edges/text_boxes are ignored — all content
+      lives inside sheets. When sheets[] is absent, the diagram has a single
+      implicit sheet from the top-level nodes/edges/text_boxes (backward compat).
+    nested_fields:
+      - name: id
+        type: string
+        required: true
+        description: Unique sheet identifier (nanoid)
+      - name: name
+        type: string
+        required: true
+        description: Sheet tab label (e.g. "Overview", "Detail", "Layer 2")
+      - name: nodes
+        type: DiagramNode[]
+        required: true
+        description: Shape nodes on this sheet's canvas
+      - name: edges
+        type: DiagramEdge[]
+        required: true
+        description: Connections between shapes on this sheet
+      - name: text_boxes
+        type: TextBox[]
+        required: false
+        description: Freeform text on this sheet's canvas
+
 metadata:
   created: "2026-04-20T00:00:00Z"
-  modified: "2026-04-22T00:00:00Z"
+  modified: "2026-04-24T00:00:00Z"

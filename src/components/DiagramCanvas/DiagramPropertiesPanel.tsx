@@ -9,6 +9,7 @@ import type {
   DiagramNodeStatus,
   DiagramLayoutType,
 } from '../../types/diagram';
+import { getSheetContent } from '../../types/diagram';
 import { COLOR_GROUPS } from '../../utils/diagram-layout';
 
 const SHAPES: DiagramNodeShape[] = [
@@ -40,15 +41,18 @@ interface DiagramPropertiesPanelProps {
 
 export function DiagramPropertiesPanel({ selectedNodeId, selectedEdgeId, onDeleteNode, onDeleteEdge }: DiagramPropertiesPanelProps) {
   const currentDiagram = useDiagramStore((s) => s.currentDiagram);
+  const currentSheetIndex = useDiagramStore((s) => s.currentSheetIndex);
   const updateNode = useDiagramStore((s) => s.updateNode);
   const updateEdge = useDiagramStore((s) => s.updateEdge);
   const updateTextBox = useDiagramStore((s) => s.updateTextBox);
 
   if (!currentDiagram) return null;
 
+  const sheetContent = getSheetContent(currentDiagram, currentSheetIndex);
+
   // Check if selected is a text box
   const textBox = selectedNodeId
-    ? (currentDiagram.text_boxes || []).find((t) => t.id === selectedNodeId)
+    ? sheetContent.text_boxes.find((t) => t.id === selectedNodeId)
     : null;
 
   if (textBox) {
@@ -95,7 +99,7 @@ export function DiagramPropertiesPanel({ selectedNodeId, selectedEdgeId, onDelet
 
   // Check if selected is a node
   const node = selectedNodeId
-    ? currentDiagram.nodes.find((n) => n.id === selectedNodeId)
+    ? sheetContent.nodes.find((n) => n.id === selectedNodeId)
     : null;
 
   if (node) {
@@ -119,7 +123,7 @@ export function DiagramPropertiesPanel({ selectedNodeId, selectedEdgeId, onDelet
 
   // Check if selected is an edge
   const edge = selectedEdgeId
-    ? currentDiagram.edges.find((e) => e.id === selectedEdgeId)
+    ? sheetContent.edges.find((e) => e.id === selectedEdgeId)
     : null;
 
   if (edge) {

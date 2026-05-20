@@ -1,0 +1,43 @@
+flow:
+  id: reorder-sheets
+  name: Reorder Sheets
+  type: traditional
+  domain: diagrams
+  description: >
+    Drag-reorder sheet tabs. Moves a sheet from one position to another
+    in the sheets[] array. Updates currentSheetIndex if the active sheet moved.
+
+trigger:
+  id: trigger-lC6fH7qI
+  position: { x: 250, y: 0 }
+  connections:
+    - targetNodeId: process-mD7gJ8rJ
+  spec:
+    event: "ui:sheet-tab-dragged"
+    description: User drags a sheet tab to a new position
+  label: "Sheet Tab Dragged"
+
+nodes:
+  - id: process-mD7gJ8rJ
+    type: process
+    position: { x: 250, y: 130 }
+    label: "Move Sheet in Array"
+    spec:
+      action: >
+        Remove sheet from fromIndex, insert at toIndex in sheets[].
+        If currentSheetIndex == fromIndex, set to toIndex.
+        If currentSheetIndex was between fromIndex and toIndex, adjust
+        by +1 or -1. Mark isDirty=true.
+    connections:
+      - targetNodeId: terminal-nE8hK9sK
+
+  - id: terminal-nE8hK9sK
+    type: terminal
+    position: { x: 250, y: 260 }
+    label: "Sheets Reordered"
+    spec:
+      outcome: success
+
+metadata:
+  created: "2026-04-24T00:00:00Z"
+  modified: "2026-04-24T00:00:00Z"

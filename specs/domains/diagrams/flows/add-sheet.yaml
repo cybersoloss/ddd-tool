@@ -1,0 +1,69 @@
+flow:
+  id: add-sheet
+  name: Add Sheet
+  type: traditional
+  domain: diagrams
+  description: >
+    Add a new sheet (tab) to the current diagram. If the diagram uses the
+    legacy single-sheet format (no sheets[]), migrates top-level content
+    into sheets[0] first. Creates an empty sheet with a default name and
+    switches to it.
+
+trigger:
+  id: trigger-sH4kN7wQ
+  position: { x: 250, y: 0 }
+  connections:
+    - targetNodeId: decision-tJ5mP8xR
+  spec:
+    event: "ui:add-sheet-clicked"
+    description: User clicks the + tab button on the sheet bar
+  label: "Add Sheet Clicked"
+
+nodes:
+  - id: decision-tJ5mP8xR
+    type: decision
+    position: { x: 250, y: 130 }
+    label: "Has Sheets Array?"
+    spec:
+      condition: "currentDiagram.sheets !== undefined"
+    connections:
+      - targetNodeId: process-wM8qS1aU
+        sourceHandle: "true"
+      - targetNodeId: process-vL7pR9zT
+        sourceHandle: "false"
+
+  - id: process-vL7pR9zT
+    type: process
+    position: { x: 550, y: 130 }
+    label: "Migrate to Sheets Format"
+    spec:
+      action: >
+        Create sheets[] array. Move top-level nodes, edges, text_boxes into
+        sheets[0] with id=nanoid(), name="Sheet 1". Clear top-level
+        nodes/edges/text_boxes. Set currentSheetIndex=0.
+    connections:
+      - targetNodeId: process-wM8qS1aU
+
+  - id: process-wM8qS1aU
+    type: process
+    position: { x: 250, y: 260 }
+    label: "Create Empty Sheet"
+    spec:
+      action: >
+        Generate new sheet with id=nanoid(), name="Sheet N" (where N =
+        sheets.length + 1), empty nodes[], edges[], text_boxes[].
+        Append to sheets[]. Set currentSheetIndex to the new sheet's index.
+        Mark isDirty=true.
+    connections:
+      - targetNodeId: terminal-xN9rT2bV
+
+  - id: terminal-xN9rT2bV
+    type: terminal
+    position: { x: 250, y: 390 }
+    label: "Sheet Added"
+    spec:
+      outcome: success
+
+metadata:
+  created: "2026-04-24T00:00:00Z"
+  modified: "2026-04-24T00:00:00Z"

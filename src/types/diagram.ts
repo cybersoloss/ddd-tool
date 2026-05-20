@@ -92,6 +92,14 @@ export interface DiagramTextBox {
   style?: TextBoxStyle;
 }
 
+export interface DiagramSheet {
+  id: string;
+  name: string;
+  nodes: DiagramNode[];
+  edges: DiagramEdge[];
+  text_boxes?: DiagramTextBox[];
+}
+
 export interface DiagramDocument {
   name: string;
   description?: string;
@@ -99,6 +107,7 @@ export interface DiagramDocument {
   nodes: DiagramNode[];
   edges: DiagramEdge[];
   text_boxes?: DiagramTextBox[];
+  sheets?: DiagramSheet[];
   metadata?: {
     created?: string;
     modified?: string;
@@ -110,4 +119,43 @@ export interface DiagramMeta {
   name: string;
   description?: string;
   tags?: string[];
+  sheetCount?: number;
+}
+
+// ─── Sheet content helpers ────────────────────────────────────────────────
+
+export function getSheetContent(doc: DiagramDocument, sheetIndex: number): {
+  nodes: DiagramNode[];
+  edges: DiagramEdge[];
+  text_boxes: DiagramTextBox[];
+} {
+  if (doc.sheets && doc.sheets.length > 0) {
+    const idx = Math.min(sheetIndex, doc.sheets.length - 1);
+    const sheet = doc.sheets[idx];
+    return {
+      nodes: sheet.nodes || [],
+      edges: sheet.edges || [],
+      text_boxes: sheet.text_boxes || [],
+    };
+  }
+  return {
+    nodes: doc.nodes || [],
+    edges: doc.edges || [],
+    text_boxes: doc.text_boxes || [],
+  };
+}
+
+export function setSheetContent(
+  doc: DiagramDocument,
+  sheetIndex: number,
+  content: { nodes?: DiagramNode[]; edges?: DiagramEdge[]; text_boxes?: DiagramTextBox[] },
+): DiagramDocument {
+  if (doc.sheets && doc.sheets.length > 0) {
+    const idx = Math.min(sheetIndex, doc.sheets.length - 1);
+    return {
+      ...doc,
+      sheets: doc.sheets.map((s, i) => (i === idx ? { ...s, ...content } : s)),
+    };
+  }
+  return { ...doc, ...content };
 }
