@@ -1,6 +1,6 @@
 import { memo, useState, useRef, useEffect, useMemo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
-import type { DiagramNodeShape, DiagramNodeStyle, DiagramNodeStatus, DiagramLayoutType, MindMapChild } from '../../types/diagram';
+import type { DiagramNodeShape, DiagramNodeStyle, DiagramNodeStatus, DiagramLayoutType, DiagramBranchOrientation, MindMapChild } from '../../types/diagram';
 import { colorGroupToColor } from '../../utils/diagram-layout';
 
 export interface DiagramShapeNodeData {
@@ -12,6 +12,7 @@ export interface DiagramShapeNodeData {
   status?: DiagramNodeStatus;
   color_group?: string;
   layout_type?: DiagramLayoutType;
+  branch_orientation?: DiagramBranchOrientation;
   children?: MindMapChild[];
   selected?: boolean;
   onLabelChange?: (label: string) => void;
@@ -239,7 +240,7 @@ function BranchTree({ items, side, lineColor, maxWidth, path = [], onClickBranch
 
 export const DiagramShapeNode = memo(function DiagramShapeNode({ data }: NodeProps) {
   const d = data as unknown as DiagramShapeNodeData;
-  const { label, shape, status, children: rawChildren, onLabelChange, onAddChild, onDeleteChild, onEditChild, layout_type, color_group, branch_max_width } = d;
+  const { label, shape, status, children: rawChildren, onLabelChange, onAddChild, onDeleteChild, onEditChild, layout_type, branch_orientation, color_group, branch_max_width } = d;
   const [editing, setEditing] = useState(false);
   const [editLabel, setEditLabel] = useState(label);
   const [adding, setAdding] = useState(false);
@@ -375,11 +376,19 @@ export const DiagramShapeNode = memo(function DiagramShapeNode({ data }: NodePro
           <BranchTree items={children} side="down" lineColor={lineColor} maxWidth={branch_max_width} onClickBranch={handleBranchClick} onDeleteBranch={handleDeleteBranch} onEditBranch={handleEditBranch} />
         </div>
       ) : lt === 'logic-chart' && children.length > 0 ? (
-        <div className="flex flex-row items-center gap-2">
-          {shapeContent}
-          <div className="w-3 h-px" style={{ backgroundColor: lineColor }} />
-          <BranchTree items={children} side="right" lineColor={lineColor} maxWidth={branch_max_width} onClickBranch={handleBranchClick} onDeleteBranch={handleDeleteBranch} onEditBranch={handleEditBranch} />
-        </div>
+        branch_orientation === 'left' ? (
+          <div className="flex flex-row items-center gap-2">
+            <BranchTree items={children} side="left" lineColor={lineColor} maxWidth={branch_max_width} onClickBranch={handleBranchClick} onDeleteBranch={handleDeleteBranch} onEditBranch={handleEditBranch} />
+            <div className="w-3 h-px" style={{ backgroundColor: lineColor }} />
+            {shapeContent}
+          </div>
+        ) : (
+          <div className="flex flex-row items-center gap-2">
+            {shapeContent}
+            <div className="w-3 h-px" style={{ backgroundColor: lineColor }} />
+            <BranchTree items={children} side="right" lineColor={lineColor} maxWidth={branch_max_width} onClickBranch={handleBranchClick} onDeleteBranch={handleDeleteBranch} onEditBranch={handleEditBranch} />
+          </div>
+        )
       ) : (
         shapeContent
       )}

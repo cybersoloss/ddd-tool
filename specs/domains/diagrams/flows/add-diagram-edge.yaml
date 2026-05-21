@@ -23,9 +23,12 @@ nodes:
     spec:
       action: >
         Create DiagramEdge with: generated ID, from (source node ID), to (target node ID),
-        default direction (one-way), default style (solid), empty labels.
+        default direction (one-way), default style (solid), empty labels,
+        default routing (bezier — preserves legacy curved appearance),
+        no waypoints (pure geometric routing).
         Reject self-loops (from === to). Multiple edges between the same pair are allowed.
-        Add to diagram-store.currentDiagram.edges. Set isDirty=true.
+        Add to diagram-store.currentDiagram.edges (within the active sheet).
+        Set isDirty=true.
     connections:
       - targetNodeId: terminal-hV2jP8xZ
 

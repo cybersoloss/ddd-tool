@@ -21,8 +21,19 @@ flow:
     - org-chart: children render below shape, centered horizontally, with vertical
       connector lines and horizontal distribution.
     - tree-chart: children render below-right with bracket-style connectors.
-    - logic-chart: children render to the right in a vertical stack with
-      right-angle bracket connectors.
+    - logic-chart: children render in a vertical stack with right-angle bracket
+      connectors, on the right by default. Setting branch_orientation: left flips
+      the entire tree to render on the left side of the shape (connectors mirror,
+      labels still left-to-right).
+
+    ## Branch Orientation
+    The branch_orientation field (left | right) on the shape controls the
+    horizontal side that logic-chart children render to. It is ignored for
+    mind-map (children split both sides), org-chart (children below shape), and
+    tree-chart (no horizontal choice yet). The side panel exposes this as a
+    dropdown when the layout supports it. When changed, DiagramShapeNode passes
+    the value as the BranchTree `side` prop and swaps shape/BranchTree order
+    in the flex row.
 
     ## Color Cascade
     Children inherit the parent shape's color_group for connector line color

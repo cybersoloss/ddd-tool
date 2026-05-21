@@ -6,8 +6,10 @@ import type {
   DiagramEdgeDirection,
   DiagramEdgeStyle,
   DiagramEdgeWeight,
+  DiagramEdgeRouting,
   DiagramNodeStatus,
   DiagramLayoutType,
+  DiagramBranchOrientation,
 } from '../../types/diagram';
 import { getSheetContent } from '../../types/diagram';
 import { COLOR_GROUPS } from '../../utils/diagram-layout';
@@ -22,6 +24,12 @@ const SHAPES: DiagramNodeShape[] = [
 const DIRECTIONS: DiagramEdgeDirection[] = ['one-way', 'two-way', 'conditional'];
 const EDGE_STYLES: DiagramEdgeStyle[] = ['solid', 'dashed', 'dotted'];
 const WEIGHTS: DiagramEdgeWeight[] = ['primary', 'secondary'];
+const ROUTING_OPTIONS: { value: DiagramEdgeRouting; label: string }[] = [
+  { value: 'bezier', label: 'Curved (bezier)' },
+  { value: 'straight', label: 'Direct (straight)' },
+  { value: 'orthogonal', label: 'Angular (right-angle)' },
+  { value: 'smoothstep', label: 'Rounded angular' },
+];
 const STATUSES: DiagramNodeStatus[] = ['draft', 'active', 'deprecated'];
 const COLOR_GROUP_OPTIONS = ['', ...Object.keys(COLOR_GROUPS)];
 const LAYOUT_TYPES: { value: DiagramLayoutType | ''; label: string }[] = [
@@ -247,6 +255,18 @@ function NodeProperties({ node, onUpdate }: {
           ))}
         </select>
       </Field>
+      {node.layout_type === 'logic-chart' && (
+        <Field label="Branch Orientation">
+          <select
+            value={node.branch_orientation || 'right'}
+            onChange={(e) => onUpdate({ branch_orientation: e.target.value as DiagramBranchOrientation })}
+            className="input-field text-xs"
+          >
+            <option value="right">Right</option>
+            <option value="left">Left</option>
+          </select>
+        </Field>
+      )}
       <Field label={`Branch Width (${node.branch_max_width || 150}px)`}>
         <input
           type="range"
@@ -336,6 +356,30 @@ function EdgeProperties({ edge, onUpdate }: {
           className="input-field text-xs"
           placeholder="Comma-separated labels"
         />
+      </Field>
+      <Field label="Routing">
+        <select
+          value={edge.routing || 'bezier'}
+          onChange={(e) => onUpdate({ routing: e.target.value as DiagramEdgeRouting })}
+          className="input-field text-xs"
+        >
+          {ROUTING_OPTIONS.map((r) => (
+            <option key={r.value} value={r.value}>{r.label}</option>
+          ))}
+        </select>
+      </Field>
+      <Field label={`Waypoints (${(edge.waypoints || []).length})`}>
+        <div className="text-[10px] text-text-muted leading-snug">
+          Double-click edge to add. Drag handle to move. Right-click handle to delete.
+          {(edge.waypoints?.length || 0) > 0 && (
+            <button
+              onClick={() => onUpdate({ waypoints: undefined })}
+              className="block mt-1 text-danger hover:underline"
+            >
+              Clear all waypoints
+            </button>
+          )}
+        </div>
       </Field>
     </div>
   );
