@@ -24,6 +24,7 @@ import { DiagramTextBoxNode } from './DiagramTextBoxNode';
 import { DiagramToolbar } from './DiagramToolbar';
 import { DiagramPropertiesPanel } from './DiagramPropertiesPanel';
 import { SheetTabBar } from './SheetTabBar';
+import { DiagramEdgeRouter } from './DiagramEdgeRouter';
 import type { DiagramNode, DiagramNodeShape, MindMapChild } from '../../types/diagram';
 import { getSheetContent, setSheetContent } from '../../types/diagram';
 import { colorGroupToColor } from '../../utils/diagram-layout';
@@ -32,6 +33,10 @@ import { nanoid } from 'nanoid';
 const nodeTypes = {
   diagramShape: DiagramShapeNode,
   diagramTextBox: DiagramTextBoxNode,
+};
+
+const edgeTypes = {
+  diagramEdge: DiagramEdgeRouter,
 };
 
 type Mode =
@@ -192,6 +197,7 @@ function DiagramCanvasInner() {
           status: n.status,
           color_group: n.color_group,
           layout_type: n.layout_type,
+          branch_orientation: n.branch_orientation,
           children: n.children,
           branch_max_width: n.branch_max_width,
           onLabelChange: (label: string) => updateNode(n.id, { label }),
@@ -296,13 +302,15 @@ function DiagramCanvasInner() {
         target: e.to,
         sourceHandle: e.fromHandle,
         targetHandle: e.toHandle,
-        type: 'smoothstep',
+        type: 'diagramEdge',
         selected: selectedEdgeId === e.id,
-        label: (e.labels || []).join(' / ') || undefined,
-        labelStyle: { fill: '#e2e8f0', fontSize: 11, fontWeight: 500 },
-        labelBgStyle: { fill: '#1e293b', fillOpacity: 0.9 },
-        labelBgPadding: [4, 6] as [number, number],
-        labelBgBorderRadius: 4,
+        data: {
+          routing: e.routing ?? 'bezier',
+          waypoints: e.waypoints,
+          label: (e.labels || []).join(' / ') || undefined,
+          labelStyle: { color: '#e2e8f0' },
+          labelBgStyle: { background: '#1e293b' },
+        },
         style: { stroke: edgeColor, strokeWidth, strokeDasharray },
         markerEnd,
         markerStart,
@@ -368,9 +376,20 @@ function DiagramCanvasInner() {
     if (!diagram) return;
     const sc = getSheetContent(diagram, store.currentSheetIndex);
     const edgeData = sc.edges.find((e) => e.id === edge.id);
-    setEdgeLabelValue((edgeData?.labels || []).join(', '));
-    setEditingEdgeLabel({ id: edge.id, x: event.clientX, y: event.clientY });
-  }, []);
+    if (!edgeData) return;
+
+    // Shift+double-click → edit labels (legacy behavior preserved as modifier).
+    if (event.shiftKey) {
+      setEdgeLabelValue((edgeData.labels || []).join(', '));
+      setEditingEdgeLabel({ id: edge.id, x: event.clientX, y: event.clientY });
+      return;
+    }
+
+    // Plain double-click → add a waypoint at the click position.
+    const pos = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+    const existing = edgeData.waypoints || [];
+    useDiagramStore.getState().updateEdge(edge.id, { waypoints: [...existing, pos] });
+  }, [screenToFlowPosition]);
 
   const onNodesDelete = useCallback((nodes: Node[]) => {
     for (const n of nodes) {
@@ -459,6 +478,7 @@ function DiagramCanvasInner() {
             nodes={rfNodes}
             edges={rfEdges}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}

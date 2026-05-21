@@ -1,0 +1,109 @@
+timestamp: "2026-05-20T00:00:00.000Z"
+command: /ddd-sync
+scope: all
+mode: hash-based bidirectional drift analysis
+
+summary:
+  pillars_checked:
+    data: 1 schema (diagram.yaml)
+    interface: 0 (no recent edits)
+    infrastructure: 0 (no infrastructure spec present)
+    logic: 19 flows in diagrams domain (no other domains have flow specs in scope this run)
+  pending_entries_before: 8
+  pending_entries_after: 0
+  reclassified: 8 orphan-pending → implemented
+
+orphan_pending_resolved:
+  - id: chg-0094
+    spec_file: specs/domains/diagrams/flows/add-diagram-edge.yaml
+    historical_checksum: 0e7604fee135
+    classification: metadata-only
+    reason: >
+      Older spec checksum for add-diagram-edge. Current spec checksum
+      f2d3e4fca1f2 is tracked by chg-0127 (implemented 2026-05-20).
+      Spec→Code: addEdge in diagram-store.ts creates DiagramEdge with all
+      documented defaults and rejects self-loops in DiagramCanvas.onConnect.
+      Code→Spec: nothing surprising; code matches at every spec revision.
+    action: flipped status pending → implemented
+
+  - id: chg-0096
+    spec_file: specs/domains/diagrams/flows/add-diagram-edge.yaml
+    historical_checksum: 743e4f8c04b1
+    classification: metadata-only
+    reason: Second older checksum for the same file; same analysis as chg-0094.
+    action: flipped status pending → implemented
+
+  - id: chg-0097
+    spec_file: specs/schemas/diagram.yaml
+    historical_checksum: 9a61140e890d
+    classification: metadata-only
+    reason: >
+      Older schema checksum. Current schema checksum a5284ac32807 is tracked
+      by chg-0125 (implemented). src/types/diagram.ts implements every
+      DiagramNode and DiagramEdge field including branch_orientation,
+      routing, waypoints, sheets[].
+    action: flipped status pending → implemented
+
+  - id: chg-0098
+    spec_file: specs/schemas/diagram.yaml
+    historical_checksum: 3031a3d25f95
+    classification: metadata-only
+    reason: Another older schema checksum; same analysis as chg-0097.
+    action: flipped status pending → implemented
+
+  - id: chg-0099
+    spec_file: specs/domains/diagrams/domain.yaml
+    historical_checksum: d58eb4f47428
+    classification: metadata-only
+    reason: >
+      Older domain.yaml checksum. Current checksum 24c1a2e6372d is tracked
+      by chg-0111 (implemented). Domain lists all 19 flows and the store
+      (diagram-store.ts) wires implementations for every one of them.
+    action: flipped status pending → implemented
+
+  - id: chg-0107
+    spec_file: specs/schemas/diagram.yaml
+    historical_checksum: a682b6c2334a
+    classification: metadata-only
+    reason: Third older schema checksum; same analysis as chg-0097.
+    action: flipped status pending → implemented
+
+  - id: chg-0108
+    spec_file: specs/domains/diagrams/domain.yaml
+    historical_checksum: c370e0afda23
+    classification: metadata-only
+    reason: Second older domain checksum; same analysis as chg-0099.
+    action: flipped status pending → implemented
+
+  - id: chg-0109
+    spec_file: specs/domains/diagrams/flows/manage-branches.yaml
+    historical_checksum: 8fe1366c643c
+    classification: metadata-only
+    reason: >
+      Older manage-branches checksum. Current checksum 529b27fcb8ad is tracked
+      by chg-0124 (implemented). The behaviors described — keyboard-driven
+      branch add/delete/edit and layout-specific rendering — are implemented
+      inline in DiagramShapeNode.tsx (~409 LOC, with BranchTree component
+      and four layout-specific branches). The original implementation files
+      (branch-tree-ops.ts, BranchTreeEditor.tsx, both referenced by chg-0100)
+      were refactored away into DiagramShapeNode during a code consolidation;
+      chg-0100's historical code_files record is preserved as audit trail.
+    action: flipped status pending → implemented
+
+unchanged:
+  mapping_yaml: No specHash changes needed. The current mapping.yaml entries
+    for add-diagram-edge, manage-branches, schemas/diagram.yaml, domain.yaml
+    already reference the latest spec content via the most recent
+    implemented change-history entries (chg-0127, 0124, 0125, 0111).
+
+notes:
+  - Per Section 12.2 ("Never delete entries"), the historical spec_checksum
+    field on each flipped entry is preserved unchanged — it documents which
+    spec revision the entry tracked. Only status, implemented_at, and
+    code_files were updated.
+  - No code changes were generated or needed. This was a pure hash-cleanup
+    sync — code already implemented every spec revision.
+  - chg-0100's stale code_files (branch-tree-ops.ts, BranchTreeEditor.tsx)
+    are preserved as a historical record of where the manage-branches
+    behavior originally lived. The current location is reflected in
+    mapping.yaml under diagrams/manage-branches.

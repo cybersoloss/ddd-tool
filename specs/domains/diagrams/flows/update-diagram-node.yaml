@@ -4,9 +4,11 @@ flow:
   type: traditional
   domain: diagrams
   description: >
-    Edit node properties — label, description, shape, color_group, style, icon,
-    status, link. When color_group changes, outgoing edges and descendant nodes
-    that inherited the old color update to match.
+    Edit node properties — label, description, shape, color_group, layout_type,
+    branch_orientation, style, icon, status, link. When color_group changes,
+    outgoing edges and descendant nodes that inherited the old color update to
+    match. branch_orientation flips the horizontal side that logic-chart
+    children render to (left/right).
 
 trigger:
   id: trigger-lZ6nT3bD
@@ -27,11 +29,14 @@ nodes:
     label: "Update Node in Store"
     spec:
       action: >
-        Find node by ID in diagram-store.currentDiagram.nodes. Update changed properties:
-        label, description, notes, shape, color_group, style (border_color, fill_color,
-        fill_opacity, border_thickness, size, shadow), icon, status, link.
+        Find node by ID in diagram-store.currentDiagram.nodes (within the active sheet).
+        Update changed properties: label, description, notes, shape, color_group,
+        layout_type, branch_orientation, style (border_color, fill_color, fill_opacity,
+        border_thickness, size, shadow), icon, status, link, branch_max_width.
         If color_group changed, propagate to outgoing edges and descendant nodes that
         don't have their own explicit color_group set.
+        branch_orientation is a per-shape setting (left | right) honored by
+        DiagramShapeNode when rendering logic-chart layouts.
         Set isDirty=true.
     connections:
       - targetNodeId: terminal-nB8qV5dF

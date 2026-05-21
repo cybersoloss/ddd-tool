@@ -3,39 +3,88 @@ flow:
   name: Update Diagram Edge
   type: traditional
   domain: diagrams
-  description: Edit edge properties — direction, style, labels, weight
+  description: >
+    Edit edge properties — direction, style, labels, weight, routing, and
+    waypoints. Routing selects the path geometry (straight, orthogonal,
+    smoothstep, bezier). Waypoints let the user steer the edge through
+    arbitrary points on the canvas.
 
 trigger:
   id: trigger-pC9rW6eG
   position: { x: 250, y: 0 }
   connections:
-    - targetNodeId: process-qD1sX7fH
+    - targetNodeId: decision-uH3vZ5jK
   spec:
     event: "ui:diagram-edge-edited"
-    description: User modifies edge properties in the side panel
+    description: >
+      User modifies edge properties via:
+      (a) side panel — Direction, Style, Weight, Labels, Routing dropdowns;
+      (b) canvas double-click on edge — adds a waypoint at the click position;
+      (c) canvas drag on a waypoint handle — moves the waypoint;
+      (d) canvas right-click on a waypoint — deletes the waypoint.
   label: "Edge Edited"
 
 nodes:
+  - id: decision-uH3vZ5jK
+    type: decision
+    position: { x: 250, y: 130 }
+    label: "Edit Type?"
+    spec:
+      condition: "event.kind — property | waypoint-add | waypoint-move | waypoint-delete"
+    connections:
+      - targetNodeId: process-qD1sX7fH
+        sourceHandle: "true"
+        label: "property edit (side panel)"
+      - targetNodeId: process-vJ4wA6kL
+        sourceHandle: "false"
+        label: "waypoint operation (canvas)"
+
   - id: process-qD1sX7fH
     type: process
-    position: { x: 250, y: 130 }
-    label: "Update Edge in Store"
+    position: { x: 80, y: 280 }
+    label: "Update Edge Properties"
     spec:
       action: >
-        Find edge by from+to in diagram-store.currentDiagram.edges. Update changed properties:
+        Find edge by id in diagram-store.currentDiagram.edges (within the
+        active sheet). Update changed properties:
         direction (one-way/two-way/conditional), style (solid/dashed/dotted),
-        labels (string array), weight (primary/secondary).
+        labels (string array), weight (primary/secondary),
+        routing (straight/orthogonal/smoothstep/bezier — default bezier).
         Set isDirty=true.
+    connections:
+      - targetNodeId: terminal-rE2tY8gI
+
+  - id: process-vJ4wA6kL
+    type: process
+    position: { x: 420, y: 280 }
+    label: "Mutate Waypoints"
+    spec:
+      action: >
+        Apply waypoint operation to the edge's waypoints[] array:
+
+        ADD (double-click on edge): Compute the click position in canvas
+        coordinates and insert a new waypoint into waypoints[] at the index
+        nearest the click along the existing path. If waypoints[] is absent,
+        initialize it with the new point.
+
+        MOVE (drag waypoint handle): Update waypoints[index] to the new
+        position. Debounce 50ms to keep canvas smooth.
+
+        DELETE (right-click waypoint, or Backspace when selected): Remove
+        waypoints[index]. If the array becomes empty, remove the waypoints
+        field entirely (so the edge reverts to pure geometric routing).
+
+        All operations write through diagram-store.updateEdge(). Set isDirty=true.
     connections:
       - targetNodeId: terminal-rE2tY8gI
 
   - id: terminal-rE2tY8gI
     type: terminal
-    position: { x: 250, y: 260 }
+    position: { x: 250, y: 430 }
     label: "Edge Updated"
     spec:
       outcome: success
 
 metadata:
   created: "2026-04-20T00:00:00Z"
-  modified: "2026-04-20T00:00:00Z"
+  modified: "2026-05-20T00:00:00Z"

@@ -74,8 +74,19 @@ fields:
           mind-map — children radiate left/right from shape, curved connectors
           org-chart — children below shape, centered, vertical connectors
           tree-chart — children below-right with bracket connectors
-          logic-chart — children right in vertical stack, bracket connectors
+          logic-chart — children in a vertical stack with bracket connectors;
+            orientation (left or right of the shape) is controlled by the
+            branch_orientation field (default right)
           Default: mind-map (when children exist)
+      - name: branch_orientation
+        type: string
+        required: false
+        description: >
+          Direction children render relative to the shape, for logic-chart only.
+          Values: left | right. Default: right.
+          Ignored for mind-map (splits both sides), org-chart (children below),
+          and tree-chart (no horizontal choice yet). Set via the side panel;
+          mirrors the BranchTree side prop in the renderer.
       - name: children
         type: MindMapChild[]
         required: false
@@ -139,6 +150,28 @@ fields:
         type: string
         required: false
         description: "primary | secondary — affects visual thickness"
+      - name: routing
+        type: string
+        required: false
+        description: >
+          Path geometry between endpoints. Values:
+          straight     — direct A→B line, no bends
+          orthogonal   — right-angle (step) segments, like a flowchart
+          smoothstep   — rounded right-angle segments
+          bezier       — curved smooth path
+          Default: bezier (matches legacy behavior when omitted).
+      - name: waypoints
+        type: "Array<{ x: number, y: number }>"
+        required: false
+        description: >
+          User-defined intermediate points the edge passes through, in canvas
+          coordinates and in order from source to target. When present, the
+          edge router visits each waypoint before reaching the target. Most
+          meaningful with routing: straight or orthogonal (creating polylines);
+          bezier and smoothstep also honor waypoints as control anchors.
+          UX: double-click an edge to add a waypoint at the click position;
+          drag a waypoint handle to move it; right-click a waypoint to delete.
+          An edge with empty/absent waypoints uses pure geometric routing.
 
   - name: text_boxes
     type: TextBox[]

@@ -30,6 +30,8 @@ export type DiagramNodeStatus = 'draft' | 'active' | 'deprecated';
 
 export type DiagramLayoutType = 'mind-map' | 'org-chart' | 'tree-chart' | 'logic-chart';
 
+export type DiagramBranchOrientation = 'left' | 'right';
+
 export interface MindMapChild {
   label: string;
   children?: MindMapChild[];
@@ -55,6 +57,7 @@ export interface DiagramNode {
   icon?: string;
   color_group?: string;
   layout_type?: DiagramLayoutType;
+  branch_orientation?: DiagramBranchOrientation;
   children?: MindMapChild[];
   status?: DiagramNodeStatus;
   link?: string;
@@ -64,6 +67,12 @@ export interface DiagramNode {
 export type DiagramEdgeDirection = 'one-way' | 'two-way' | 'conditional';
 export type DiagramEdgeStyle = 'solid' | 'dashed' | 'dotted';
 export type DiagramEdgeWeight = 'primary' | 'secondary';
+export type DiagramEdgeRouting = 'straight' | 'orthogonal' | 'smoothstep' | 'bezier';
+
+export interface DiagramEdgeWaypoint {
+  x: number;
+  y: number;
+}
 
 export interface DiagramEdge {
   id: string;
@@ -75,6 +84,8 @@ export interface DiagramEdge {
   style?: DiagramEdgeStyle;
   labels?: string[];
   weight?: DiagramEdgeWeight;
+  routing?: DiagramEdgeRouting;
+  waypoints?: DiagramEdgeWaypoint[];
 }
 
 export type TextBoxSize = 'small' | 'medium' | 'large';

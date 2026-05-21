@@ -88,6 +88,27 @@ function pushUndo(get: () => DiagramState, set: (partial: Partial<DiagramState>)
   });
 }
 
+/**
+ * BFS over outgoing edges to collect all descendant node IDs (excluding the root).
+ * Cycle-safe via a visited set.
+ */
+function collectDescendants(rootId: string, edges: DiagramEdge[]): Set<string> {
+  const descendants = new Set<string>();
+  const visited = new Set<string>([rootId]);
+  const queue: string[] = [rootId];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    for (const edge of edges) {
+      if (edge.from === current && !visited.has(edge.to)) {
+        visited.add(edge.to);
+        descendants.add(edge.to);
+        queue.push(edge.to);
+      }
+    }
+  }
+  return descendants;
+}
+
 /** Ensure diagram has sheets[] — migrates legacy single-sheet format */
 function ensureSheets(doc: DiagramDocument): DiagramDocument {
   if (doc.sheets && doc.sheets.length > 0) return doc;
@@ -409,6 +430,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
     let style = defaultStyleForShape(shape);
     let color_group: string | undefined;
     let layout_type: import('../types/diagram').DiagramLayoutType | undefined;
+    let branch_orientation: import('../types/diagram').DiagramBranchOrientation | undefined;
     try {
       const saved = localStorage.getItem('ddd-diagram-last-style');
       if (saved) {
@@ -416,6 +438,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
         if (parsed.style) style = { ...style, ...parsed.style };
         if (parsed.color_group) color_group = parsed.color_group;
         if (parsed.layout_type) layout_type = parsed.layout_type;
+        if (parsed.branch_orientation) branch_orientation = parsed.branch_orientation;
       }
     } catch { /* ignore */ }
 
@@ -427,6 +450,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       style,
       color_group,
       layout_type,
+      branch_orientation,
     };
 
     const { nodes } = getSheetContent(currentDiagram, currentSheetIndex);
@@ -489,20 +513,49 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
     const { currentDiagram, currentSheetIndex } = get();
     if (!currentDiagram) return;
 
-    if (updates.style || updates.color_group !== undefined || updates.layout_type !== undefined) {
+    if (
+      updates.style ||
+      updates.color_group !== undefined ||
+      updates.layout_type !== undefined ||
+      updates.branch_orientation !== undefined
+    ) {
       try {
         const existing = JSON.parse(localStorage.getItem('ddd-diagram-last-style') || '{}');
         if (updates.style) existing.style = { ...existing.style, ...updates.style };
         if (updates.color_group !== undefined) existing.color_group = updates.color_group || undefined;
         if (updates.layout_type !== undefined) existing.layout_type = updates.layout_type || undefined;
+        if (updates.branch_orientation !== undefined) existing.branch_orientation = updates.branch_orientation || undefined;
         localStorage.setItem('ddd-diagram-last-style', JSON.stringify(existing));
       } catch { /* ignore */ }
     }
 
-    const { nodes } = getSheetContent(currentDiagram, currentSheetIndex);
+    const { nodes, edges } = getSheetContent(currentDiagram, currentSheetIndex);
+    const target = nodes.find((n) => n.id === nodeId);
+    if (!target) return;
+
+    let updatedNodes = nodes.map((n) => (n.id === nodeId ? { ...n, ...updates } : n));
+
+    // Cascade color_group to descendants that inherited the old value.
+    // Only fires when the parent had an explicit color_group before the change —
+    // otherwise an undefined→defined transition would sweep unrelated nodes.
+    if (
+      'color_group' in updates &&
+      target.color_group &&
+      updates.color_group !== target.color_group
+    ) {
+      const oldGroup = target.color_group;
+      const newGroup = updates.color_group;
+      const descendants = collectDescendants(nodeId, edges);
+      updatedNodes = updatedNodes.map((n) =>
+        descendants.has(n.id) && n.color_group === oldGroup
+          ? { ...n, color_group: newGroup }
+          : n,
+      );
+    }
+
     set({
       currentDiagram: setSheetContent(currentDiagram, currentSheetIndex, {
-        nodes: nodes.map((n) => (n.id === nodeId ? { ...n, ...updates } : n)),
+        nodes: updatedNodes,
       }),
       isDirty: true,
     });
